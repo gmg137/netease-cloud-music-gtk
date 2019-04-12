@@ -43,6 +43,7 @@ impl Encrypt {
         let secret = Self.create_key(16);
         let secret = "e0e80547fa3ecd5a".to_owned();
         let params = Self.aes(Self.aes(data, NONCE), &secret);
+        #[allow(non_snake_case)]
         let encSecKey = Self.rsa(secret);
         let meal = &[("params", params), ("encSecKey", encSecKey)];
         serde_urlencoded::to_string(&meal).unwrap_or("".to_owned())

@@ -33,14 +33,14 @@ pub(crate) struct View {
     mine: Rc<RefCell<Mine>>,
     subpages: Rc<RefCell<Subpages>>,
     sender: Sender<Action>,
-    data: Arc<Mutex<MusicData>>,
+    data: Arc<Mutex<u8>>,
 }
 
 impl View {
     pub(crate) fn new(
         builder: &Builder,
         sender: &Sender<Action>,
-        data: Arc<Mutex<MusicData>>,
+        data: Arc<Mutex<u8>>,
     ) -> Rc<Self> {
         let stack: Stack = builder
             .get_object("stack")
@@ -100,7 +100,9 @@ impl View {
         let sender = self.sender.clone();
         let data = self.data.clone();
         spawn(move || {
-            let mut data = data.lock().unwrap();
+            #[allow(unused_variables)]
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
             if let Some(song_list) = data.song_list_detail(id) {
                 sender
                     .send(Action::RefreshSubLowView(song_list))
@@ -126,7 +128,9 @@ impl View {
         let data = self.data.clone();
         let text_clone = text.clone();
         spawn(move || {
-            let mut data = data.lock().unwrap();
+            #[allow(unused_variables)]
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
             if let Some(json) = data.search(text_clone, 1, 0, 50) {
                 if let Ok(song_list) = serde_json::from_str::<Vec<SongInfo>>(&json) {
                     sender
@@ -161,7 +165,9 @@ impl View {
         let sender = self.sender.clone();
         let data = self.data.clone();
         spawn(move || {
-            let mut data = data.lock().unwrap();
+            #[allow(unused_variables)]
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
             if let Some(tsl) = data.top_song_list("hot", 0, 9) {
                 if data.login {
                     if let Some(rr) = data.recommend_resource() {
@@ -210,7 +216,9 @@ impl View {
         let data = self.data.clone();
         let lid = TOP_ID.get(&row_id).unwrap();
         spawn(move || {
-            let mut data = data.lock().unwrap();
+            #[allow(unused_variables)]
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
             if let Some(song_list) = data.song_list_detail(*lid) {
                 sender
                     .send(Action::RefreshFoundView(song_list))
@@ -227,15 +235,18 @@ impl View {
         self.found.borrow_mut().play_all();
     }
 
+    #[allow(unused_variables)]
     pub(crate) fn mine_init(&self) {
         let data = self.data.clone();
-        let data = data.lock().unwrap();
+        let lock = data.lock().unwrap();
+        let data = MusicData::new();
         if data.login {
             self.mine.borrow_mut().show_fm();
             let sender = self.sender.clone();
             let data = self.data.clone();
             spawn(move || {
-                let mut data = data.lock().unwrap();
+                let lock = data.lock().unwrap();
+                let mut data = MusicData::new();
                 if let Some(login_info) = data.login_info() {
                     if let Some(vsl) = data.user_song_list(login_info.uid, 0, 50) {
                         sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
@@ -251,7 +262,9 @@ impl View {
         let sender = self.sender.clone();
         let data = self.data.clone();
         spawn(move || {
-            let mut data = data.lock().unwrap();
+            #[allow(unused_variables)]
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
             if let Some(vsi) = data.personal_fm() {
                 // 提取歌曲 id 列表
                 let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u32>>();
@@ -293,6 +306,7 @@ impl View {
         self.update_mine_low_view(song_list);
     }
 
+    #[allow(unused_variables)]
     pub(crate) fn update_mine_view_data(&self, row_id: i32) {
         let mut row_id = row_id as usize;
         if row_id == 0 {
@@ -301,7 +315,8 @@ impl View {
                 let sender = self.sender.clone();
                 let data = self.data.clone();
                 spawn(move || {
-                    let mut data = data.lock().unwrap();
+                    let lock = data.lock().unwrap();
+                    let mut data = MusicData::new();
                     if let Some(vsi) = data.personal_fm() {
                         // 提取歌曲 id 列表
                         let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u32>>();
@@ -327,7 +342,8 @@ impl View {
         let sender = self.sender.clone();
         let data = self.data.clone();
         spawn(move || {
-            let mut data = data.lock().unwrap();
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
             if row_id == 1 {
                 sender
                     .send(Action::RefreshMineView(
@@ -376,7 +392,9 @@ impl View {
         if let Some(si) = self.mine.borrow_mut().get_now_play() {
             let data = self.data.clone();
             spawn(move || {
-                let mut data = data.lock().unwrap();
+                #[allow(unused_variables)]
+                let lock = data.lock().unwrap();
+                let mut data = MusicData::new();
                 data.like(true, si.id);
             });
         }
@@ -386,7 +404,9 @@ impl View {
         if let Some(si) = self.mine.borrow_mut().get_now_play() {
             let data = self.data.clone();
             spawn(move || {
-                let mut data = data.lock().unwrap();
+                #[allow(unused_variables)]
+                let lock = data.lock().unwrap();
+                let mut data = MusicData::new();
                 data.fm_trash(si.id);
             });
         }
@@ -397,7 +417,9 @@ impl View {
             let data = self.data.clone();
             let sender = self.sender.clone();
             spawn(move || {
-                let mut data = data.lock().unwrap();
+                #[allow(unused_variables)]
+                let lock = data.lock().unwrap();
+                let mut data = MusicData::new();
                 data.like(false, id);
                 sender.send(Action::RefreshMineViewInit(2)).unwrap_or(());
             });

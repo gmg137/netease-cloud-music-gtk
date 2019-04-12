@@ -37,7 +37,7 @@ pub(crate) struct Header {
     login_dialog: LoginDialog,
     popover_user: Popover,
     sender: Sender<Action>,
-    data: Arc<Mutex<MusicData>>,
+    data: Arc<Mutex<u8>>,
 }
 
 #[derive(Debug, Clone)]
@@ -52,7 +52,7 @@ impl Header {
     pub(crate) fn new(
         builder: &Builder,
         sender: &Sender<Action>,
-        data: Arc<Mutex<MusicData>>,
+        data: Arc<Mutex<u8>>,
     ) -> Rc<Self> {
         let back: Button = builder
             .get_object("back_button")
@@ -138,8 +138,10 @@ impl Header {
         h
     }
 
-    fn init(s: &Rc<Self>, sender: &Sender<Action>, data: Arc<Mutex<MusicData>>) {
-        let mut data = data.lock().unwrap();
+    fn init(s: &Rc<Self>, sender: &Sender<Action>, data: Arc<Mutex<u8>>) {
+        #[allow(unused_variables)]
+        let lock = data.lock().unwrap();
+        let mut data = MusicData::new();
         if data.login {
             if let Some(login_info) = data.login_info() {
                 let image_url = format!("{}?param=37y37", &login_info.avatar_url);
@@ -256,7 +258,9 @@ impl Header {
         let sender = self.sender.clone();
         let data = self.data.clone();
         spawn(move || {
-            let mut data = data.lock().unwrap();
+            #[allow(unused_variables)]
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
             if let Some(login_info) = data.login(name, pass) {
                 if login_info.code == 200 {
                     sender.send(Action::RefreshHeaderUser).unwrap();
@@ -279,7 +283,9 @@ impl Header {
         let sender = self.sender.clone();
         let data = self.data.clone();
         spawn(move || {
-            let mut data = data.lock().unwrap();
+            #[allow(unused_variables)]
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
             data.del(b"user_song_list");
             data.logout();
             sender.send(Action::RefreshHeaderUser).unwrap();
@@ -292,7 +298,9 @@ impl Header {
     pub(crate) fn update_user_button(&self) {
         self.popover_user.show_all();
         let data = self.data.clone();
-        let mut data = data.lock().unwrap();
+        #[allow(unused_variables)]
+        let lock = data.lock().unwrap();
+        let mut data = MusicData::new();
         if data.login {
             if let Some(login_info) = data.login_info() {
                 let image_url = format!("{}?param=37y37", &login_info.avatar_url);
@@ -329,7 +337,9 @@ impl Header {
         let sender = self.sender.clone();
         let data = self.data.clone();
         spawn(move || {
-            let mut data = data.lock().unwrap();
+            #[allow(unused_variables)]
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
             if let Some(task) = data.daily_task() {
                 if task.code == 200 {
                     sender

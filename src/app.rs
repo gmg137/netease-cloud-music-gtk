@@ -10,7 +10,6 @@ use glib;
 use gtk::prelude::*;
 use gtk::{ApplicationWindow, Builder, Overlay};
 
-use crate::data::MusicData;
 use crate::musicapi::model::{SongInfo, SongList};
 use crate::utils::PlayerTypes;
 use crate::view::*;
@@ -69,8 +68,8 @@ pub(crate) struct App {
 impl App {
     pub(crate) fn new(application: &gtk::Application) -> Rc<Self> {
         let (sender, receiver) = unbounded();
-        // 初始化数据接口
-        let data = Arc::new(Mutex::new(MusicData::new()));
+        // 初始化数据锁
+        let data = Arc::new(Mutex::new(0u8));
 
         let glade_src = include_str!("../ui/window.ui");
         let builder = Builder::new_from_string(glade_src);

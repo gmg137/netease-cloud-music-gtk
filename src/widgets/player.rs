@@ -148,12 +148,12 @@ pub(crate) struct PlayerWidget {
     loops: PlayerLoops,
     loops_state: Rc<RefCell<LoopsState>>,
     player_types: Rc<RefCell<PlayerTypes>>,
-    data: Arc<Mutex<MusicData>>,
+    data: Arc<Mutex<u8>>,
     sender: Sender<Action>,
 }
 
 impl PlayerWidget {
-    fn new(builder: &Builder, data: Arc<Mutex<MusicData>>, sender: Sender<Action>) -> Self {
+    fn new(builder: &Builder, data: Arc<Mutex<u8>>, sender: Sender<Action>) -> Self {
         let dispatcher = gst_player::PlayerGMainContextSignalDispatcher::new(None);
         let player = gst_player::Player::new(
             None,
@@ -254,7 +254,9 @@ impl PlayerWidget {
         let sender = self.sender.clone();
         let data = self.data.clone();
         std::thread::spawn(move || {
-            let mut data = data.lock().unwrap();
+            #[allow(unused_variables)]
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
             if let Some(v) = data.songs_url(&[song_info.id], 320) {
                 sender
                     .send(Action::Player(song_info, v[0].url.to_owned()))
@@ -407,7 +409,9 @@ impl PlayerWidget {
                 if let Some(id) = value.as_i64() {
                     let data = self.data.clone();
                     std::thread::spawn(move || {
-                        let mut data = data.lock().unwrap();
+                        #[allow(unused_variables)]
+                        let lock = data.lock().unwrap();
+                        let mut data = MusicData::new();
                         if data.like(true, id as u32) {
                             sender
                                 .send(Action::ShowNotice("已添加到喜欢!".to_owned()))
@@ -439,11 +443,7 @@ impl Deref for PlayerWrapper {
 }
 
 impl PlayerWrapper {
-    pub(crate) fn new(
-        builder: &Builder,
-        sender: &Sender<Action>,
-        data: Arc<Mutex<MusicData>>,
-    ) -> Self {
+    pub(crate) fn new(builder: &Builder, sender: &Sender<Action>, data: Arc<Mutex<u8>>) -> Self {
         let w = PlayerWrapper(Rc::new(PlayerWidget::new(
             builder,
             data.clone(),
