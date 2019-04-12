@@ -166,15 +166,19 @@ impl View {
                 if data.login {
                     if let Some(rr) = data.recommend_resource() {
                         if let Some(rr) = data.recommend_resource() {
-                            sender.send(Action::RefreshHomeView(tsl, rr)).unwrap_or(());
+                            sender
+                                .send(Action::RefreshHomeView(tsl[0..8].to_owned(), rr))
+                                .unwrap_or(());
                             return;
                         }
-                        sender.send(Action::RefreshHomeView(tsl, rr)).unwrap_or(());
+                        sender
+                            .send(Action::RefreshHomeView(tsl[0..8].to_owned(), rr))
+                            .unwrap_or(());
                         return;
                     }
                 }
                 sender
-                    .send(Action::RefreshHomeView(tsl, vec![]))
+                    .send(Action::RefreshHomeView(tsl[0..8].to_owned(), vec![]))
                     .unwrap_or(());
             } else {
                 sender
