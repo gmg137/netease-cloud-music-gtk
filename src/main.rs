@@ -43,6 +43,12 @@ lazy_static! {
         let date = Local::now();
         date.day()
     };
+    // 当前时期-周
+    static ref ISO_WEEK: u32 = {
+        use chrono::prelude::*;
+        let date = Local::now();
+        date.iso_week().week()
+    };
     // 排行榜 id
     static ref TOP_ID: HashMap<u8,u32>= {
         let mut m = HashMap::new();

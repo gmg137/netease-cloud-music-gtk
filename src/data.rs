@@ -5,21 +5,32 @@
 //
 
 use crate::musicapi::{model::*, MusicApi};
-use crate::{CONFIG_PATH, DATE_DAY};
-use byteorder::{BigEndian, ReadBytesExt};
+use crate::{CACHED_PATH, CONFIG_PATH, DATE_DAY, ISO_WEEK};
+use serde::{Deserialize, Serialize};
 use sled::Db;
-use std::io::Cursor;
+use std::path::Path;
+use std::{fs, io};
 
 // 数据库字段说明
-// login: 登陆状态
-//      0 未登陆
-//      1 已登陆
-// date: 数据更新日期, 1-31, 每天只更新一次
+// login_info: 用户登陆信息
 // user_song_list: 用户歌单
 // song_list_*: 歌单歌曲
 // recommend_resource: 每日推荐歌单
 // recommend_songs: 每日推荐歌曲
 // top_song_list: 热门推荐歌单
+
+// 状态数据
+// login: 是否已登陆
+// day: 数据更新日期, 1-31, 每天只更新一次
+// week: 每年中的第几周，每周清除一次缓存
+// update: 是否需要刷新数据，当调用收藏时触发
+#[derive(Debug, Deserialize, Serialize)]
+struct StatusData {
+    login: bool,
+    day: u32,
+    week: u32,
+    update: bool,
+}
 
 // 音乐数据本地缓存
 // login: 是否已经登陆
@@ -36,63 +47,73 @@ impl MusicData {
     pub(crate) fn new() -> Self {
         // 加载数据文件
         if let Ok(db) = Db::start_default(format!("{}/db", CONFIG_PATH.to_owned())) {
-            // 查询数据更新日期
-            if let Some(date) = db.get(b"date").unwrap_or(None) {
-                let mut v = Cursor::new(&date[..]);
-                // 对比缓存是否过期
-                if v.read_u32::<BigEndian>().unwrap_or(0) == *DATE_DAY {
-                    // 直接返回缓存数据
-                    if let Some(login) = db.get(b"login").unwrap_or(None) {
-                        if let Some(update) = db.get(b"update").unwrap_or(None) {
-                            return MusicData {
-                                musicapi: MusicApi::new(),
-                                db: Some(db),
-                                login: login == [1],
-                                update: update == [1],
-                            };
-                        }
+            // 查询状态数据
+            if let Some(status_data) = db.get(b"status_data").unwrap_or(None) {
+                if let Ok(status_data) = serde_json::from_slice::<StatusData>(&status_data) {
+                    // 每周清理缓存
+                    if status_data.week != *ISO_WEEK {
+                        clear_cache(Path::new(*CACHED_PATH));
+                    }
+                    // 对比缓存是否过期
+                    if status_data.day == *DATE_DAY {
+                        // 直接返回缓存数据
                         return MusicData {
                             musicapi: MusicApi::new(),
                             db: Some(db),
-                            login: login == [1],
+                            login: status_data.login,
+                            update: status_data.update,
+                        };
+                    } else {
+                        db.clear();
+                        // 重新查询登陆状态
+                        let mut musicapi = MusicApi::new();
+                        if let Some(login_info) = musicapi.login_status() {
+                            let data = StatusData {
+                                login: true,
+                                day: *DATE_DAY,
+                                week: *ISO_WEEK,
+                                update: true,
+                            };
+                            db.set(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
+                            db.set(
+                                b"login_info",
+                                serde_json::to_vec(&login_info).unwrap_or(vec![]),
+                            );
+                            db.flush();
+                            return MusicData {
+                                musicapi,
+                                db: Some(db),
+                                login: true,
+                                update: true,
+                            };
+                        }
+                        let data = StatusData {
+                            login: false,
+                            day: *DATE_DAY,
+                            week: *ISO_WEEK,
                             update: true,
                         };
-                    }
-                } else {
-                    db.clear();
-                    // 重新查询登陆状态
-                    let mut musicapi = MusicApi::new();
-                    if let Some(login_info) = musicapi.login_status() {
-                        db.set(b"login", vec![1]);
-                        db.set(b"date", DATE_DAY.to_be_bytes().to_vec());
-                        db.set(
-                            b"login_info",
-                            serde_json::to_vec(&login_info).unwrap_or(vec![]),
-                        );
+                        db.set(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                         db.flush();
                         return MusicData {
                             musicapi,
                             db: Some(db),
-                            login: true,
+                            login: false,
                             update: true,
                         };
                     }
-                    db.set(b"login", vec![0]);
-                    db.set(b"date", DATE_DAY.to_be_bytes().to_vec());
-                    db.flush();
-                    return MusicData {
-                        musicapi,
-                        db: Some(db),
-                        login: false,
-                        update: true,
-                    };
                 }
             } else {
                 db.clear();
                 let mut musicapi = MusicApi::new();
                 if let Some(login_info) = musicapi.login_status() {
-                    db.set(b"login", vec![1]);
-                    db.set(b"date", DATE_DAY.to_be_bytes().to_vec());
+                    let data = StatusData {
+                        login: true,
+                        day: *DATE_DAY,
+                        week: *ISO_WEEK,
+                        update: true,
+                    };
+                    db.set(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                     db.set(
                         b"login_info",
                         serde_json::to_vec(&login_info).unwrap_or(vec![]),
@@ -105,8 +126,13 @@ impl MusicData {
                         update: true,
                     };
                 }
-                db.set(b"login", vec![0]);
-                db.set(b"date", DATE_DAY.to_be_bytes().to_vec());
+                let data = StatusData {
+                    login: false,
+                    day: *DATE_DAY,
+                    week: *ISO_WEEK,
+                    update: true,
+                };
+                db.set(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                 db.flush();
                 return MusicData {
                     musicapi,
@@ -131,8 +157,13 @@ impl MusicData {
             if login_info.code.eq(&200) {
                 self.login = true;
                 if let Some(db) = &self.db {
-                    db.set(b"login", vec![1]);
-                    db.set(b"date", DATE_DAY.to_be_bytes().to_vec());
+                    let data = StatusData {
+                        login: true,
+                        day: *DATE_DAY,
+                        week: *ISO_WEEK,
+                        update: true,
+                    };
+                    db.set(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                     db.set(
                         b"login_info",
                         serde_json::to_vec(&login_info).unwrap_or(vec![]),
@@ -165,7 +196,13 @@ impl MusicData {
     pub(crate) fn logout(&mut self) {
         if self.login {
             if let Some(db) = &self.db {
-                db.set(b"login", vec![0]);
+                let data = StatusData {
+                    login: false,
+                    day: *DATE_DAY,
+                    week: *ISO_WEEK,
+                    update: true,
+                };
+                db.set(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                 db.flush();
             }
         }
@@ -234,7 +271,14 @@ impl MusicData {
             if let Some(sld) = self.musicapi.song_list_detail(songlist_id) {
                 db.set(key.as_bytes(), serde_json::to_vec(&sld).unwrap_or(vec![]));
                 if songlist_id == 3447396 {
-                    db.set(b"update", vec![0]);
+                    self.update = false;
+                    let data = StatusData {
+                        login: true,
+                        day: *DATE_DAY,
+                        week: *ISO_WEEK,
+                        update: false,
+                    };
+                    db.set(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                 }
                 db.flush();
                 return Some(sld);
@@ -323,7 +367,13 @@ impl MusicData {
     pub(crate) fn like(&mut self, like: bool, songid: u32) -> bool {
         if self.musicapi.like(like, songid) {
             if let Some(db) = &self.db {
-                db.set(b"update", vec![1]);
+                let data = StatusData {
+                    login: true,
+                    day: *DATE_DAY,
+                    week: *ISO_WEEK,
+                    update: true,
+                };
+                db.set(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                 db.flush();
             }
             self.update = true;
@@ -478,6 +528,18 @@ impl MusicData {
             db.flush();
         }
     }
+}
+
+// 删除上周缓存的图片文件
+fn clear_cache(dir: &Path) -> io::Result<()> {
+    if dir.is_dir() {
+        for file in fs::read_dir(dir)? {
+            let file = file?;
+            let path = file.path();
+            fs::remove_file(&path)?;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
