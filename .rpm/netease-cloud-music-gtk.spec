@@ -9,6 +9,7 @@ Release: 1
 License: GPL v3
 Group: Productivity/Multimedia/Sound/Players
 URL: https://github.com/gmg137/netease-cloud-music-gtk
+Source0: %{name}-%{version}.tar.gz
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
@@ -29,15 +30,16 @@ Requires: gstreamer-plugins-libav
 %{summary}
 
 %prep
+%setup -q
 
 %install
 rm -rf %{buildroot}
 mkdir -p %{buildroot}
-cp -a */* %{buildroot}
+cp -a * %{buildroot}
 mkdir -p %{buildroot}/usr/share/applications
 mkdir -p %{buildroot}/usr/share/pixmaps
-cp -a ../../../../icons/* %{buildroot}/usr/share/pixmaps/
-cp -a ../../../../*.desktop %{buildroot}/usr/share/applications/
+cp -a ../../../../../icons/* %{buildroot}/usr/share/pixmaps/
+cp -a ../../../../../*.desktop %{buildroot}/usr/share/applications/
 strip %{buildroot}/usr/bin/%{name}
 
 %clean
