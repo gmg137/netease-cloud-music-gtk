@@ -399,7 +399,7 @@ impl View {
             spawn(move || {
                 let mut data = data.lock().unwrap();
                 data.like(false, id);
-                sender.send(Action::RefreshMineViewInit(1)).unwrap_or(());
+                sender.send(Action::RefreshMineViewInit(2)).unwrap_or(());
             });
         }
     }

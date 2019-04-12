@@ -1979,8 +1979,9 @@
                   <object class="GtkEntry" id="name_entry">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <property name="max_length">17</property>
+                    <property name="max_length">100</property>
                     <property name="activates_default">True</property>
+                    <property name="placeholder_text" translatable="yes">邮箱或手机</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -2029,6 +2030,7 @@
                     <property name="visibility">False</property>
                     <property name="invisible_char">●</property>
                     <property name="activates_default">True</property>
+                    <property name="placeholder_text" translatable="yes">密码</property>
                     <property name="input_purpose">password</property>
                   </object>
                   <packing>
