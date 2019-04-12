@@ -171,7 +171,7 @@ impl Mine {
                 if event.get_event_type() == gdk::EventType::ButtonPress && event.get_button() == 3
                 {
                     if let Some(row) = listbox.upgrade().unwrap().get_selected_row() {
-                        if row.get_index() == 1 {
+                        if row.get_index() == 2 {
                             popmenu.upgrade().unwrap().popup_easy(3, event.get_time());
                         }
                     }
