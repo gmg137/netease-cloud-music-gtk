@@ -337,12 +337,6 @@ impl View {
             let lock = data.lock().unwrap();
             let mut data = MusicData::new();
             if row_id == 1 {
-                sender
-                    .send(Action::RefreshMineView(
-                        vec![],
-                        "每日歌曲推荐".to_owned(),
-                    ))
-                    .unwrap_or(());
                 if let Some(song_list) = data.recommend_songs() {
                     sender
                         .send(Action::RefreshMineView(
