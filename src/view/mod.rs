@@ -42,9 +42,7 @@ impl View {
         sender: &Sender<Action>,
         data: Arc<Mutex<u8>>,
     ) -> Rc<Self> {
-        let stack: Stack = builder
-            .get_object("stack")
-            .expect("无法获取 stack 窗口.");
+        let stack: Stack = builder.get_object("stack").expect("无法获取 stack 窗口.");
         let main_stack: Stack = builder
             .get_object("stack_main_pages")
             .expect("无法获取 stack_main_pages 窗口.");
@@ -171,12 +169,6 @@ impl View {
             if let Some(tsl) = data.top_song_list("hot", 0, 9) {
                 if data.login {
                     if let Some(rr) = data.recommend_resource() {
-                        if let Some(rr) = data.recommend_resource() {
-                            sender
-                                .send(Action::RefreshHomeView(tsl[0..8].to_owned(), rr))
-                                .unwrap_or(());
-                            return;
-                        }
                         sender
                             .send(Action::RefreshHomeView(tsl[0..8].to_owned(), rr))
                             .unwrap_or(());

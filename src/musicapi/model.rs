@@ -170,6 +170,12 @@ pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
             )
             .unwrap();
                 }
+                Parse::RMDS => {
+                    re = Regex::new(
+                r#""name":"(?P<name>.{1,50})","id":(?P<id>\d+),"position.+?"name":"(?P<singer>.+?)".+?"name":"(?P<album>.+?)".+?\d+,"picUrl":"(?P<pic_url>.+?.jpg)","publishTime.+?"duration":(?P<duration>\d+)"#,
+            )
+            .unwrap();
+                }
                 Parse::SEARCH => {
                     re = Regex::new(
                 r#""id":(?P<id>\d+),"name":"(?P<name>.{1,50})","artists.+?"name":"(?P<singer>.+?)".+?"img1v1Url":"(?P<pic_url>.+?.jpg)".+?"name":"(?P<album>.+?)",.+?"duration":(?P<duration>\d+)"#,
@@ -394,6 +400,7 @@ pub enum Method {
 // 解析方式
 // USL: 用户
 // RMD: 推荐
+// RMDS: 推荐歌曲
 // SEARCH: 搜索
 // SD: 单曲详情
 // ALBUM: 专辑
@@ -403,6 +410,7 @@ pub enum Method {
 pub enum Parse {
     USL,
     RMD,
+    RMDS,
     SEARCH,
     SD,
     ALBUM,
