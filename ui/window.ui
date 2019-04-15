@@ -1344,6 +1344,7 @@
   <object class="GtkStack" id="stack_main_pages">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
+    <property name="transition_type">slide-left-right</property>
     <child>
       <placeholder/>
     </child>
