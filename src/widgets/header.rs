@@ -286,7 +286,6 @@ impl Header {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
             let mut data = MusicData::new();
-            data.del(b"user_song_list");
             data.logout();
             sender.send(Action::RefreshHeaderUser).unwrap();
             sender.send(Action::RefreshHome).unwrap();

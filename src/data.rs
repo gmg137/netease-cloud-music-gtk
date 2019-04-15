@@ -203,6 +203,9 @@ impl MusicData {
                     update: true,
                 };
                 db.set(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
+                db.del(b"user_song_list");
+                db.del(b"recommend_resource");
+                db.del(b"login_info");
                 db.flush();
             }
         }
@@ -240,11 +243,13 @@ impl MusicData {
                 }
                 // 查询 api
                 if let Some(usl) = self.musicapi.user_song_list(uid, offset, limit) {
-                    db.set(
-                        b"user_song_list",
-                        serde_json::to_vec(&usl).unwrap_or(vec![]),
-                    );
-                    db.flush();
+                    if !usl.is_empty() {
+                        db.set(
+                            b"user_song_list",
+                            serde_json::to_vec(&usl).unwrap_or(vec![]),
+                        );
+                        db.flush();
+                    }
                     return Some(usl);
                 }
             }
@@ -269,7 +274,9 @@ impl MusicData {
                 }
             }
             if let Some(sld) = self.musicapi.song_list_detail(songlist_id) {
-                db.set(key.as_bytes(), serde_json::to_vec(&sld).unwrap_or(vec![]));
+                if !sld.is_empty() {
+                    db.set(key.as_bytes(), serde_json::to_vec(&sld).unwrap_or(vec![]));
+                }
                 if songlist_id == 3447396 {
                     self.update = false;
                     let data = StatusData {
@@ -318,10 +325,12 @@ impl MusicData {
                     }
                 }
                 if let Some(rr) = self.musicapi.recommend_resource() {
-                    db.set(
-                        b"recommend_resource",
-                        serde_json::to_vec(&rr).unwrap_or(vec![]),
-                    );
+                    if !rr.is_empty() {
+                        db.set(
+                            b"recommend_resource",
+                            serde_json::to_vec(&rr).unwrap_or(vec![]),
+                        );
+                    }
                     db.flush();
                     return Some(rr);
                 }
@@ -342,10 +351,12 @@ impl MusicData {
                     }
                 }
                 if let Some(rs) = self.musicapi.recommend_songs() {
-                    db.set(
-                        b"recommend_songs",
-                        serde_json::to_vec(&rs).unwrap_or(vec![]),
-                    );
+                    if !rs.is_empty() {
+                        db.set(
+                            b"recommend_songs",
+                            serde_json::to_vec(&rs).unwrap_or(vec![]),
+                        );
+                    }
                     db.flush();
                     return Some(rs);
                 }
@@ -417,7 +428,9 @@ impl MusicData {
                 }
             }
             if let Some(na) = self.musicapi.new_albums(offset, limit) {
-                db.set(b"new_albums", serde_json::to_vec(&na).unwrap_or(vec![]));
+                if !na.is_empty() {
+                    db.set(b"new_albums", serde_json::to_vec(&na).unwrap_or(vec![]));
+                }
                 db.flush();
                 return Some(na);
             }
@@ -436,7 +449,9 @@ impl MusicData {
                 }
             }
             if let Some(a) = self.musicapi.album(album_id) {
-                db.set(b"album", serde_json::to_vec(&a).unwrap_or(vec![]));
+                if !a.is_empty() {
+                    db.set(b"album", serde_json::to_vec(&a).unwrap_or(vec![]));
+                }
                 db.flush();
                 return Some(a);
             }
@@ -466,7 +481,9 @@ impl MusicData {
                 }
             }
             if let Some(tsl) = self.musicapi.top_song_list(order, offset, limit) {
-                db.set(b"top_song_list", serde_json::to_vec(&tsl).unwrap_or(vec![]));
+                if !tsl.is_empty() {
+                    db.set(b"top_song_list", serde_json::to_vec(&tsl).unwrap_or(vec![]));
+                }
                 db.flush();
                 return Some(tsl);
             }
@@ -512,7 +529,9 @@ impl MusicData {
                 }
             }
             if let Some(sl) = self.musicapi.song_lyric(music_id) {
-                db.set(key.as_bytes(), serde_json::to_vec(&sl).unwrap_or(vec![]));
+                if !sl.is_empty() {
+                    db.set(key.as_bytes(), serde_json::to_vec(&sl).unwrap_or(vec![]));
+                }
                 db.flush();
                 return Some(sl);
             }
