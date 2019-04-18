@@ -178,7 +178,7 @@ pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
                 }
                 Parse::SEARCH => {
                     re = Regex::new(
-                r#""id":(?P<id>\d+),"name":"(?P<name>.{1,50})","artists.+?"name":"(?P<singer>.+?)".+?"img1v1Url":"(?P<pic_url>.+?.jpg)".+?"name":"(?P<album>.+?)",.+?"duration":(?P<duration>\d+)"#,
+                r#""name":"(?P<name>.{1,50})","id":(?P<id>\d+),.+?"name":"(?P<singer>.+?)".+?"name":"(?P<album>.{1,50}?)","picUrl":"(?P<pic_url>.+?.jpg)".+?"dt":(?P<duration>\d+)"#,
             )
             .unwrap();
                 }

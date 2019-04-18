@@ -344,7 +344,7 @@ impl MusicApi {
         offset: u16,
         limit: u16,
     ) -> Option<String> {
-        let path = "/weapi/search/get";
+        let path = "/weapi/cloudsearch/get/web";
         let mut params = HashMap::new();
         params.insert("s".to_owned(), keywords);
         params.insert("type".to_owned(), types.to_string());
