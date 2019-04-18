@@ -61,3 +61,12 @@ buildflags = ["--release"]
 
 [package.metadata.rpm.targets]
 netease-cloud-music-gtk = { path = "/usr/bin/netease-cloud-music-gtk" }
+
+[package.metadata.deb]
+depends = "$auto"
+section = "sound"
+assets = [
+    ["target/release/netease-cloud-music-gtk", "usr/bin/", "755"],
+    ["netease-cloud-music-gtk.desktop", "usr/share/applications/", "644"],
+    ["icons/netease-cloud-music-gtk.svg", "usr/share/pixmaps/", "644"],
+]
