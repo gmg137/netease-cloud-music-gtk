@@ -83,7 +83,7 @@ impl MusicApi {
         let mut value = "";
         if custom {
             name = "os";
-            value = "windows"
+            value = "pc"
         }
         self.curl.url(&endpoint).unwrap_or(());
         self.curl
@@ -96,7 +96,7 @@ impl MusicApi {
             hex::encode(hash(MessageDigest::md5(), &times.to_string().as_bytes()).unwrap());
         match method {
             Method::POST => {
-                let make_cookie = format!("version=0;name={};value={};JSESSIONID-WYYY=%2FKSy%2B4xG6fYVld42G9E%2BxAj9OyjC0BYXENKxOIRH%5CR72cpy9aBjkohZ24BNkpjnBxlB6lzAG4D%5C%2FMNUZ7VUeRUeVPJKYu%2BKBnZJjEmqgpOx%2BU6VYmypKB%5CXb%2F3W7%2BDjOElCb8KlhDS2cRkxkTb9PBDXro41Oq7aBB6M6OStEK8E%2Flyc8%3A{}; _iuqxldmzr_=32; _ntes_nnid={},{}; _ntes_nuid={}", name, value,times,hextoken,hextoken,times+50);
+                let make_cookie = format!("version=0;{}={};JSESSIONID-WYYY=%2FKSy%2B4xG6fYVld42G9E%2BxAj9OyjC0BYXENKxOIRH%5CR72cpy9aBjkohZ24BNkpjnBxlB6lzAG4D%5C%2FMNUZ7VUeRUeVPJKYu%2BKBnZJjEmqgpOx%2BU6VYmypKB%5CXb%2F3W7%2BDjOElCb8KlhDS2cRkxkTb9PBDXro41Oq7aBB6M6OStEK8E%2Flyc8%3A{}; _iuqxldmzr_=32; _ntes_nnid={},{}; _ntes_nuid={}", name, value,times,hextoken,hextoken,times+50);
                 self.curl.cookie(&make_cookie).unwrap_or(());
                 params.insert("csrf_token".to_owned(), csrf_token);
                 let params = Encrypt::encrypt_login(params);
@@ -153,7 +153,7 @@ impl MusicApi {
             params.insert("rememberLogin".to_owned(), "true".to_owned());
             params.insert("clientToken".to_owned(), client_token.to_owned());
         }
-        let result = self.request(Method::POST, path, &mut params, false);
+        let result = self.request(Method::POST, path, &mut params, true);
         to_login_info(result)
     }
 
