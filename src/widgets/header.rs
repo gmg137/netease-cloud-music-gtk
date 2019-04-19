@@ -6,6 +6,7 @@
 
 use crate::app::Action;
 use crate::data::MusicData;
+use crate::musicapi::model::LoginInfo;
 use crate::utils::*;
 use crate::CACHED_PATH;
 use crate::{clone, upgrade_weak};
@@ -34,6 +35,7 @@ pub(crate) struct Header {
     login: ModelButton,
     logout: Button,
     task: Button,
+    user_button: MenuButton,
     login_dialog: LoginDialog,
     popover_user: Popover,
     sender: Sender<Action>,
@@ -90,6 +92,9 @@ impl Header {
         let logout: Button = builder
             .get_object("logout_button")
             .expect("Couldn't get logout button");
+        let user_button: MenuButton = builder
+            .get_object("user_button")
+            .expect("Couldn't get user button");
         let task: Button = builder
             .get_object("task_button")
             .expect("Couldn't get task button");
@@ -128,49 +133,20 @@ impl Header {
             logoutbox,
             login,
             logout,
+            user_button,
             task,
             login_dialog,
             sender: sender.clone(),
             data: data.clone(),
         };
         let h = Rc::new(header);
-        Self::init(&h, &sender, data.clone());
+        Self::init(&h, &sender);
         h
     }
 
-    fn init(s: &Rc<Self>, sender: &Sender<Action>, data: Arc<Mutex<u8>>) {
-        #[allow(unused_variables)]
-        let lock = data.lock().unwrap();
-        let mut data = MusicData::new();
-        if data.login {
-            if let Some(login_info) = data.login_info() {
-                let image_url = format!("{}?param=37y37", &login_info.avatar_url);
-                let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &login_info.uid);
-                let png_path = format!("{}/{}.png", CACHED_PATH.to_owned(), &login_info.uid);
-                download_img(&image_url, &image_path, 37, 37);
-                if std::path::Path::new(&png_path).exists() {
-                    s.avatar.set_from_file(&png_path);
-                } else {
-                    if create_round_avatar(format!(
-                        "{}/{}",
-                        CACHED_PATH.to_owned(),
-                        &login_info.uid
-                    ))
-                    .is_ok()
-                    {
-                        s.avatar.set_from_file(&png_path);
-                    } else {
-                        s.avatar.set_from_file(&image_path);
-                    }
-                }
-                s.username.set_text(&login_info.nickname);
-                s.login.hide();
-            }
-        } else {
-            s.avatar
-                .set_from_icon_name("avatar-default-symbolic", gtk::IconSize::Button);
-            s.logoutbox.hide();
-        }
+    fn init(s: &Rc<Self>, sender: &Sender<Action>) {
+        s.user_button.set_sensitive(false);
+        sender.send(Action::RefreshHeaderUser).unwrap();
 
         // 登陆按钮
         let dialog_weak = s.login_dialog.dialog.downgrade();
@@ -295,40 +271,52 @@ impl Header {
 
     // 更新用户头像和相关按钮
     pub(crate) fn update_user_button(&self) {
-        self.popover_user.show_all();
         let data = self.data.clone();
-        #[allow(unused_variables)]
-        let lock = data.lock().unwrap();
-        let mut data = MusicData::new();
-        if data.login {
-            if let Some(login_info) = data.login_info() {
-                let image_url = format!("{}?param=37y37", &login_info.avatar_url);
-                let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &login_info.uid);
-                let png_path = format!("{}/{}.png", CACHED_PATH.to_owned(), &login_info.uid);
-                download_img(&image_url, &image_path, 37, 37);
-                if std::path::Path::new(&png_path).exists() {
-                    self.avatar.set_from_file(&png_path);
-                } else {
-                    if create_round_avatar(format!(
-                        "{}/{}",
-                        CACHED_PATH.to_owned(),
-                        &login_info.uid
-                    ))
-                    .is_ok()
-                    {
-                        self.avatar.set_from_file(&png_path);
-                    } else {
-                        self.avatar.set_from_file(&image_path);
-                    }
+        let sender = self.sender.clone();
+        spawn(move || {
+            #[allow(unused_variables)]
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
+            if data.login {
+                if let Some(login_info) = data.login_info() {
+                    sender
+                        .send(Action::RefreshHeaderUserLogin(login_info.to_owned()))
+                        .unwrap();
                 }
-                self.username.set_text(&login_info.nickname);
-                self.login.hide();
+            } else {
+                sender.send(Action::RefreshHeaderUserLogout).unwrap();
             }
+        });
+    }
+
+    // 更新标题栏为已登陆
+    pub(crate) fn update_user_login(&self, login_info: LoginInfo) {
+        self.user_button.set_sensitive(true);
+        self.popover_user.show_all();
+        let image_url = format!("{}?param=37y37", &login_info.avatar_url);
+        let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &login_info.uid);
+        let png_path = format!("{}/{}.png", CACHED_PATH.to_owned(), &login_info.uid);
+        download_img(&image_url, &image_path, 37, 37);
+        if std::path::Path::new(&png_path).exists() {
+            self.avatar.set_from_file(&png_path);
         } else {
-            self.avatar
-                .set_from_icon_name("avatar-default-symbolic", gtk::IconSize::Button);
-            self.logoutbox.hide();
+            if create_round_avatar(format!("{}/{}", CACHED_PATH.to_owned(), &login_info.uid))
+                .is_ok()
+            {
+                self.avatar.set_from_file(&png_path);
+            } else {
+                self.avatar.set_from_file(&image_path);
+            }
         }
+        self.username.set_text(&login_info.nickname);
+        self.login.hide();
+    }
+
+    // 更新标题栏为未登陆
+    pub(crate) fn update_user_logout(&self) {
+        self.user_button.set_sensitive(true);
+        self.popover_user.show_all();
+        self.logoutbox.hide();
     }
 
     // 签到

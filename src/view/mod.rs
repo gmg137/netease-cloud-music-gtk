@@ -229,25 +229,29 @@ impl View {
 
     #[allow(unused_variables)]
     pub(crate) fn mine_init(&self) {
+        self.sender.send(Action::MineHideAll).unwrap_or(());
+        let sender = self.sender.clone();
         let data = self.data.clone();
-        let lock = data.lock().unwrap();
-        let data = MusicData::new();
-        if data.login {
-            self.mine.borrow_mut().show_fm();
-            let sender = self.sender.clone();
-            let data = self.data.clone();
-            spawn(move || {
-                let lock = data.lock().unwrap();
-                let mut data = MusicData::new();
+        spawn(move || {
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
+            if data.login {
+                sender.send(Action::MineShowFm).unwrap_or(());
                 if let Some(login_info) = data.login_info() {
                     if let Some(vsl) = data.user_song_list(login_info.uid, 0, 50) {
                         sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
                     }
                 }
-            });
-        } else {
-            self.mine.borrow_mut().hide_all();
-        }
+            }
+        });
+    }
+
+    pub(crate) fn mine_hide_all(&self) {
+        self.mine.borrow_mut().hide_all();
+    }
+
+    pub(crate) fn mine_show_fm(&self) {
+        self.mine.borrow_mut().show_fm();
     }
 
     pub(crate) fn refresh_fm_player_list(&self) {

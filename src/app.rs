@@ -10,7 +10,7 @@ use glib;
 use gtk::prelude::*;
 use gtk::{ApplicationWindow, Builder, Overlay};
 
-use crate::musicapi::model::{SongInfo, SongList};
+use crate::musicapi::model::{LoginInfo, SongInfo, SongList};
 use crate::utils::PlayerTypes;
 use crate::view::*;
 use crate::widgets::{header::*, mark_all_notif, notice::*, player::*};
@@ -25,6 +25,8 @@ pub(crate) enum Action {
     SwitchStackSub((u32, String, String)),
     SwitchHeaderBar(String),
     RefreshHeaderUser,
+    RefreshHeaderUserLogin(LoginInfo),
+    RefreshHeaderUserLogout,
     RefreshHome,
     RefreshHomeView(Vec<SongList>, Vec<SongList>),
     RefreshSubUpView(String, String),
@@ -32,6 +34,8 @@ pub(crate) enum Action {
     RefreshFoundViewInit(u8),
     RefreshFoundView(Vec<SongInfo>),
     RefreshMine,
+    MineHideAll,
+    MineShowFm,
     RefreshMineViewInit(i32),
     RefreshMineView(Vec<SongInfo>, String),
     RefreshMineFm(SongInfo),
@@ -135,6 +139,8 @@ impl App {
         match action {
             Action::SwitchHeaderBar(title) => self.header.switch_header(title),
             Action::RefreshHeaderUser => self.header.update_user_button(),
+            Action::RefreshHeaderUserLogin(login_info) => self.header.update_user_login(login_info),
+            Action::RefreshHeaderUserLogout => self.header.update_user_logout(),
             Action::RefreshHome => self.view.update_home(),
             Action::RefreshHomeView(tsl, rr) => self.view.update_home_view(tsl, rr),
             Action::RefreshSubUpView(name, image_path) => {
@@ -148,6 +154,8 @@ impl App {
             Action::RefreshFoundViewInit(id) => self.view.update_found_view_data(id),
             Action::RefreshFoundView(song_list) => self.view.update_found_view(song_list),
             Action::RefreshMine => self.view.mine_init(),
+            Action::MineHideAll => self.view.mine_hide_all(),
+            Action::MineShowFm => self.view.mine_show_fm(),
             Action::RefreshMineViewInit(id) => self.view.update_mine_view_data(id),
             Action::RefreshMineView(song_list, title) => {
                 self.view.update_mine_view(song_list, title)

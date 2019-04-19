@@ -316,7 +316,7 @@ pub fn to_msg(json: String) -> Option<Msg> {
 }
 
 // 登陆信息
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LoginInfo {
     // 登陆状态码
     pub code: i32,
