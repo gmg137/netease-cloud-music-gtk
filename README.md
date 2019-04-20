@@ -2,23 +2,32 @@
 > netease-cloud-music-gtk 是基于 Rust + GTK 开发的网易云音乐播放器，计划只支持 Linux 系统，已在 openSUSE Tumbleweed + GNOME 环境下测试。
 
 ### 特点
-- 安全： Rust 天生的
 - 极速：相比 Node/python 版，Rust 速度可谓一骑绝尘
 - 稳定：除了网速或网易 API 限制，基本不会出现运行问题
 - 简洁：仿 GNOME Music 风格，GTK 原生界面，纯粹得令人发指
-- 简单：最小的编译与运行依赖
+- 简单：极小的编译与运行依赖
 
 ### 依赖
-> openssl, curl, gstreamer
+> openssl, curl, gstreamer, gstreamer-plugins-base, gstreamer-plugins-good, gstreamer-plugins-bad, gstreamer-plugins-ugly
 
 ### 安装
-- 直接下载 RPM 包安装或解压 tar.gz 包手却复制到相应目录
+- 直接下载 RPM 包安装或解压 tar.xz 包手动复制到相应目录
 
-### 从源码安装
+### 从源码编译/打包
 ```
 git clone git@github.com:gmg137/netease-cloud-music-gtk.git
 cd netease-cloud-music-gtk
+
+// 编译
 cargo build --release
+
+// 打包 rpm
+cargo install cargo-rpm
+cargo rpm build
+
+// 打包 deb
+cargo install cargo-deb
+cargo deb
 ```
 
 ### 截图
