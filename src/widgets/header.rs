@@ -13,8 +13,8 @@ use crate::{clone, upgrade_weak};
 use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::{
-    Builder, Button, Dialog, Entry, Image, Label, MenuButton, ModelButton, Popover, SearchBar,
-    SearchEntry, StackSwitcher, ToggleButton,
+    AboutDialog, Builder, Button, Dialog, Entry, Image, Label, MenuButton, ModelButton, Popover,
+    SearchBar, SearchEntry, StackSwitcher, ToggleButton,
 };
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
@@ -38,6 +38,9 @@ pub(crate) struct Header {
     user_button: MenuButton,
     login_dialog: LoginDialog,
     popover_user: Popover,
+    preferences_button: ModelButton,
+    about_button: ModelButton,
+    about: AboutDialog,
     sender: Sender<Action>,
     data: Arc<Mutex<u8>>,
 }
@@ -95,6 +98,15 @@ impl Header {
         let user_button: MenuButton = builder
             .get_object("user_button")
             .expect("Couldn't get user button");
+        let preferences_button: ModelButton = builder
+            .get_object("preferences_button")
+            .expect("Couldn't get preferences button");
+        let about_button: ModelButton = builder
+            .get_object("about_button")
+            .expect("Couldn't get about button");
+        let about: AboutDialog = builder
+            .get_object("about_dialog")
+            .expect("Couldn't get about dialog");
         let task: Button = builder
             .get_object("task_button")
             .expect("Couldn't get task button");
@@ -134,6 +146,9 @@ impl Header {
             login,
             logout,
             user_button,
+            preferences_button,
+            about_button,
+            about,
             task,
             login_dialog,
             sender: sender.clone(),
@@ -226,6 +241,20 @@ impl Header {
                 switch.show();
                 back.hide();
                 sen.send(Action::SwitchStackMain).unwrap();
+            }));
+
+        // 设置关于窗口版本号
+        if let Ok(version) = std::env::var("CARGO_PKG_VERSION") {
+            s.about.set_version(Some(version.as_ref()));
+        }
+
+        // 关于按钮
+        let about_weak = s.about.downgrade();
+        s.about_button
+            .connect_clicked(clone!(about_weak => move |_| {
+                let about = upgrade_weak!(about_weak);
+                about.run();
+                about.hide();
             }));
     }
 

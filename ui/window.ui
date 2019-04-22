@@ -17,6 +17,49 @@
       </packing>
     </child>
   </object>
+  <object class="GtkAboutDialog" id="about_dialog">
+    <property name="name">about_dialog</property>
+    <property name="can_focus">False</property>
+    <property name="window_position">center</property>
+    <property name="destroy_with_parent">True</property>
+    <property name="type_hint">dialog</property>
+    <property name="program_name">网易云音乐 GTK</property>
+    <property name="comments" translatable="yes">Linux 平台下基于 Rust + GTK 开发的网易云音乐播放器 </property>
+    <property name="website">https://github.com/gmg137/netease-cloud-music-gtk</property>
+    <property name="authors">gmg137</property>
+    <property name="logo_icon_name">netease-cloud-music-gtk</property>
+    <property name="license_type">gpl-3-0</property>
+    <child>
+      <placeholder/>
+    </child>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can_focus">False</property>
+            <property name="layout_style">end</property>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+      </object>
+    </child>
+  </object>
   <object class="GtkImage" id="fm_dislike_image">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -1424,9 +1467,9 @@
             </child>
             <child>
               <object class="GtkMenuButton" id="menu_button">
+                <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="no_show_all">True</property>
                 <property name="valign">center</property>
                 <property name="popover">popover-set</property>
                 <child>
@@ -2070,7 +2113,7 @@
         <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child>
-          <object class="GtkModelButton">
+          <object class="GtkModelButton" id="preferences_button">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
@@ -2084,21 +2127,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkModelButton">
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="receives_default">True</property>
-            <property name="text" translatable="yes">帮助</property>
-            <property name="centered">True</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkModelButton">
+          <object class="GtkModelButton" id="about_button">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
@@ -2108,7 +2137,7 @@
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">2</property>
+            <property name="position">1</property>
           </packing>
         </child>
       </object>
