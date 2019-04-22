@@ -13,7 +13,7 @@ use gtk::{ApplicationWindow, Builder, Overlay};
 use crate::musicapi::model::{LoginInfo, SongInfo, SongList};
 use crate::utils::PlayerTypes;
 use crate::view::*;
-use crate::widgets::{header::*, mark_all_notif, notice::*, player::*};
+use crate::widgets::{header::*, mark_all_notif, notice::*, player::*, tray::*};
 use std::cell::RefCell;
 use std::env;
 use std::rc::Rc;
@@ -55,6 +55,7 @@ pub(crate) enum Action {
     Logout,
     ShowNotice(String),
     DailyTask,
+    QuitMain,
 }
 
 #[derive(Clone)]
@@ -64,6 +65,7 @@ pub(crate) struct App {
     header: Rc<Header>,
     player: PlayerWrapper,
     notice: RefCell<Option<InAppNotification>>,
+    tray: Tray,
     overlay: Overlay,
     sender: Sender<Action>,
     receiver: Receiver<Action>,
@@ -106,12 +108,15 @@ impl App {
 
         let notice = RefCell::new(None);
 
+        let tray = Tray::new(&builder, sender.clone());
+
         let app = App {
             window,
             header,
             view,
             player,
             notice,
+            tray,
             overlay,
             sender,
             receiver,
@@ -187,6 +192,7 @@ impl App {
             Action::PlayerSubpages => self.view.play_subpages(),
             Action::PlayerFound => self.view.play_found(),
             Action::PlayerMine => self.view.play_mine(),
+            Action::QuitMain => self.window.destroy(),
         }
 
         glib::Continue(true)

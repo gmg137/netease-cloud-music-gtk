@@ -7,6 +7,7 @@
 pub(crate) mod header;
 pub(crate) mod notice;
 pub(crate) mod player;
+pub(crate) mod tray;
 use gtk::prelude::*;
 use notice::*;
 
