@@ -9,8 +9,8 @@ use crate::app::Action;
 use crate::data::MusicData;
 use crate::musicapi::model::LoginInfo;
 use crate::utils::*;
-use crate::CACHED_PATH;
 use crate::{clone, upgrade_weak};
+use crate::{APP_VERSION, CACHED_PATH};
 use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::{
@@ -254,9 +254,7 @@ impl Header {
             }));
 
         // 设置关于窗口版本号
-        if let Ok(version) = std::env::var("CARGO_PKG_VERSION") {
-            s.about.set_version(Some(version.as_ref()));
-        }
+        s.about.set_version(Some(APP_VERSION));
 
         // 关于按钮
         let about_weak = s.about.downgrade();

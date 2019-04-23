@@ -7,6 +7,16 @@
 - 简洁：仿 GNOME Music 风格，GTK 原生界面，纯粹得令人发指
 - 简单：极小的编译与运行依赖
 
+### 功能
+- 网易邮箱/手机账号登陆
+- 个人歌单
+- 私人 FM
+- 排行榜
+- 歌曲搜索
+- 歌词(依赖于 OSDLyrics)
+- 热门歌单(8个)
+- 推荐歌单(4个)
+
 ### 依赖
 > openssl, curl, gstreamer, gstreamer-plugins-base, gstreamer-plugins-good, gstreamer-plugins-bad, gstreamer-plugins-ugly
 
