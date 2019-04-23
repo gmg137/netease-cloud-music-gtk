@@ -4,14 +4,16 @@
 // Distributed under terms of the GPLv3 license.
 //
 use crate::app::Action;
+use crate::data::MusicData;
 use crate::musicapi::{model::SongInfo, MusicApi};
-use crate::CONFIG_PATH;
+use crate::{CONFIG_PATH, LYRICS_PATH};
 use cairo::{Context, ImageSurface};
 use crossbeam_channel::Sender;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use sled::*;
+use std::sync::{Arc, Mutex};
 use std::{fs::File, io, io::Error};
 
 // 从网络下载图片
@@ -351,4 +353,65 @@ pub(crate) enum PlayerTypes {
     Song,
     // Fm
     Fm,
+}
+
+// 全局配置
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub(crate) struct Configs {
+    // 是否关闭到系统托盘
+    pub(crate) tray: bool,
+    // 是否下载歌词
+    pub(crate) lyrics: bool,
+}
+
+// 加载配置
+#[allow(unused)]
+pub(crate) fn load_config() -> Configs {
+    let config = ConfigBuilder::default()
+        .path(format!("{}/config.db", CONFIG_PATH.to_owned()))
+        .build();
+    if let Ok(db) = Db::start(config) {
+        if let Some(conf) = db.get(b"config").unwrap_or(None) {
+            return serde_json::from_slice::<Configs>(&conf).unwrap_or(Configs {
+                tray: false,
+                lyrics: false,
+            });
+        }
+    }
+    let conf = Configs {
+        tray: false,
+        lyrics: false,
+    };
+    save_config(&conf);
+    conf
+}
+
+// 保存配置
+#[allow(unused)]
+pub(crate) fn save_config(conf: &Configs) {
+    let config = ConfigBuilder::default()
+        .path(format!("{}/config.db", CONFIG_PATH.to_owned()))
+        .build();
+    if let Ok(db) = Db::start(config) {
+        db.set(b"config", serde_json::to_vec(&conf).unwrap_or(vec![]));
+        db.flush();
+    }
+}
+
+// 下载歌词
+pub(crate) fn download_lyrics(file: &str, song_info: &SongInfo, data: Arc<Mutex<u8>>) {
+    let path = format!("{}/{}.lrc", *LYRICS_PATH, file);
+    if !std::path::Path::new(&path).exists() {
+        #[allow(unused_variables)]
+        let lock = data.lock().unwrap();
+        let mut data = MusicData::new();
+        if let Some(vec) = data.song_lyric(song_info.id) {
+            let mut lrc = String::new();
+            vec.iter().for_each(|v| {
+                lrc.push_str(v);
+                lrc.push_str("\n");
+            });
+            std::fs::write(path, lrc).unwrap_or(());
+        }
+    }
 }

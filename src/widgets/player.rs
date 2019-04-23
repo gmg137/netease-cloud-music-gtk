@@ -269,7 +269,11 @@ impl PlayerWidget {
         });
     }
 
-    pub(crate) fn player(&self, song_info: SongInfo, song_url: String) {
+    pub(crate) fn player(&self, song_info: SongInfo, song_url: String, lyrics: bool) {
+        let data = self.data.clone();
+        if lyrics {
+            download_lyrics(&song_info.name, &song_info, data);
+        }
         match *self.player_types.borrow() {
             PlayerTypes::Fm => {
                 self.sender

@@ -34,9 +34,13 @@ impl Tray {
 
     fn init(s: &Self, sender: Sender<Action>) {
         let menu = s.menu.downgrade();
+        let sender_clone = sender.clone();
         s.icon.connect_button_press_event(move |_, event| {
             if event.get_event_type() == gdk::EventType::ButtonPress && event.get_button() == 3 {
                 menu.upgrade().unwrap().popup_easy(3, event.get_time());
+            }
+            if event.get_event_type() == gdk::EventType::ButtonPress && event.get_button() == 1 {
+                sender_clone.send(Action::DeIconify).unwrap_or(());
             }
             true
         });

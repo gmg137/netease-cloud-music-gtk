@@ -4,6 +4,7 @@
 // Distributed under terms of the GPLv3 license.
 //
 
+use super::preferences::Preferences;
 use crate::app::Action;
 use crate::data::MusicData;
 use crate::musicapi::model::LoginInfo;
@@ -39,7 +40,9 @@ pub(crate) struct Header {
     login_dialog: LoginDialog,
     popover_user: Popover,
     preferences_button: ModelButton,
+    preferences: Preferences,
     about_button: ModelButton,
+    close_button: ModelButton,
     about: AboutDialog,
     sender: Sender<Action>,
     data: Arc<Mutex<u8>>,
@@ -58,6 +61,7 @@ impl Header {
         builder: &Builder,
         sender: &Sender<Action>,
         data: Arc<Mutex<u8>>,
+        configs: &Configs,
     ) -> Rc<Self> {
         let back: Button = builder
             .get_object("back_button")
@@ -104,6 +108,9 @@ impl Header {
         let about_button: ModelButton = builder
             .get_object("about_button")
             .expect("Couldn't get about button");
+        let close_button: ModelButton = builder
+            .get_object("close_button")
+            .expect("Couldn't get close button");
         let about: AboutDialog = builder
             .get_object("about_dialog")
             .expect("Couldn't get about dialog");
@@ -131,6 +138,7 @@ impl Header {
             pass,
             ok,
         };
+        let preferences = Preferences::new(builder, sender.clone(), configs);
         let header = Header {
             back,
             switch,
@@ -147,7 +155,9 @@ impl Header {
             logout,
             user_button,
             preferences_button,
+            preferences,
             about_button,
+            close_button,
             about,
             task,
             login_dialog,
@@ -256,6 +266,21 @@ impl Header {
                 about.run();
                 about.hide();
             }));
+
+        // 首选项
+        let dialog_weak = s.preferences.dialog.downgrade();
+        s.preferences_button
+            .connect_clicked(clone!(dialog_weak => move |_| {
+                let dialog = upgrade_weak!(dialog_weak);
+                dialog.run();
+                dialog.hide();
+            }));
+
+        // 关闭按钮
+        let sen = sender.clone();
+        s.close_button.connect_clicked(move |_| {
+            sen.send(Action::QuitMain).unwrap();
+        });
     }
 
     // 登陆

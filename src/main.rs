@@ -37,6 +37,17 @@ lazy_static! {
         }
         ".cache/NeteaseCloudMusicGtk"
     };
+    // 歌词文件目录
+    static ref LYRICS_PATH: &'static str = {
+        if let Some(path) = dirs::home_dir() {
+            let lyrics_path = format!("{}/.lyrics", path.display());
+            if !std::path::Path::new(&lyrics_path).exists() {
+                std::fs::create_dir_all(&lyrics_path).unwrap_or(());
+            }
+            return Box::leak(Box::new(lyrics_path));
+        }
+        ".lyrics"
+    };
     // 当前时期-天
     static ref DATE_DAY: u32 = {
         use chrono::prelude::*;

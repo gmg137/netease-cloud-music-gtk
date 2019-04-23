@@ -11,7 +11,7 @@ use gtk::prelude::*;
 use gtk::{ApplicationWindow, Builder, Overlay};
 
 use crate::musicapi::model::{LoginInfo, SongInfo, SongList};
-use crate::utils::PlayerTypes;
+use crate::utils::*;
 use crate::view::*;
 use crate::widgets::{header::*, mark_all_notif, notice::*, player::*, tray::*};
 use std::cell::RefCell;
@@ -56,6 +56,9 @@ pub(crate) enum Action {
     ShowNotice(String),
     DailyTask,
     QuitMain,
+    DeIconify,
+    ConfigsSetTray(bool),
+    ConfigsSetLyrics(bool),
 }
 
 #[derive(Clone)]
@@ -67,6 +70,7 @@ pub(crate) struct App {
     notice: RefCell<Option<InAppNotification>>,
     tray: Tray,
     overlay: Overlay,
+    configs: Rc<RefCell<Configs>>,
     sender: Sender<Action>,
     receiver: Receiver<Action>,
 }
@@ -86,22 +90,34 @@ impl App {
         window.set_application(application);
         window.set_title("网易云音乐");
 
+        let configs = load_config();
         let view = View::new(&builder, &sender, data.clone());
-        let header = Header::new(&builder, &sender, data.clone());
+        let header = Header::new(&builder, &sender, data.clone(), &configs);
         let player = PlayerWrapper::new(&builder, &sender, data.clone());
 
         window.show_all();
 
+        let tray = configs.tray.clone();
         let weak_app = application.downgrade();
+        let weak_window = window.downgrade();
         window.connect_delete_event(move |_, _| {
-            let app = match weak_app.upgrade() {
-                Some(a) => a,
-                None => return Inhibit(false),
-            };
+            if !tray {
+                let app = match weak_app.upgrade() {
+                    Some(a) => a,
+                    None => return Inhibit(false),
+                };
 
-            info!("Application is exiting");
-            app.quit();
-            Inhibit(false)
+                info!("Application is exiting");
+                app.quit();
+                return Inhibit(false);
+            } else {
+                let window = match weak_window.upgrade() {
+                    Some(a) => a,
+                    None => return Inhibit(false),
+                };
+                window.iconify();
+                return Inhibit(true);
+            }
         });
 
         let overlay: Overlay = builder.get_object("overlay").unwrap();
@@ -118,6 +134,7 @@ impl App {
             notice,
             tray,
             overlay,
+            configs: Rc::new(RefCell::new(configs)),
             sender,
             receiver,
         };
@@ -182,7 +199,9 @@ impl App {
             Action::Logout => self.header.logout(),
             Action::DailyTask => self.header.daily_task(),
             Action::PlayerInit(info, pt) => self.player.initialize_player(info, pt),
-            Action::Player(info, url) => self.player.player(info, url),
+            Action::Player(info, url) => {
+                self.player.player(info, url, self.configs.borrow().lyrics)
+            }
             Action::ShowNotice(text) => {
                 let notif = mark_all_notif(text);
                 let old = self.notice.replace(Some(notif));
@@ -193,6 +212,15 @@ impl App {
             Action::PlayerFound => self.view.play_found(),
             Action::PlayerMine => self.view.play_mine(),
             Action::QuitMain => self.window.destroy(),
+            Action::DeIconify => self.window.deiconify(),
+            Action::ConfigsSetTray(state) => {
+                self.configs.borrow_mut().tray = state;
+                save_config(&self.configs.borrow());
+            }
+            Action::ConfigsSetLyrics(state) => {
+                self.configs.borrow_mut().lyrics = state;
+                save_config(&self.configs.borrow());
+            }
         }
 
         glib::Continue(true)
