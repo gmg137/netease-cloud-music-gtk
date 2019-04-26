@@ -25,7 +25,7 @@
 
 ### 从源码编译/打包
 ```
-git clone git@github.com:gmg137/netease-cloud-music-gtk.git
+git clone https://github.com/gmg137/netease-cloud-music-gtk.git
 cd netease-cloud-music-gtk
 
 // 编译
