@@ -131,7 +131,7 @@ impl MusicApi {
         String::from_utf8_lossy(&contents).to_string()
     }
 
-    // 登陆
+    // 登录
     // username: 用户名(邮箱或手机)
     // password: 密码
     #[allow(unused)]
@@ -174,7 +174,7 @@ impl MusicApi {
                 uid,
                 nickname,
                 avatar_url,
-                msg: "已登陆.".to_owned(),
+                msg: "已登录.".to_owned(),
             })
         } else {
             None

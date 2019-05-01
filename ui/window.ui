@@ -1955,7 +1955,7 @@
     <property name="width_request">330</property>
     <property name="height_request">200</property>
     <property name="can_focus">False</property>
-    <property name="title" translatable="yes">登陆</property>
+    <property name="title" translatable="yes">登录</property>
     <property name="resizable">False</property>
     <property name="window_position">center-on-parent</property>
     <property name="destroy_with_parent">True</property>
@@ -1979,7 +1979,7 @@
             <property name="layout_style">end</property>
             <child>
               <object class="GtkButton" id="login">
-                <property name="label" translatable="yes">登陆</property>
+                <property name="label" translatable="yes">登录</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="can_default">True</property>
@@ -2333,7 +2333,7 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
-            <property name="text" translatable="yes">登陆</property>
+            <property name="text" translatable="yes">登录</property>
             <property name="centered">True</property>
           </object>
           <packing>
