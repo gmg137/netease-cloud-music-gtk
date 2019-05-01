@@ -281,7 +281,7 @@ impl Header {
         });
     }
 
-    // 登陆
+    // 登录
     pub(crate) fn login(&self, name: String, pass: String) {
         let sender = self.sender.clone();
         let data = self.data.clone();
@@ -341,7 +341,7 @@ impl Header {
         });
     }
 
-    // 更新标题栏为已登陆
+    // 更新标题栏为已登录
     pub(crate) fn update_user_login(&self, login_info: LoginInfo) {
         self.user_button.set_sensitive(true);
         self.popover_user.show_all();
@@ -364,7 +364,7 @@ impl Header {
         self.login.hide();
     }
 
-    // 更新标题栏为未登陆
+    // 更新标题栏为未登录
     pub(crate) fn update_user_logout(&self) {
         self.user_button.set_sensitive(true);
         self.popover_user.show_all();
