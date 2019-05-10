@@ -20,7 +20,7 @@ use std::{fs, io};
 // top_song_list: 热门推荐歌单
 
 // 状态数据
-// login: 是否已登陆
+// login: 是否已登录
 // day: 数据更新日期, 1-31, 每天只更新一次
 // week: 每年中的第几周，每周清除一次缓存
 // update: 是否需要刷新数据，当调用收藏时触发
@@ -33,7 +33,7 @@ struct StatusData {
 }
 
 // 音乐数据本地缓存
-// login: 是否已经登陆
+// login: 是否已经登录
 // update: 数据是否需要更新
 pub(crate) struct MusicData {
     musicapi: MusicApi,
@@ -150,7 +150,7 @@ impl MusicData {
         }
     }
 
-    // 登陆
+    // 登录
     #[allow(unused)]
     pub(crate) fn login(&mut self, username: String, password: String) -> Option<LoginInfo> {
         if let Some(login_info) = self.musicapi.login(username, password) {
