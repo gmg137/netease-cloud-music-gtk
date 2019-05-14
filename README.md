@@ -17,13 +17,28 @@
 - 热门歌单(8个)
 - 推荐歌单(4个)
 
-### 依赖
+### 运行依赖
 > openssl, curl, gstreamer, gstreamer-plugins-base, gstreamer-plugins-good, gstreamer-plugins-bad, gstreamer-plugins-ugly
 
 ### 安装
 - 直接下载 RPM 包安装或解压 tar.xz 包手动复制到相应目录
 
 ### 从源码编译/打包
+```
+// openSUSE 安装依赖
+sudo zypper in git gcc curl dbus-1-devel gtk3-devel libopenssl-1_1-devel gstreamer-devel \
+      gstreamer-plugins-bad gstreamer-plugins-bad-devel \
+      gstreamer-plugins-base gstreamer-plugins-base-devel \
+      gstreamer-plugins-good gstreamer-plugins-ugly cairo-devel
+```
+```
+// ubuntu 安装依赖
+sudo apt install git gcc libdbus-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+      gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+      gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
+      gstreamer1.0-libav libgtk-3-dev libatk1.0-dev libcogl-pango-dev \
+      libssl-dev libcairo2-dev libgstreamer-plugins-bad1.0-dev 
+```
 ```
 git clone https://github.com/gmg137/netease-cloud-music-gtk.git
 cd netease-cloud-music-gtk
