@@ -284,15 +284,7 @@ impl MusicApi {
         let path = "/weapi/v2/discovery/recommend/songs";
         let mut params = HashMap::new();
         let result = self.request(Method::POST, path, &mut params, false);
-        let mut json = String::from("\"code\":200,");
-        json.push_str(
-            result
-                .split("data")
-                .collect::<Vec<&str>>()
-                .get(1)
-                .unwrap_or(&""),
-        );
-        to_song_info(json, Parse::RMDS)
+        to_song_info(result, Parse::RMDS)
     }
 
     // 私人FM
@@ -315,7 +307,13 @@ impl MusicApi {
         params.insert("like".to_owned(), like.to_string());
         params.insert("time".to_owned(), "25".to_owned());
         let result = self.request(Method::POST, path, &mut params, false);
-        to_msg(result).is_some()
+        to_msg(result)
+            .unwrap_or(Msg {
+                code: 0,
+                msg: "".to_owned(),
+            })
+            .code
+            .eq(&200)
     }
 
     // FM 不喜欢
@@ -328,7 +326,13 @@ impl MusicApi {
         params.insert("songId".to_owned(), songid.to_string());
         params.insert("time".to_owned(), "25".to_owned());
         let result = self.request(Method::POST, path, &mut params, false);
-        to_msg(result).is_some()
+        to_msg(result)
+            .unwrap_or(Msg {
+                code: 0,
+                msg: "".to_owned(),
+            })
+            .code
+            .eq(&200)
     }
 
     // 搜索
