@@ -547,6 +547,14 @@ impl MusicData {
             db.flush();
         }
     }
+
+    // 收藏/取消收藏歌单
+    // like: true 收藏，false 取消
+    // id: 歌单 id
+    #[allow(unused)]
+    pub(crate) fn song_list_like(&mut self, like: bool, id: u32) -> bool {
+        self.musicapi.song_list_like(like, id)
+    }
 }
 
 // 删除上周缓存的图片文件

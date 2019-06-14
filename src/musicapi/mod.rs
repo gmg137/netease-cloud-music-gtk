@@ -447,4 +447,25 @@ impl MusicApi {
         let result = self.request(Method::POST, path, &mut params, false);
         to_lyric(result)
     }
+
+    // 收藏/取消收藏歌单
+    // like: true 收藏，false 取消
+    // id: 歌单 id
+    #[allow(unused)]
+    pub fn song_list_like(&mut self, like: bool, id: u32) -> bool {
+        let mut path = "/weapi/playlist/unsubscribe";
+        if like {
+            path = "/weapi/playlist/subscribe";
+        }
+        let mut params = HashMap::new();
+        params.insert("id".to_owned(), id.to_string());
+        let result = self.request(Method::POST, path, &mut params, false);
+        to_msg(result)
+            .unwrap_or(Msg {
+                code: 0,
+                msg: "".to_owned(),
+            })
+            .code
+            .eq(&200)
+    }
 }
