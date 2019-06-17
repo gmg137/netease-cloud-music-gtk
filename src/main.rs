@@ -13,7 +13,7 @@ mod view;
 mod widgets;
 use crate::app::App;
 use std::collections::HashMap;
-static APP_VERSION: &str = "0.5.0";
+static APP_VERSION: &str = "0.6.0";
 
 lazy_static! {
     // 配置文件目录
