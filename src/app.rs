@@ -29,8 +29,11 @@ pub(crate) enum Action {
     RefreshHeaderUserLogout,
     RefreshHome,
     RefreshHomeView(Vec<SongList>, Vec<SongList>),
-    RefreshSubUpView(String, String),
+    RefreshSubUpView(u32, String, String),
     RefreshSubLowView(Vec<SongInfo>),
+    ShowSubLike(bool),
+    LikeSongList,
+    DisLikeSongList,
     RefreshFoundViewInit(u8),
     RefreshFoundView(Vec<SongInfo>),
     RefreshMine,
@@ -165,14 +168,17 @@ impl App {
             Action::RefreshHeaderUserLogout => self.header.update_user_logout(),
             Action::RefreshHome => self.view.update_home(),
             Action::RefreshHomeView(tsl, rr) => self.view.update_home_view(tsl, rr),
-            Action::RefreshSubUpView(name, image_path) => {
-                self.view.update_sub_up_view(name, image_path)
+            Action::RefreshSubUpView(id, name, image_path) => {
+                self.view.update_sub_up_view(id, name, image_path)
             }
             Action::RefreshSubLowView(song_list) => self.view.update_sub_low_view(song_list),
+            Action::ShowSubLike(show) => self.view.show_sub_like_button(show),
             Action::SwitchStackMain => self.view.switch_stack_main(),
             Action::SwitchStackSub((id, name, image_path)) => {
                 self.view.switch_stack_sub(id, name, image_path)
             }
+            Action::LikeSongList => self.view.sub_like_song_list(),
+            Action::DisLikeSongList => self.view.dis_like_song_list(),
             Action::RefreshFoundViewInit(id) => self.view.update_found_view_data(id),
             Action::RefreshFoundView(song_list) => self.view.update_found_view(song_list),
             Action::RefreshMine => self.view.mine_init(),

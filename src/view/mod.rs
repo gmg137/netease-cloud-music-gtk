@@ -93,7 +93,7 @@ impl View {
     pub(crate) fn switch_stack_sub(&self, id: u32, name: String, image_path: String) {
         // 发送更新子页概览
         self.sender
-            .send(Action::RefreshSubUpView(name.to_owned(), image_path))
+            .send(Action::RefreshSubUpView(id, name.to_owned(), image_path))
             .unwrap_or(());
         let sender = self.sender.clone();
         let data = self.data.clone();
@@ -120,7 +120,7 @@ impl View {
     pub(crate) fn switch_stack_search(&self, text: String) {
         // 发送更新子页概览
         self.sender
-            .send(Action::RefreshSubUpView(String::new(), String::new()))
+            .send(Action::RefreshSubUpView(0, String::new(), String::new()))
             .unwrap_or(());
         let sender = self.sender.clone();
         let data = self.data.clone();
@@ -151,8 +151,52 @@ impl View {
         self.home.borrow_mut().update(tsl, rr);
     }
 
-    pub(crate) fn update_sub_up_view(&self, name: String, image_path: String) {
-        self.subpages.borrow_mut().update_up_view(name, image_path);
+    pub(crate) fn update_sub_up_view(&self, id: u32, name: String, image_path: String) {
+        self.subpages
+            .borrow_mut()
+            .update_up_view(id, name, image_path);
+        let sender = self.sender.clone();
+        let data = self.data.clone();
+        spawn(move || {
+            #[allow(unused_variables)]
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
+            if data.login_info().is_some() {
+                sender.send(Action::ShowSubLike(true)).unwrap_or(());
+            } else {
+                sender.send(Action::ShowSubLike(false)).unwrap_or(());
+            }
+        });
+    }
+
+    pub(crate) fn show_sub_like_button(&self, show: bool) {
+        self.subpages.borrow_mut().show_like(show);
+    }
+
+    pub(crate) fn sub_like_song_list(&self) {
+        let sender = self.sender.clone();
+        let data = self.data.clone();
+        let id = self.subpages.borrow_mut().get_song_list_id();
+        spawn(move || {
+            #[allow(unused_variables)]
+            let lock = data.lock().unwrap();
+            let mut data = MusicData::new();
+            if data.song_list_like(true, id) {
+                data.del(b"user_song_list");
+                sender
+                    .send(Action::ShowNotice("收藏歌单成功!".to_owned()))
+                    .unwrap_or(());
+                if let Some(login_info) = data.login_info() {
+                    if let Some(vsl) = data.user_song_list(login_info.uid, 0, 50) {
+                        sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
+                    }
+                }
+            } else {
+                sender
+                    .send(Action::ShowNotice("收藏歌单失败!".to_owned()))
+                    .unwrap_or(());
+            }
+        });
     }
 
     pub(crate) fn update_sub_low_view(&self, song_list: Vec<SongInfo>) {
@@ -368,6 +412,35 @@ impl View {
                 }
             }
         });
+    }
+
+    pub(crate) fn dis_like_song_list(&self) {
+        let mut row_id = self.mine.borrow().get_selected_row_id();
+        if row_id > 2 {
+            let sender = self.sender.clone();
+            let data = self.data.clone();
+            spawn(move || {
+                #[allow(unused_variables)]
+                let lock = data.lock().unwrap();
+                let mut data = MusicData::new();
+                row_id -= 2;
+                let uid = data.login_info().unwrap().uid;
+                let sl = &data.user_song_list(uid, 0, 50).unwrap()[row_id as usize];
+                if data.song_list_like(false, sl.id) {
+                    data.del(b"user_song_list");
+                    sender
+                        .send(Action::ShowNotice("已删除歌单!".to_owned()))
+                        .unwrap_or(());
+                    if let Some(vsl) = data.user_song_list(uid, 0, 50) {
+                        sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
+                    }
+                } else {
+                    sender
+                        .send(Action::ShowNotice("删除歌单失败!".to_owned()))
+                        .unwrap_or(());
+                }
+            });
+        }
     }
 
     pub(crate) fn play_mine(&self) {

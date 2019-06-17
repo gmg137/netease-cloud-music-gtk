@@ -30,6 +30,7 @@ struct FmView {
 #[derive(Clone)]
 struct UpView {
     container: Grid,
+    dislike: Button,
     play: Button,
     title: Label,
     number: Label,
@@ -106,10 +107,14 @@ impl Mine {
         let play: Button = builder
             .get_object("mine_up_play_button")
             .expect("无法获取 mine_up_play_button .");
+        let dislike: Button = builder
+            .get_object("mine_up_del_button")
+            .expect("无法获取 mine_up_del_button .");
         let upview = UpView {
             container,
             title,
             number,
+            dislike,
             play,
         };
         let container: ScrolledWindow = builder
@@ -232,6 +237,12 @@ impl Mine {
             sender.send(Action::PlayerMine).unwrap_or(());
         });
 
+        // 删除歌单
+        let sender = s.sender.clone();
+        s.upview.dislike.connect_clicked(move |_| {
+            sender.send(Action::DisLikeSongList).unwrap_or(());
+        });
+
         let sender = s.sender.clone();
         s.fmview.play.connect_clicked(move |_| {
             sender.send(Action::PlayerFm).unwrap_or(());
@@ -273,14 +284,21 @@ impl Mine {
     }
 
     pub(crate) fn update_sidebar(&self, song_list: Vec<SongList>) {
+        if let Some(one_row) = self.sidebar.get_row_at_index(0) {
+            self.sidebar.select_row(&one_row);
+            self.sidebar.get_children()[2..].iter().for_each(|w| {
+                self.sidebar.remove(w);
+            });
+        }
         let row = self.sidebar.get_row_at_index(3);
         if row.is_none() {
             song_list.iter().for_each(|sl| {
                 let label = Label::new(Some(&sl.name[..]));
                 label.set_halign(gtk::Align::Start);
+                label.set_valign(gtk::Align::Fill);
                 label.set_margin_start(18);
                 label.set_ellipsize(pango::EllipsizeMode::End);
-                label.set_max_width_chars(17);
+                label.set_max_width_chars(16);
                 let row = ListBoxRow::new();
                 row.set_property_height_request(58);
                 row.add(&label);
@@ -311,6 +329,15 @@ impl Mine {
     }
 
     pub(crate) fn update_up_view(&self, title: String) {
+        self.upview.dislike.set_visible(false);
+        self.upview.dislike.hide();
+        if let Some(row) = self.sidebar.get_selected_row() {
+            let index = row.get_index();
+            if index > 2 {
+                self.upview.dislike.set_visible(true);
+                self.upview.dislike.show_all();
+            }
+        }
         self.lowview.store.clear();
         for c in self.lowview.tree.get_columns().iter() {
             self.lowview.tree.remove_column(c);
@@ -404,5 +431,12 @@ impl Mine {
                 .send(Action::PlayerInit(si.to_owned(), PlayerTypes::Fm))
                 .unwrap_or(());
         });
+    }
+
+    pub(crate) fn get_selected_row_id(&self) -> i32 {
+        if let Some(row) = self.sidebar.get_selected_row() {
+            return row.get_index();
+        }
+        -1
     }
 }

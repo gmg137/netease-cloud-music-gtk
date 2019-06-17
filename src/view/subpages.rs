@@ -18,6 +18,7 @@ pub(crate) struct Subpages {
     tree: TreeView,
     store: ListStore,
     song_list: Vec<SongInfo>,
+    song_list_id: u32,
     sender: Sender<Action>,
 }
 
@@ -27,6 +28,7 @@ pub(crate) struct Overview {
     pic: Image,
     album: Label,
     num: Label,
+    like: Button,
     play: Button,
 }
 
@@ -44,6 +46,9 @@ impl Subpages {
         let num: Label = builder
             .get_object("subpages_song_num")
             .expect("无法获取 subpages_song_num .");
+        let like: Button = builder
+            .get_object("subpages_like_button")
+            .expect("无法获取 subpages_like_button .");
         let play: Button = builder
             .get_object("subpages_play_button")
             .expect("无法获取 subpages_play_button .");
@@ -52,6 +57,7 @@ impl Subpages {
             pic,
             album,
             num,
+            like,
             play,
         };
         let tree: TreeView = builder
@@ -70,6 +76,7 @@ impl Subpages {
             tree,
             store,
             song_list: vec![],
+            song_list_id: 0,
             sender,
         };
         Self::init(&s);
@@ -125,9 +132,16 @@ impl Subpages {
         s.overview.play.connect_clicked(move |_| {
             sender.send(Action::PlayerSubpages).unwrap_or(());
         });
+
+        // 收藏歌单
+        let sender = s.sender.clone();
+        s.overview.like.connect_clicked(move |_| {
+            sender.send(Action::LikeSongList).unwrap_or(());
+        });
     }
 
-    pub(crate) fn update_up_view(&self, name: String, image_path: String) {
+    pub(crate) fn update_up_view(&mut self, id: u32, name: String, image_path: String) {
+        self.song_list_id = id;
         self.overview.grid.show();
         self.store.clear();
         for c in self.tree.get_columns().iter() {
@@ -209,5 +223,20 @@ impl Subpages {
 
     pub(crate) fn play_all(&self) {
         create_player_list(&self.song_list, self.sender.clone(), true);
+    }
+
+    // 显示收藏按钮
+    pub(crate) fn show_like(&self, show: bool) {
+        self.overview.like.set_visible(false);
+        self.overview.like.hide();
+        if show {
+            self.overview.like.set_visible(true);
+            self.overview.like.show_all();
+        }
+    }
+
+    // 获取歌单 id
+    pub(crate) fn get_song_list_id(&self) -> u32 {
+        self.song_list_id
     }
 }

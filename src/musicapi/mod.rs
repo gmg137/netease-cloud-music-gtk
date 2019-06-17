@@ -50,6 +50,7 @@ impl MusicApi {
         curl.accept_encoding("gzip").unwrap_or(());
         let cookie_path = format!("{}/cookie", CONFIG_PATH.to_owned());
         curl.cookie_file(cookie_path).unwrap_or(());
+        curl.cookie_list("RELOAD").unwrap_or(());
         Self { curl }
     }
 
@@ -126,8 +127,12 @@ impl MusicApi {
                 transfer.perform().unwrap_or(());
             }
         }
-        let cookie_path = format!("{}/cookie", CONFIG_PATH.to_owned());
-        self.curl.cookie_jar(cookie_path).unwrap_or(());
+        if let Ok(cookies) = self.curl.cookies() {
+            if !cookies.iter().collect::<Vec<&[u8]>>().is_empty() {
+                let cookie_path = format!("{}/cookie", CONFIG_PATH.to_owned());
+                self.curl.cookie_jar(cookie_path).unwrap_or(());
+            }
+        }
         String::from_utf8_lossy(&contents).to_string()
     }
 
