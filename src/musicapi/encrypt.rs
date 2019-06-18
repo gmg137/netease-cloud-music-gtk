@@ -3,7 +3,7 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-use num::{bigint::BigUint, pow::pow};
+use num::bigint::BigUint;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::Serialize;
@@ -65,10 +65,10 @@ impl Encrypt {
     fn rsa(&self, text: String) -> String {
         let text = text.chars().rev().collect::<String>();
         let text = BigUint::parse_bytes(hex::encode(text).as_bytes(), 16).unwrap();
-        let pubkey = usize::from_str_radix(PUBKEY, 16).unwrap();
+        let pubkey = BigUint::parse_bytes(PUBKEY.as_bytes(), 16).unwrap();
         let modulus = BigUint::parse_bytes(MODULUS.as_bytes(), 16).unwrap();
-        let pow = pow(text, pubkey) % modulus;
-        format!("{:0>256x}", pow)
+        let pow = text.modpow(&pubkey, &modulus);
+        pow.to_str_radix(16)
     }
 
     fn create_key(&self, len: usize) -> String {
