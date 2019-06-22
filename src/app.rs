@@ -35,7 +35,7 @@ pub(crate) enum Action {
     LikeSongList,
     DisLikeSongList,
     RefreshFoundViewInit(u8),
-    RefreshFoundView(Vec<SongInfo>),
+    RefreshFoundView(Vec<SongInfo>, String),
     RefreshMine,
     MineHideAll,
     MineShowFm,
@@ -180,7 +180,9 @@ impl App {
             Action::LikeSongList => self.view.sub_like_song_list(),
             Action::DisLikeSongList => self.view.dis_like_song_list(),
             Action::RefreshFoundViewInit(id) => self.view.update_found_view_data(id),
-            Action::RefreshFoundView(song_list) => self.view.update_found_view(song_list),
+            Action::RefreshFoundView(song_list, title) => {
+                self.view.update_found_view(song_list, title)
+            }
             Action::RefreshMine => self.view.mine_init(),
             Action::MineHideAll => self.view.mine_hide_all(),
             Action::MineShowFm => self.view.mine_show_fm(),

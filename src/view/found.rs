@@ -6,7 +6,6 @@
 use crate::app::Action;
 use crate::musicapi::model::SongInfo;
 use crate::utils::{create_player_list, PlayerTypes};
-use crate::TOP_NAME;
 use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::{Builder, Button, CellRendererText, Label, ListBox, ListStore, TreeView, TreeViewColumn};
@@ -126,13 +125,12 @@ impl Found {
         s.sender.send(Action::RefreshFoundViewInit(0)).unwrap_or(());
     }
 
-    pub(crate) fn update_up_view(&self, row_id: u8) {
+    pub(crate) fn update_up_view(&self, title: String) {
         self.store.clear();
         for c in self.treeview.get_columns().iter() {
             self.treeview.remove_column(c);
         }
         self.treeview.set_model(Some(&self.store));
-        let title = TOP_NAME.get(&row_id).unwrap();
         self.title.set_text(&title);
         self.number.set_text("0 首");
     }

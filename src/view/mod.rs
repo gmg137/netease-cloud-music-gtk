@@ -11,7 +11,7 @@ mod subpages;
 use crate::app::Action;
 use crate::data::MusicData;
 use crate::musicapi::model::*;
-use crate::TOP_ID;
+use crate::{TOP_ID, TOP_NAME};
 use crossbeam_channel::Sender;
 use found::*;
 use gtk::{prelude::*, Builder, Stack};
@@ -234,30 +234,31 @@ impl View {
         self.subpages.borrow_mut().play_all();
     }
 
-    pub(crate) fn update_found_up_view(&self, row_id: u8) {
-        self.found.borrow_mut().update_up_view(row_id);
+    pub(crate) fn update_found_up_view(&self, title: String) {
+        self.found.borrow_mut().update_up_view(title);
     }
 
     pub(crate) fn update_found_low_view(&self, song_list: Vec<SongInfo>) {
         self.found.borrow_mut().update_low_view(song_list);
     }
 
-    pub(crate) fn update_found_view(&self, song_list: Vec<SongInfo>) {
+    pub(crate) fn update_found_view(&self, song_list: Vec<SongInfo>, title: String) {
+        self.update_found_up_view(title);
         self.update_found_low_view(song_list);
     }
 
     pub(crate) fn update_found_view_data(&self, row_id: u8) {
-        self.update_found_up_view(row_id);
         let sender = self.sender.clone();
         let data = self.data.clone();
         let lid = TOP_ID.get(&row_id).unwrap();
+        let title = TOP_NAME.get(&row_id).unwrap();
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
             let mut data = MusicData::new();
             if let Some(song_list) = data.song_list_detail(*lid) {
                 sender
-                    .send(Action::RefreshFoundView(song_list))
+                    .send(Action::RefreshFoundView(song_list, title.to_string()))
                     .unwrap_or(());
             } else {
                 sender
