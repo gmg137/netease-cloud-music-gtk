@@ -53,7 +53,7 @@ gtk_3_22_30 = ["gtk_3_18", "gtk/v3_22_30", "gio/v2_56"]
 gtk_3_24 = ["gtk_3_22_30", "gtk/v3_24", "gio/v2_58"]
 
 [dependencies.mpris-player]
-version = "0.3.0"
+version = "0"
 git = "https://gitlab.gnome.org/World/Rust/mpris-player"
 
 [package.metadata.rpm.cargo]
