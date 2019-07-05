@@ -541,23 +541,23 @@ impl PlayerWrapper {
 
         self.loops.shuffle.connect_toggled(clone!(weak => move |_| {
         weak.upgrade().map(|p| *p.loops_state.borrow_mut() = LoopsState::SHUFFLE);
-        weak.upgrade().map(|p| p.loops.image.set_from_icon_name("media-playlist-shuffle-symbolic",gtk::IconSize::Menu));
+        weak.upgrade().map(|p| p.loops.image.set_from_icon_name(Some("media-playlist-shuffle-symbolic"),gtk::IconSize::Menu));
         }));
 
         self.loops
             .playlist
             .connect_toggled(clone!(weak => move |_| {
         weak.upgrade().map(|p| *p.loops_state.borrow_mut() = LoopsState::PLAYLIST);
-        weak.upgrade().map(|p| p.loops.image.set_from_icon_name("media-playlist-repeat-symbolic",gtk::IconSize::Menu));
+        weak.upgrade().map(|p| p.loops.image.set_from_icon_name(Some("media-playlist-repeat-symbolic"),gtk::IconSize::Menu));
             }));
 
         self.loops.none.connect_toggled(clone!(weak => move |_| {
         weak.upgrade().map(|p| *p.loops_state.borrow_mut() = LoopsState::NONE);
-        weak.upgrade().map(|p| p.loops.image.set_from_icon_name("media-playlist-repeat-song-symbolic",gtk::IconSize::Menu));
+        weak.upgrade().map(|p| p.loops.image.set_from_icon_name(Some("media-playlist-repeat-song-symbolic"),gtk::IconSize::Menu));
         }));
         self.loops.consecutive.connect_toggled(clone!(weak => move |_| {
         weak.upgrade().map(|p| *p.loops_state.borrow_mut() = LoopsState::CONSECUTIVE);
-        weak.upgrade().map(|p| p.loops.image.set_from_icon_name("media-playlist-consecutive-symbolic",gtk::IconSize::Menu));
+        weak.upgrade().map(|p| p.loops.image.set_from_icon_name(Some("media-playlist-consecutive-symbolic"),gtk::IconSize::Menu));
         }));
     }
 

@@ -13,7 +13,7 @@ use gtk::{ApplicationWindow, Builder, Overlay};
 use crate::musicapi::model::{LoginInfo, SongInfo, SongList};
 use crate::utils::*;
 use crate::view::*;
-use crate::widgets::{header::*, mark_all_notif, notice::*, player::*, tray::*};
+use crate::widgets::{header::*, mark_all_notif, notice::*, player::*};
 use std::cell::RefCell;
 use std::env;
 use std::rc::Rc;
@@ -59,7 +59,6 @@ pub(crate) enum Action {
     ShowNotice(String),
     DailyTask,
     QuitMain,
-    DeIconify,
     ConfigsSetTray(bool),
     ConfigsSetLyrics(bool),
 }
@@ -71,7 +70,6 @@ pub(crate) struct App {
     header: Rc<Header>,
     player: PlayerWrapper,
     notice: RefCell<Option<InAppNotification>>,
-    tray: Tray,
     overlay: Overlay,
     configs: Rc<RefCell<Configs>>,
     sender: Sender<Action>,
@@ -90,7 +88,7 @@ impl App {
         let window: ApplicationWindow = builder
             .get_object("applicationwindow")
             .expect("Couldn't get window");
-        window.set_application(application);
+        window.set_application(Some(application));
         window.set_title("网易云音乐");
 
         let configs = load_config();
@@ -127,15 +125,12 @@ impl App {
 
         let notice = RefCell::new(None);
 
-        let tray = Tray::new(&builder, sender.clone());
-
         let app = App {
             window,
             header,
             view,
             player,
             notice,
-            tray,
             overlay,
             configs: Rc::new(RefCell::new(configs)),
             sender,
@@ -220,7 +215,6 @@ impl App {
             Action::PlayerFound => self.view.play_found(),
             Action::PlayerMine => self.view.play_mine(),
             Action::QuitMain => self.window.destroy(),
-            Action::DeIconify => self.window.deiconify(),
             Action::ConfigsSetTray(state) => {
                 self.configs.borrow_mut().tray = state;
                 save_config(&self.configs.borrow());
@@ -236,7 +230,7 @@ impl App {
 
     pub(crate) fn run() {
         let application = gtk::Application::new(
-            "com.github.gmg137.netease-cloud-music-gtk",
+            Some("com.github.gmg137.netease-cloud-music-gtk"),
             gio::ApplicationFlags::empty(),
         )
         .expect("Application initialization failed...");

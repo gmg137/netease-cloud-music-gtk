@@ -64,7 +64,7 @@ impl Found {
 
     fn init(s: &Self) {
         let one_row = s.sidebar.get_row_at_index(0).unwrap();
-        s.sidebar.select_row(&one_row);
+        s.sidebar.select_row(Some(&one_row));
         let sender = s.sender.clone();
         s.treeview.connect_button_press_event(move |tree, event| {
             if event.get_event_type() == gdk::EventType::DoubleButtonPress {

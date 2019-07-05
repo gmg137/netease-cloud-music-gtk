@@ -272,7 +272,7 @@ impl Mine {
 
     pub(crate) fn show_fm(&self) {
         let one_row = self.sidebar.get_row_at_index(0).unwrap();
-        self.sidebar.select_row(&one_row);
+        self.sidebar.select_row(Some(&one_row));
         self.view.show_all();
         self.upview.container.hide();
         self.lowview.container.hide();
@@ -285,7 +285,7 @@ impl Mine {
 
     pub(crate) fn update_sidebar(&self, song_list: Vec<SongList>) {
         if let Some(one_row) = self.sidebar.get_row_at_index(0) {
-            self.sidebar.select_row(&one_row);
+            self.sidebar.select_row(Some(&one_row));
             self.sidebar.get_children()[2..].iter().for_each(|w| {
                 self.sidebar.remove(w);
             });
