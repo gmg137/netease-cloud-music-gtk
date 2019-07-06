@@ -1244,23 +1244,6 @@
       <placeholder/>
     </child>
   </object>
-  <object class="GtkStatusIcon" id="status_icon">
-    <property name="has_tooltip">True</property>
-    <property name="tooltip_text" translatable="yes">网易云音乐</property>
-    <property name="title" translatable="yes">网易云音乐</property>
-  </object>
-  <object class="GtkMenu" id="status_menu">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="menu_type_hint">menu</property>
-    <child>
-      <object class="GtkMenuItem" id="status_exit">
-        <property name="visible">True</property>
-        <property name="can_focus">False</property>
-        <property name="label" translatable="yes">退出</property>
-      </object>
-    </child>
-  </object>
   <object class="GtkImage" id="subpages_like_image">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
