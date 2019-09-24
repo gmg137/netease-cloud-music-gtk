@@ -19,13 +19,13 @@ lazy_static! {
     // 配置文件目录
     static ref CONFIG_PATH: &'static str = {
         if let Some(path) = dirs::home_dir() {
-            let config_path = format!("{}/.NeteaseCloudMusicGtk", path.display());
+            let config_path = format!("{}/.config/NeteaseCloudMusicGtk", path.display());
             if !std::path::Path::new(&config_path).exists() {
                 std::fs::create_dir(&config_path).unwrap_or(());
             }
             return Box::leak(Box::new(config_path));
         }
-        ".NeteaseCloudMusicGtk"
+        ".config/NeteaseCloudMusicGtk"
     };
     // 缓存文件目录
     static ref CACHED_PATH: &'static str = {
