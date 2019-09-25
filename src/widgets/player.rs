@@ -10,7 +10,6 @@ use crate::musicapi::model::SongInfo;
 use crate::utils::*;
 use chrono::NaiveTime;
 use crossbeam_channel::Sender;
-use dbus::arg::RefArg;
 use fragile::Fragile;
 use glib::{SignalHandlerId, WeakRef};
 use gst::ClockTime;
@@ -410,7 +409,7 @@ impl PlayerWidget {
         let sender = self.sender.clone();
         if let Ok(metadata) = self.info.mpris.get_metadata() {
             if let Some(value) = metadata.get("xesam:trackNumber") {
-                if let Some(id) = value.as_i64() {
+                if let Some(id) = value.0.as_i64() {
                     let data = self.data.clone();
                     std::thread::spawn(move || {
                         #[allow(unused_variables)]

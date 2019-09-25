@@ -95,7 +95,7 @@ pub(crate) fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Action>, p
                 .path(format!("{}/player_list.db", CONFIG_PATH.to_owned()))
                 .build();
             if let Ok(db) = Db::start(config) {
-                db.set(
+                db.insert(
                     b"player_list_data",
                     serde_json::to_vec(&PlayerListData {
                         player_list,
@@ -176,7 +176,7 @@ pub(crate) fn get_player_list_song(pd: PD, shuffle: bool, update: bool) -> Optio
                                 }
                             }
                         }
-                        db.set(
+                        db.insert(
                             b"player_list_data",
                             serde_json::to_vec(&PlayerListData {
                                 player_list: player_list.to_owned(),
@@ -202,7 +202,7 @@ pub(crate) fn get_player_list_song(pd: PD, shuffle: bool, update: bool) -> Optio
                         };
                         // 标记当前歌曲为未播放
                         play_flag[index_old as usize] = false;
-                        db.set(
+                        db.insert(
                             b"player_list_data",
                             serde_json::to_vec(&PlayerListData {
                                 player_list: player_list.to_owned(),
@@ -277,7 +277,7 @@ pub(crate) fn update_player_list(sender: Sender<Action>) {
                         ))
                         .unwrap();
                     // 将播放列表写入数据库
-                    db.set(
+                    db.insert(
                         b"player_list_data",
                         serde_json::to_vec(&PlayerListData {
                             player_list: new_player_list,
@@ -393,7 +393,7 @@ pub(crate) fn save_config(conf: &Configs) {
         .path(format!("{}/config.db", CONFIG_PATH.to_owned()))
         .build();
     if let Ok(db) = Db::start(config) {
-        db.set(b"config", serde_json::to_vec(&conf).unwrap_or(vec![]));
+        db.insert(b"config", serde_json::to_vec(&conf).unwrap_or(vec![]));
         db.flush();
     }
 }
