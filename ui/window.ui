@@ -1634,6 +1634,7 @@
                     <property name="tooltip_text" translatable="yes">上一曲</property>
                     <property name="image">previous_image</property>
                     <property name="always_show_image">True</property>
+                    <accelerator key="b" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -1682,6 +1683,7 @@
                     <property name="receives_default">True</property>
                     <property name="tooltip_text" translatable="yes">下一曲</property>
                     <property name="image">next_image</property>
+                    <accelerator key="n" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>
