@@ -91,10 +91,9 @@ pub(crate) fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Action>, p
                     .unwrap();
             }
             // 将播放列表写入数据库
-            let config = ConfigBuilder::default()
-                .path(format!("{}/player_list.db", CONFIG_PATH.to_owned()))
-                .build();
-            if let Ok(db) = Db::start(config) {
+            let config = Config::default()
+                .path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
+            if let Ok(db) = config.open() {
                 db.insert(
                     b"player_list_data",
                     serde_json::to_vec(&PlayerListData {
@@ -117,10 +116,9 @@ pub(crate) fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Action>, p
 // update: 是否从头循环
 #[allow(unused)]
 pub(crate) fn get_player_list_song(pd: PD, shuffle: bool, update: bool) -> Option<SongInfo> {
-    let config = ConfigBuilder::default()
-        .path(format!("{}/player_list.db", CONFIG_PATH.to_owned()))
-        .build();
-    if let Ok(db) = Db::start(config) {
+    let config = Config::default()
+        .path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
+    if let Ok(db) = config.open() {
         // 从数据库查询播放列表
         if let Some(player_list_data_v) = db.get(b"player_list_data").unwrap_or(None) {
             // 反序列化播放列表
@@ -229,10 +227,9 @@ pub(crate) fn get_player_list_song(pd: PD, shuffle: bool, update: bool) -> Optio
 pub(crate) fn update_player_list(sender: Sender<Action>) {
     let sender = sender.clone();
     std::thread::spawn(move || {
-        let config = ConfigBuilder::default()
-            .path(format!("{}/player_list.db", CONFIG_PATH.to_owned()))
-            .build();
-        if let Ok(db) = Db::start(config) {
+        let config = Config::default()
+            .path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
+        if let Ok(db) = config.open() {
             // 从数据库查询播放列表
             if let Some(player_list_data_v) = db.get(b"player_list_data").unwrap_or(None) {
                 // 反序列化播放列表
@@ -367,10 +364,9 @@ pub(crate) struct Configs {
 // 加载配置
 #[allow(unused)]
 pub(crate) fn load_config() -> Configs {
-    let config = ConfigBuilder::default()
-        .path(format!("{}/config.db", CONFIG_PATH.to_owned()))
-        .build();
-    if let Ok(db) = Db::start(config) {
+    let config = Config::default()
+        .path(format!("{}/config.db", CONFIG_PATH.to_owned()));
+    if let Ok(db) = config.open() {
         if let Some(conf) = db.get(b"config").unwrap_or(None) {
             return serde_json::from_slice::<Configs>(&conf).unwrap_or(Configs {
                 tray: false,
@@ -389,10 +385,9 @@ pub(crate) fn load_config() -> Configs {
 // 保存配置
 #[allow(unused)]
 pub(crate) fn save_config(conf: &Configs) {
-    let config = ConfigBuilder::default()
-        .path(format!("{}/config.db", CONFIG_PATH.to_owned()))
-        .build();
-    if let Ok(db) = Db::start(config) {
+    let config = Config::default()
+        .path(format!("{}/config.db", CONFIG_PATH.to_owned()));
+    if let Ok(db) = config.open() {
         db.insert(b"config", serde_json::to_vec(&conf).unwrap_or(vec![]));
         db.flush();
     }
