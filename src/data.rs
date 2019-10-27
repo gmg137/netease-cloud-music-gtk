@@ -23,23 +23,19 @@ use std::{fs, io};
 // login: 是否已登录
 // day: 数据更新日期, 1-31, 每天只更新一次
 // week: 每年中的第几周，每周清除一次缓存
-// update: 是否需要刷新数据，当调用收藏时触发
 #[derive(Debug, Deserialize, Serialize)]
 struct StatusData {
     login: bool,
     day: u32,
     week: u32,
-    update: bool,
 }
 
 // 音乐数据本地缓存
 // login: 是否已经登录
-// update: 数据是否需要更新
 pub(crate) struct MusicData {
     musicapi: MusicApi,
     db: Option<Db>,
     pub(crate) login: bool,
-    pub(crate) update: bool,
 }
 
 impl MusicData {
@@ -61,7 +57,6 @@ impl MusicData {
                             musicapi: MusicApi::new(),
                             db: Some(db),
                             login: status_data.login,
-                            update: status_data.update,
                         };
                     } else {
                         db.clear();
@@ -72,7 +67,6 @@ impl MusicData {
                                 login: true,
                                 day: *DATE_DAY,
                                 week: *ISO_WEEK,
-                                update: true,
                             };
                             db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                             db.insert(
@@ -84,14 +78,12 @@ impl MusicData {
                                 musicapi,
                                 db: Some(db),
                                 login: true,
-                                update: true,
                             };
                         }
                         let data = StatusData {
                             login: false,
                             day: *DATE_DAY,
                             week: *ISO_WEEK,
-                            update: true,
                         };
                         db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                         db.flush();
@@ -99,7 +91,6 @@ impl MusicData {
                             musicapi,
                             db: Some(db),
                             login: false,
-                            update: true,
                         };
                     }
                 }
@@ -111,7 +102,6 @@ impl MusicData {
                         login: true,
                         day: *DATE_DAY,
                         week: *ISO_WEEK,
-                        update: true,
                     };
                     db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                     db.insert(
@@ -123,14 +113,12 @@ impl MusicData {
                         musicapi,
                         db: Some(db),
                         login: true,
-                        update: true,
                     };
                 }
                 let data = StatusData {
                     login: false,
                     day: *DATE_DAY,
                     week: *ISO_WEEK,
-                    update: true,
                 };
                 db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                 db.flush();
@@ -138,7 +126,6 @@ impl MusicData {
                     musicapi,
                     db: Some(db),
                     login: false,
-                    update: true,
                 };
             }
         }
@@ -146,7 +133,6 @@ impl MusicData {
             musicapi: MusicApi::new(),
             db: None,
             login: false,
-            update: false,
         }
     }
 
@@ -161,7 +147,6 @@ impl MusicData {
                         login: true,
                         day: *DATE_DAY,
                         week: *ISO_WEEK,
-                        update: true,
                     };
                     db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                     db.insert(
@@ -200,7 +185,6 @@ impl MusicData {
                     login: false,
                     day: *DATE_DAY,
                     week: *ISO_WEEK,
-                    update: true,
                 };
                 db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                 db.remove(b"user_song_list");
@@ -260,11 +244,10 @@ impl MusicData {
     // 歌单详情
     // songlist_id: 歌单 id
     #[allow(unused)]
-    pub(crate) fn song_list_detail(&mut self, songlist_id: u32) -> Option<Vec<SongInfo>> {
+    pub(crate) fn song_list_detail(&mut self, songlist_id: u32, refresh: bool) -> Option<Vec<SongInfo>> {
         if let Some(db) = &self.db {
             let key = format!("song_list_{}", songlist_id);
-            // 有更新且要查询的歌单为我喜欢的歌曲时才更新数据
-            if !self.update || songlist_id != 3447396 {
+            if !refresh {
                 if let Some(song_list_detail_vec) = db.get(key.as_bytes()).unwrap_or(None) {
                     if let Ok(song_list_detail) =
                         serde_json::from_slice::<Vec<SongInfo>>(&song_list_detail_vec)
@@ -276,16 +259,6 @@ impl MusicData {
             if let Some(sld) = self.musicapi.song_list_detail(songlist_id) {
                 if !sld.is_empty() {
                     db.insert(key.as_bytes(), serde_json::to_vec(&sld).unwrap_or(vec![]));
-                }
-                if songlist_id == 3447396 {
-                    self.update = false;
-                    let data = StatusData {
-                        login: true,
-                        day: *DATE_DAY,
-                        week: *ISO_WEEK,
-                        update: false,
-                    };
-                    db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
                 }
                 db.flush();
                 return Some(sld);
@@ -341,13 +314,15 @@ impl MusicData {
 
     // 每日推荐歌曲
     #[allow(unused)]
-    pub(crate) fn recommend_songs(&mut self) -> Option<Vec<SongInfo>> {
+    pub(crate) fn recommend_songs(&mut self, refresh: bool) -> Option<Vec<SongInfo>> {
         if self.login {
             if let Some(db) = &self.db {
-                if let Some(recommend_songs_vec) = db.get(b"recommend_songs").unwrap_or(None) {
-                    if let Ok(songs) = serde_json::from_slice::<Vec<SongInfo>>(&recommend_songs_vec)
-                    {
-                        return Some(songs);
+                if !refresh {
+                    if let Some(recommend_songs_vec) = db.get(b"recommend_songs").unwrap_or(None) {
+                        if let Ok(songs) = serde_json::from_slice::<Vec<SongInfo>>(&recommend_songs_vec)
+                        {
+                            return Some(songs);
+                        }
                     }
                 }
                 if let Some(rs) = self.musicapi.recommend_songs() {
@@ -377,18 +352,13 @@ impl MusicData {
     #[allow(unused)]
     pub(crate) fn like(&mut self, like: bool, songid: u32) -> bool {
         if self.musicapi.like(like, songid) {
-            if let Some(db) = &self.db {
-                let data = StatusData {
-                    login: true,
-                    day: *DATE_DAY,
-                    week: *ISO_WEEK,
-                    update: true,
-                };
-                db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
-                db.flush();
+            if let Some(login_info) = self.login_info() {
+                if let Some(usl) = &self.user_song_list(login_info.uid, 0, 50) {
+                    let row_id = 0;  // 假定喜欢的音乐歌单总排在第一位
+                    self.song_list_detail(usl[row_id].id, true);
+                    return true;
+                }
             }
-            self.update = true;
-            return true;
         }
         false
     }
@@ -514,7 +484,7 @@ impl MusicData {
     // 华语金曲榜: 4395559
     #[allow(unused)]
     pub(crate) fn top_songs(&mut self, list_id: u32) -> Option<Vec<SongInfo>> {
-        self.song_list_detail(list_id)
+        self.song_list_detail(list_id, true)
     }
 
     // 查询歌词

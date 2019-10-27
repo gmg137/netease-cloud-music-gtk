@@ -419,6 +419,9 @@ impl PlayerWidget {
                             sender
                                 .send(Action::ShowNotice("已添加到喜欢!".to_owned()))
                                 .unwrap();
+                            sender
+                                .send(Action::RefreshMineLikeList())
+                                .unwrap();
                         } else {
                             sender
                                 .send(Action::ShowNotice("收藏失败!".to_owned()))

@@ -40,6 +40,8 @@ pub(crate) enum Action {
     MineHideAll,
     MineShowFm,
     RefreshMineViewInit(i32),
+    RefreshMineCurrentView(),
+    RefreshMineLikeList(),
     RefreshMineView(Vec<SongInfo>, String),
     RefreshMineFm(SongInfo),
     RefreshMineSidebar(Vec<SongList>),
@@ -181,7 +183,9 @@ impl App {
             Action::RefreshMine => self.view.mine_init(),
             Action::MineHideAll => self.view.mine_hide_all(),
             Action::MineShowFm => self.view.mine_show_fm(),
-            Action::RefreshMineViewInit(id) => self.view.update_mine_view_data(id),
+            Action::RefreshMineViewInit(id) => self.view.update_mine_view_data(id, false),
+            Action::RefreshMineCurrentView() => self.view.update_mine_current_view_data(),
+            Action::RefreshMineLikeList() => self.view.update_like_song_list(),
             Action::RefreshMineView(song_list, title) => {
                 self.view.update_mine_view(song_list, title)
             }

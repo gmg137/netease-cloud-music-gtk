@@ -101,7 +101,7 @@ impl View {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
             let mut data = MusicData::new();
-            if let Some(song_list) = data.song_list_detail(id) {
+            if let Some(song_list) = data.song_list_detail(id, false) {
                 sender
                     .send(Action::RefreshSubLowView(song_list))
                     .unwrap_or(());
@@ -256,7 +256,7 @@ impl View {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
             let mut data = MusicData::new();
-            if let Some(song_list) = data.song_list_detail(*lid) {
+            if let Some(song_list) = data.song_list_detail(*lid, false) {
                 sender
                     .send(Action::RefreshFoundView(song_list, title.to_string()))
                     .unwrap_or(());
@@ -348,7 +348,7 @@ impl View {
     }
 
     #[allow(unused_variables)]
-    pub(crate) fn update_mine_view_data(&self, row_id: i32) {
+    pub(crate) fn update_mine_view_data(&self, row_id: i32, refresh: bool) {
         let mut row_id = row_id as usize;
         if row_id == 0 {
             self.mine.borrow_mut().show_fm();
@@ -386,7 +386,7 @@ impl View {
             let lock = data.lock().unwrap();
             let mut data = MusicData::new();
             if row_id == 1 {
-                if let Some(song_list) = data.recommend_songs() {
+                if let Some(song_list) = data.recommend_songs(refresh) {
                     sender
                         .send(Action::RefreshMineView(
                             song_list,
@@ -402,7 +402,7 @@ impl View {
                 row_id -= 2;
                 let uid = data.login_info().unwrap().uid;
                 let sl = &data.user_song_list(uid, 0, 50).unwrap()[row_id];
-                if let Some(song_list) = data.song_list_detail(sl.id) {
+                if let Some(song_list) = data.song_list_detail(sl.id, refresh) {
                     sender
                         .send(Action::RefreshMineView(song_list, sl.name.to_owned()))
                         .unwrap_or(());
@@ -413,6 +413,17 @@ impl View {
                 }
             }
         });
+    }
+
+    pub fn update_mine_current_view_data(&self) {
+        let row_id = self.mine.borrow().get_selected_row_id();
+        self.update_mine_view_data(row_id, true);
+    }
+
+    pub fn update_like_song_list(&self) {
+        if self.mine.borrow().get_selected_row_id() == 2 {
+            self.update_mine_view_data(2, false);
+        }
     }
 
     pub(crate) fn dis_like_song_list(&self) {
@@ -485,7 +496,7 @@ impl View {
                 let lock = data.lock().unwrap();
                 let mut data = MusicData::new();
                 data.like(false, id);
-                sender.send(Action::RefreshMineViewInit(2)).unwrap_or(());
+                sender.send(Action::RefreshMineCurrentView()).unwrap_or(());
             });
         }
     }

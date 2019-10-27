@@ -507,6 +507,12 @@
     <property name="icon_name">media-playback-start-symbolic</property>
     <property name="icon_size">1</property>
   </object>
+  <object class="GtkImage" id="refresh_list_image">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="icon_name">view-refresh-symbolic</property>
+    <property name="icon_size">1</property>
+  </object>
   <object class="GtkStack" id="stack_mine">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -823,6 +829,28 @@
                   </object>
                   <packing>
                     <property name="left_attach">1</property>
+                    <property name="top_attach">0</property>
+                    <property name="height">2</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="mine_up_refresh_button">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="tooltip_text" translatable="yes">刷新歌单</property>
+                    <property name="halign">end</property>
+                    <property name="valign">center</property>
+                    <property name="margin_left">9</property>
+                    <property name="image">refresh_list_image</property>
+                    <property name="always_show_image">True</property>
+                    <style>
+                      <class name="image-button"/>
+                      <class name="circular"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="left_attach">3</property>
                     <property name="top_attach">0</property>
                     <property name="height">2</property>
                   </packing>

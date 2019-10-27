@@ -32,6 +32,7 @@ struct UpView {
     container: Grid,
     dislike: Button,
     play: Button,
+    refresh: Button,
     title: Label,
     number: Label,
 }
@@ -110,12 +111,16 @@ impl Mine {
         let dislike: Button = builder
             .get_object("mine_up_del_button")
             .expect("无法获取 mine_up_del_button .");
+        let refresh: Button = builder
+            .get_object("mine_up_refresh_button")
+            .expect("无法获取 mine_up_refresh_button .");
         let upview = UpView {
             container,
             title,
             number,
             dislike,
             play,
+            refresh,
         };
         let container: ScrolledWindow = builder
             .get_object("mine_low_view")
@@ -241,6 +246,14 @@ impl Mine {
         let sender = s.sender.clone();
         s.upview.dislike.connect_clicked(move |_| {
             sender.send(Action::DisLikeSongList).unwrap_or(());
+        });
+
+        // 刷新歌单
+        let sender = s.sender.clone();
+        s.upview.refresh.connect_clicked(move |_| {
+            sender
+                .send(Action::RefreshMineCurrentView())
+                .unwrap_or(());
         });
 
         let sender = s.sender.clone();
