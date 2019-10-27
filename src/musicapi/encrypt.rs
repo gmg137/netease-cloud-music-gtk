@@ -8,7 +8,6 @@ use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::Serialize;
 use serde_urlencoded;
-extern crate aes_soft as aes;
 #[allow(unused)]
 use super::model::*;
 use openssl::{
