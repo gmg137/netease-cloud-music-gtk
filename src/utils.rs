@@ -15,6 +15,8 @@ use serde::{Deserialize, Serialize};
 use sled::*;
 use std::sync::{Arc, Mutex};
 use std::{fs::File, io, io::Error};
+use curl::easy::Easy;
+use std::io::Write;
 
 // 从网络下载图片
 // url: 网址
@@ -24,11 +26,13 @@ use std::{fs::File, io, io::Error};
 pub(crate) fn download_img(url: &str, path: &str, width: u32, high: u32) {
     if !std::path::Path::new(&path).exists() {
         let image_url = format!("{}?param={}y{}", url, width, high);
-        if let Ok(mut body) = reqwest::get(&image_url) {
-            if let Ok(mut out) = std::fs::File::create(&path) {
-                std::io::copy(&mut body, &mut out).unwrap_or(0);
-            }
-        }
+        let mut handle = Easy::new();
+        handle.url(&image_url).unwrap();
+        let mut out = std::fs::File::create(&path).unwrap();
+        handle.write_function(move |data| {
+            Ok(out.write(data).unwrap())
+        }).unwrap();
+        handle.perform().unwrap();
     }
 }
 
