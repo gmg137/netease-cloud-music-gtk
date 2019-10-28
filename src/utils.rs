@@ -27,12 +27,13 @@ pub(crate) fn download_img(url: &str, path: &str, width: u32, high: u32) {
     if !std::path::Path::new(&path).exists() {
         let image_url = format!("{}?param={}y{}", url, width, high);
         let mut handle = Easy::new();
-        handle.url(&image_url).unwrap();
-        let mut out = std::fs::File::create(&path).unwrap();
-        handle.write_function(move |data| {
-            Ok(out.write(data).unwrap())
-        }).unwrap();
-        handle.perform().unwrap();
+        handle.url(&image_url).ok();
+        if let Ok(mut out) = std::fs::File::create(&path) {
+            handle.write_function(move |data| {
+                Ok(out.write(data).unwrap_or(0))
+            }).ok();
+            handle.perform().ok();
+        }
     }
 }
 
