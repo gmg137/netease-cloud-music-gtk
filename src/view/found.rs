@@ -63,8 +63,9 @@ impl Found {
     }
 
     fn init(s: &Self) {
-        let one_row = s.sidebar.get_row_at_index(0).unwrap();
-        s.sidebar.select_row(Some(&one_row));
+        if let Some(one_row) = s.sidebar.get_row_at_index(0) {
+            s.sidebar.select_row(Some(&one_row));
+        }
         let sender = s.sender.clone();
         s.treeview.connect_button_press_event(move |tree, event| {
             if event.get_event_type() == gdk::EventType::DoubleButtonPress {
@@ -111,11 +112,11 @@ impl Found {
 
         let sender = s.sender.clone();
         s.sidebar.connect_row_selected(move |_, row| {
-            sender
-                .send(Action::RefreshFoundViewInit(
-                    row.as_ref().unwrap().get_index() as u8,
-                ))
-                .unwrap_or(());
+            if let Some(row) = row.as_ref() {
+                sender
+                    .send(Action::RefreshFoundViewInit(row.get_index() as u8))
+                    .unwrap_or(());
+            }
         });
 
         let sender = s.sender.clone();

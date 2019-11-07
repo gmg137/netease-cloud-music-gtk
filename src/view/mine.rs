@@ -3,9 +3,11 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-use crate::app::Action;
-use crate::musicapi::model::{SongInfo, SongList};
-use crate::utils::*;
+use crate::{
+    app::Action,
+    musicapi::model::{SongInfo, SongList},
+    utils::*,
+};
 use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::{
@@ -230,11 +232,11 @@ impl Mine {
 
         let sender = s.sender.clone();
         s.sidebar.connect_row_selected(move |_, row| {
-            sender
-                .send(Action::RefreshMineViewInit(
-                    row.as_ref().unwrap().get_index(),
-                ))
-                .unwrap_or(());
+            if let Some(row) = row.as_ref() {
+                sender
+                    .send(Action::RefreshMineViewInit(row.get_index()))
+                    .unwrap_or(());
+            }
         });
 
         let sender = s.sender.clone();
@@ -251,9 +253,7 @@ impl Mine {
         // 刷新歌单
         let sender = s.sender.clone();
         s.upview.refresh.connect_clicked(move |_| {
-            sender
-                .send(Action::RefreshMineCurrentView())
-                .unwrap_or(());
+            sender.send(Action::RefreshMineCurrentView()).unwrap_or(());
         });
 
         let sender = s.sender.clone();
@@ -284,8 +284,9 @@ impl Mine {
     }
 
     pub(crate) fn show_fm(&self) {
-        let one_row = self.sidebar.get_row_at_index(0).unwrap();
-        self.sidebar.select_row(Some(&one_row));
+        if let Some(one_row) = self.sidebar.get_row_at_index(0) {
+            self.sidebar.select_row(Some(&one_row));
+        }
         self.view.show_all();
         self.upview.container.hide();
         self.lowview.container.hide();
