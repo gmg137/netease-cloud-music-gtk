@@ -8,6 +8,7 @@ use crate::clone;
 use crate::data::MusicData;
 use crate::musicapi::model::SongInfo;
 use crate::utils::*;
+use crate::CACHED_PATH;
 use chrono::NaiveTime;
 use crossbeam_channel::Sender;
 use fragile::Fragile;
@@ -52,7 +53,8 @@ impl PlayerInfo {
         let mut metadata = Metadata::new();
         metadata.artist = Some(vec![song_info.singer.clone()]);
         metadata.title = Some(song_info.name.clone());
-        metadata.art_url = Some(song_info.pic_url.clone());
+        // metadata.art_url = Some(song_info.pic_url.clone());
+        metadata.art_url = Some(format!("file://{}/{}_p210.jpg", CACHED_PATH.to_owned(), song_info.id));
         metadata.track_number = Some(song_info.id as i32);
 
         self.mpris.set_metadata(metadata);
