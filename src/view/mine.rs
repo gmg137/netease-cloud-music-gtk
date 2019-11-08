@@ -14,6 +14,7 @@ use gtk::{
     Builder, Button, CellRendererText, Grid, Image, Label, ListBox, ListBoxRow, ListStore, Menu,
     MenuItem, ScrolledWindow, TreeView, TreeViewColumn,
 };
+use gdk_pixbuf::InterpType;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -323,13 +324,14 @@ impl Mine {
     }
 
     pub(crate) fn update_fm_view(&self, song_info: &SongInfo) {
-        let mut image_path = format!(
-            "{}/{}_p210.jpg",
+        let image_path = format!(
+            "{}/{}.jpg",
             crate::CACHED_PATH.to_owned(),
             &song_info.id
         );
-        download_img(&song_info.pic_url, &image_path, 210, 210);
-        let path = format!("{}/{}_p210", crate::CACHED_PATH.to_owned(), &song_info.id);
+        download_img(&song_info.pic_url, &image_path, 512, 512);
+        // let path = format!("{}/{}_p210", crate::CACHED_PATH.to_owned(), &song_info.id);
+        /*
         if create_round_avatar(path).is_ok() {
             image_path = format!(
                 "{}/{}_p210.png",
@@ -337,7 +339,11 @@ impl Mine {
                 &song_info.id
             );
         }
-        self.fmview.image.set_from_file(image_path);
+        */
+        if let Ok(image) = create_round_avatar(image_path) {
+            let image = image.scale_simple(210, 210, InterpType::Bilinear);
+            self.fmview.image.set_from_pixbuf(image.as_ref());
+        }
         self.fmview.title.set_text(&song_info.name);
         self.fmview.singer.set_text(&song_info.singer);
     }

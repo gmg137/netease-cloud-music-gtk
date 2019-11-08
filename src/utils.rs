@@ -14,9 +14,12 @@ use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use sled::*;
 use std::sync::{Arc, Mutex};
-use std::{fs::File, io, io::Error};
+use std::{io, io::Error};
 use curl::easy::Easy;
 use std::io::Write;
+use gdk_pixbuf::Pixbuf;
+use gdk::prelude::ContextExt;
+use gdk::pixbuf_get_from_surface;
 
 // 从网络下载图片
 // url: 网址
@@ -306,15 +309,9 @@ pub(crate) enum PD {
 
 // 创建圆形头像
 #[allow(unused)]
-pub(crate) fn create_round_avatar(src: String) -> io::Result<()> {
-    // 转换 jpg 为 png
-    let image = image::open(&format!("{}.jpg", src)).map_err(|_| Error::last_os_error())?;
-    let src = format!("{}.png", src);
-    image.save(&src).map_err(|_| Error::last_os_error())?;
-
+pub(crate) fn create_round_avatar(src: String) -> io::Result<Pixbuf> {
     // 初始化图像
-    let mut f = File::open(&src)?;
-    let image = ImageSurface::create_from_png(&mut f).map_err(|_| Error::last_os_error())?;
+    let image = Pixbuf::new_from_file(src).map_err(|_| Error::last_os_error())?;
 
     // 获取宽高
     let w = image.get_width();
@@ -336,15 +333,13 @@ pub(crate) fn create_round_avatar(src: String) -> io::Result<()> {
     context.new_path();
 
     context.scale(1.0, 1.0);
-    context.set_source_surface(&image, 0.0, 0.0);
+    context.set_source_pixbuf(&image, 0.0, 0.0);
     context.paint();
 
-    let mut file = File::create(&src)?;
-    surface
-        .write_to_png(&mut file)
-        .map_err(|_| Error::last_os_error())?;
+    let pixbuf = pixbuf_get_from_surface(&surface, 0, 0, w, h)
+        .ok_or(Error::last_os_error())?;
 
-    Ok(())
+    Ok(pixbuf)
 }
 
 #[allow(unused)]

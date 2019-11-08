@@ -347,18 +347,9 @@ impl Header {
         self.popover_user.show_all();
         let image_url = format!("{}?param=37y37", &login_info.avatar_url);
         let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &login_info.uid);
-        let png_path = format!("{}/{}.png", CACHED_PATH.to_owned(), &login_info.uid);
         download_img(&image_url, &image_path, 37, 37);
-        if std::path::Path::new(&png_path).exists() {
-            self.avatar.set_from_file(&png_path);
-        } else {
-            if create_round_avatar(format!("{}/{}", CACHED_PATH.to_owned(), &login_info.uid))
-                .is_ok()
-            {
-                self.avatar.set_from_file(&png_path);
-            } else {
-                self.avatar.set_from_file(&image_path);
-            }
+        if let Ok(image) = create_round_avatar(image_path) {
+            self.avatar.set_from_pixbuf(Some(&image));
         }
         self.username.set_text(&login_info.nickname);
         self.login.hide();

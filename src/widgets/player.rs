@@ -16,6 +16,8 @@ use glib::{SignalHandlerId, WeakRef};
 use gst::ClockTime;
 use gtk::prelude::*;
 use gtk::{ActionBar, Builder, Button, Image, Label, RadioButton, Scale};
+use gdk_pixbuf::Pixbuf;
+use gdk_pixbuf::InterpType;
 use mpris_player::{Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -46,15 +48,18 @@ impl PlayerInfo {
         self.song.set_tooltip_text(Some(&song_info.name[..]));
         self.singer.set_text(&song_info.singer);
         let image_path = format!("{}/{}.jpg", crate::CACHED_PATH.to_owned(), &song_info.id);
-        download_img(&song_info.pic_url, &image_path, 38, 38);
-        self.cover.set_from_file(&image_path);
+        download_img(&song_info.pic_url, &image_path, 512, 512);
+        if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+            let image = image.scale_simple(38, 38, InterpType::Bilinear);
+            self.cover.set_from_pixbuf(image.as_ref());
+        };
         self.cover.set_tooltip_text(Some(&song_info.name[..]));
 
         let mut metadata = Metadata::new();
         metadata.artist = Some(vec![song_info.singer.clone()]);
         metadata.title = Some(song_info.name.clone());
         // metadata.art_url = Some(song_info.pic_url.clone());
-        metadata.art_url = Some(format!("file://{}/{}_p210.jpg", CACHED_PATH.to_owned(), song_info.id));
+        metadata.art_url = Some(format!("file://{}/{}.jpg", CACHED_PATH.to_owned(), song_info.id));
         metadata.track_number = Some(song_info.id as i32);
 
         self.mpris.set_metadata(metadata);
