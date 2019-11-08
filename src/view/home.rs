@@ -10,6 +10,8 @@ use crate::CACHED_PATH;
 use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::{Builder, EventBox, Grid, Image, Label};
+use gdk_pixbuf::Pixbuf;
+use gdk_pixbuf::InterpType;
 use rayon::prelude::*;
 
 #[derive(Clone)]
@@ -66,7 +68,7 @@ impl Home {
             let mut t = 0;
             tsl.par_iter().for_each(|sl| {
                 let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &sl.id);
-                crate::utils::download_img(&sl.cover_img_url, &image_path, 140, 140);
+                crate::utils::download_img(&sl.cover_img_url, &image_path, 512, 512);
             });
             tsl.iter().for_each(|sl| {
                 let event_box = EventBox::new();
@@ -77,9 +79,11 @@ impl Home {
                 label.set_ellipsize(pango::EllipsizeMode::End);
                 label.set_line_wrap(true);
                 let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &sl.id);
-                let image = Image::new_from_file(&image_path);
-
-                boxs.add(&image);
+                if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+                    let image = image.scale_simple(140, 140, InterpType::Bilinear);
+                    let image = Image::new_from_pixbuf(image.as_ref());
+                    boxs.add(&image);
+                };
                 boxs.add(&label);
                 event_box.add(&boxs);
                 self.up_grid.attach(&event_box, l, t, 1, 1);
@@ -106,7 +110,7 @@ impl Home {
             if !rr.is_empty() {
                 rr.par_iter().for_each(|sl| {
                     let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &sl.id);
-                    crate::utils::download_img(&sl.cover_img_url, &image_path, 140, 140);
+                    crate::utils::download_img(&sl.cover_img_url, &image_path, 512, 512);
                 });
                 let mut l = 0;
                 for sl in rr.iter() {
@@ -119,9 +123,11 @@ impl Home {
                         label.set_ellipsize(pango::EllipsizeMode::End);
                         label.set_line_wrap(true);
                         let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &sl.id);
-                        let image = Image::new_from_file(&image_path);
-
-                        boxs.add(&image);
+                        if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+                            let image = image.scale_simple(140, 140, InterpType::Bilinear);
+                            let image = Image::new_from_pixbuf(image.as_ref());
+                            boxs.add(&image);
+                        };
                         boxs.add(&label);
                         event_box.add(&boxs);
 
