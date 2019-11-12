@@ -7,6 +7,7 @@ use crate::app::Action;
 use crate::musicapi::model::SongInfo;
 use crate::utils::{create_player_list, PlayerTypes};
 use crossbeam_channel::Sender;
+use gdk_pixbuf::{InterpType, Pixbuf};
 use gtk::prelude::*;
 use gtk::{
     Builder, Button, CellRendererText, Grid, Image, Label, ListStore, TreeView, TreeViewColumn,
@@ -151,7 +152,10 @@ impl Subpages {
         if name.is_empty() && image_path.is_empty() {
             self.overview.grid.hide();
         }
-        self.overview.pic.set_from_file(&image_path);
+        if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+            let image = image.scale_simple(140, 140, InterpType::Bilinear);
+            self.overview.pic.set_from_pixbuf(image.as_ref());
+        };
         self.overview.album.set_label(&name);
         self.overview.num.set_label("0 首");
     }
