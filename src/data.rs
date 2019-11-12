@@ -69,10 +69,7 @@ impl MusicData {
                                 week: *ISO_WEEK,
                             };
                             db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
-                            db.insert(
-                                b"login_info",
-                                serde_json::to_vec(&login_info).unwrap_or(vec![]),
-                            );
+                            db.insert(b"login_info", serde_json::to_vec(&login_info).unwrap_or(vec![]));
                             db.flush();
                             return MusicData {
                                 musicapi,
@@ -104,10 +101,7 @@ impl MusicData {
                         week: *ISO_WEEK,
                     };
                     db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
-                    db.insert(
-                        b"login_info",
-                        serde_json::to_vec(&login_info).unwrap_or(vec![]),
-                    );
+                    db.insert(b"login_info", serde_json::to_vec(&login_info).unwrap_or(vec![]));
                     db.flush();
                     return MusicData {
                         musicapi,
@@ -149,10 +143,7 @@ impl MusicData {
                         week: *ISO_WEEK,
                     };
                     db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
-                    db.insert(
-                        b"login_info",
-                        serde_json::to_vec(&login_info).unwrap_or(vec![]),
-                    );
+                    db.insert(b"login_info", serde_json::to_vec(&login_info).unwrap_or(vec![]));
                     db.flush();
                     return Some(login_info);
                 }
@@ -209,29 +200,19 @@ impl MusicData {
     // offset: 列表起点号
     // limit: 列表长度
     #[allow(unused)]
-    pub(crate) fn user_song_list(
-        &mut self,
-        uid: u32,
-        offset: u8,
-        limit: u8,
-    ) -> Option<Vec<SongList>> {
+    pub(crate) fn user_song_list(&mut self, uid: u32, offset: u8, limit: u8) -> Option<Vec<SongList>> {
         if self.login {
             if let Some(db) = &self.db {
                 // 查询缓存
                 if let Some(user_song_list_vec) = db.get(b"user_song_list").unwrap_or(None) {
-                    if let Ok(user_song_list) =
-                        serde_json::from_slice::<Vec<SongList>>(&user_song_list_vec)
-                    {
+                    if let Ok(user_song_list) = serde_json::from_slice::<Vec<SongList>>(&user_song_list_vec) {
                         return Some(user_song_list);
                     }
                 }
                 // 查询 api
                 if let Some(usl) = self.musicapi.user_song_list(uid, offset, limit) {
                     if !usl.is_empty() {
-                        db.insert(
-                            b"user_song_list",
-                            serde_json::to_vec(&usl).unwrap_or(vec![]),
-                        );
+                        db.insert(b"user_song_list", serde_json::to_vec(&usl).unwrap_or(vec![]));
                         db.flush();
                     }
                     return Some(usl);
@@ -249,9 +230,7 @@ impl MusicData {
             let key = format!("song_list_{}", songlist_id);
             if !refresh {
                 if let Some(song_list_detail_vec) = db.get(key.as_bytes()).unwrap_or(None) {
-                    if let Ok(song_list_detail) =
-                        serde_json::from_slice::<Vec<SongInfo>>(&song_list_detail_vec)
-                    {
+                    if let Ok(song_list_detail) = serde_json::from_slice::<Vec<SongInfo>>(&song_list_detail_vec) {
                         return Some(song_list_detail);
                     }
                 }
@@ -289,20 +268,14 @@ impl MusicData {
     pub(crate) fn recommend_resource(&mut self) -> Option<Vec<SongList>> {
         if self.login {
             if let Some(db) = &self.db {
-                if let Some(recommend_resource_vec) = db.get(b"recommend_resource").unwrap_or(None)
-                {
-                    if let Ok(song_list) =
-                        serde_json::from_slice::<Vec<SongList>>(&recommend_resource_vec)
-                    {
+                if let Some(recommend_resource_vec) = db.get(b"recommend_resource").unwrap_or(None) {
+                    if let Ok(song_list) = serde_json::from_slice::<Vec<SongList>>(&recommend_resource_vec) {
                         return Some(song_list);
                     }
                 }
                 if let Some(rr) = self.musicapi.recommend_resource() {
                     if !rr.is_empty() {
-                        db.insert(
-                            b"recommend_resource",
-                            serde_json::to_vec(&rr).unwrap_or(vec![]),
-                        );
+                        db.insert(b"recommend_resource", serde_json::to_vec(&rr).unwrap_or(vec![]));
                     }
                     db.flush();
                     return Some(rr);
@@ -319,18 +292,14 @@ impl MusicData {
             if let Some(db) = &self.db {
                 if !refresh {
                     if let Some(recommend_songs_vec) = db.get(b"recommend_songs").unwrap_or(None) {
-                        if let Ok(songs) = serde_json::from_slice::<Vec<SongInfo>>(&recommend_songs_vec)
-                        {
+                        if let Ok(songs) = serde_json::from_slice::<Vec<SongInfo>>(&recommend_songs_vec) {
                             return Some(songs);
                         }
                     }
                 }
                 if let Some(rs) = self.musicapi.recommend_songs() {
                     if !rs.is_empty() {
-                        db.insert(
-                            b"recommend_songs",
-                            serde_json::to_vec(&rs).unwrap_or(vec![]),
-                        );
+                        db.insert(b"recommend_songs", serde_json::to_vec(&rs).unwrap_or(vec![]));
                     }
                     db.flush();
                     return Some(rs);
@@ -354,7 +323,7 @@ impl MusicData {
         if self.musicapi.like(like, songid) {
             if let Some(login_info) = self.login_info() {
                 if let Some(usl) = &self.user_song_list(login_info.uid, 0, 50) {
-                    let row_id = 0;  // 假定喜欢的音乐歌单总排在第一位
+                    let row_id = 0; // 假定喜欢的音乐歌单总排在第一位
                     self.song_list_detail(usl[row_id].id, true);
                     return true;
                 }
@@ -376,13 +345,7 @@ impl MusicData {
     // offset: 起始点
     // limit: 数量
     #[allow(unused)]
-    pub(crate) fn search(
-        &mut self,
-        keywords: String,
-        types: u32,
-        offset: u16,
-        limit: u16,
-    ) -> Option<String> {
+    pub(crate) fn search(&mut self, keywords: String, types: u32, offset: u16, limit: u16) -> Option<String> {
         self.musicapi.search(keywords, types, offset, limit)
     }
 
@@ -436,17 +399,10 @@ impl MusicData {
     //	      "hot": 热门，
     //        "new": 最新
     #[allow(unused)]
-    pub(crate) fn top_song_list(
-        &mut self,
-        order: &str,
-        offset: u8,
-        limit: u8,
-    ) -> Option<Vec<SongList>> {
+    pub(crate) fn top_song_list(&mut self, order: &str, offset: u8, limit: u8) -> Option<Vec<SongList>> {
         if let Some(db) = &self.db {
             if let Some(top_song_list_vec) = db.get(b"top_song_list").unwrap_or(None) {
-                if let Ok(top_song_list) =
-                    serde_json::from_slice::<Vec<SongList>>(&top_song_list_vec)
-                {
+                if let Ok(top_song_list) = serde_json::from_slice::<Vec<SongList>>(&top_song_list_vec) {
                     return Some(top_song_list);
                 }
             }

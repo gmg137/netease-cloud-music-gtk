@@ -87,9 +87,7 @@ impl App {
         let glade_src = include_str!("../ui/window.ui");
         let builder = Builder::new_from_string(glade_src);
 
-        let window: ApplicationWindow = builder
-            .get_object("applicationwindow")
-            .expect("Couldn't get window");
+        let window: ApplicationWindow = builder.get_object("applicationwindow").expect("Couldn't get window");
         window.set_application(Some(application));
         window.set_title("网易云音乐");
 
@@ -152,9 +150,7 @@ impl App {
         let action = match self.receiver.try_recv() {
             Ok(a) => a,
             Err(TryRecvError::Empty) => return glib::Continue(true),
-            Err(TryRecvError::Disconnected) => {
-                unreachable!("How the hell was the action channel dropped.")
-            }
+            Err(TryRecvError::Disconnected) => unreachable!("How the hell was the action channel dropped."),
         };
 
         trace!("Incoming channel action: {:?}", action);
@@ -165,30 +161,22 @@ impl App {
             Action::RefreshHeaderUserLogout => self.header.update_user_logout(),
             Action::RefreshHome => self.view.update_home(),
             Action::RefreshHomeView(tsl, rr) => self.view.update_home_view(tsl, rr),
-            Action::RefreshSubUpView(id, name, image_path) => {
-                self.view.update_sub_up_view(id, name, image_path)
-            }
+            Action::RefreshSubUpView(id, name, image_path) => self.view.update_sub_up_view(id, name, image_path),
             Action::RefreshSubLowView(song_list) => self.view.update_sub_low_view(song_list),
             Action::ShowSubLike(show) => self.view.show_sub_like_button(show),
             Action::SwitchStackMain => self.view.switch_stack_main(),
-            Action::SwitchStackSub((id, name, image_path)) => {
-                self.view.switch_stack_sub(id, name, image_path)
-            }
+            Action::SwitchStackSub((id, name, image_path)) => self.view.switch_stack_sub(id, name, image_path),
             Action::LikeSongList => self.view.sub_like_song_list(),
             Action::DisLikeSongList => self.view.dis_like_song_list(),
             Action::RefreshFoundViewInit(id) => self.view.update_found_view_data(id),
-            Action::RefreshFoundView(song_list, title) => {
-                self.view.update_found_view(song_list, title)
-            }
+            Action::RefreshFoundView(song_list, title) => self.view.update_found_view(song_list, title),
             Action::RefreshMine => self.view.mine_init(),
             Action::MineHideAll => self.view.mine_hide_all(),
             Action::MineShowFm => self.view.mine_show_fm(),
             Action::RefreshMineViewInit(id) => self.view.update_mine_view_data(id, false),
             Action::RefreshMineCurrentView() => self.view.update_mine_current_view_data(),
             Action::RefreshMineLikeList() => self.view.update_like_song_list(),
-            Action::RefreshMineView(song_list, title) => {
-                self.view.update_mine_view(song_list, title)
-            }
+            Action::RefreshMineView(song_list, title) => self.view.update_mine_view(song_list, title),
             Action::RefreshMineFm(si) => self.view.update_mine_fm(si),
             Action::RefreshMineSidebar(vsl) => self.view.update_mine_sidebar(vsl),
             Action::RefreshMineFmPlayerList => {
@@ -206,9 +194,7 @@ impl App {
             Action::Logout => self.header.logout(),
             Action::DailyTask => self.header.daily_task(),
             Action::PlayerInit(info, pt) => self.player.initialize_player(info, pt),
-            Action::Player(info, url) => {
-                self.player.player(info, url, self.configs.borrow().lyrics)
-            }
+            Action::Player(info, url) => self.player.player(info, url, self.configs.borrow().lyrics),
             Action::ShowNotice(text) => {
                 let notif = mark_all_notif(text);
                 let old = self.notice.replace(Some(notif));

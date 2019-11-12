@@ -27,24 +27,16 @@ impl MusicApi {
         let mut headers = List::new();
         let mut curl = Easy::new();
         headers.append("Accept: */*").unwrap_or(());
-        headers
-            .append("Accept-Encoding: gzip,deflate,br")
-            .unwrap_or(());
-        headers
-            .append("Accept-Language: en-US,en;q=0.5")
-            .unwrap_or(());
+        headers.append("Accept-Encoding: gzip,deflate,br").unwrap_or(());
+        headers.append("Accept-Language: en-US,en;q=0.5").unwrap_or(());
         headers.append("Connection: keep-alive").unwrap_or(());
         headers
             .append("Content-Type: application/x-www-form-urlencoded")
             .unwrap_or(());
         headers.append("Host: music.163.com").unwrap_or(());
+        headers.append("Referer: https://music.163.com").unwrap_or(());
         headers
-            .append("Referer: https://music.163.com")
-            .unwrap_or(());
-        headers
-            .append(
-                "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0",
-            )
+            .append("User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0")
             .unwrap_or(());
         curl.http_headers(headers).unwrap_or(());
         curl.accept_encoding("gzip").unwrap_or(());
@@ -59,13 +51,7 @@ impl MusicApi {
     // path: 请求路径
     // params: 请求参数
     // custom: 是否显示本机信息
-    fn request(
-        &mut self,
-        method: Method,
-        path: &str,
-        params: &mut HashMap<String, String>,
-        custom: bool,
-    ) -> String {
+    fn request(&mut self, method: Method, path: &str, params: &mut HashMap<String, String>, custom: bool) -> String {
         let endpoint = format!("{}{}", BASE_URL, path);
         let mut csrf_token = String::new();
         if let Ok(cookies) = self.curl.cookies() {
@@ -87,14 +73,11 @@ impl MusicApi {
             value = "pc"
         }
         self.curl.url(&endpoint).unwrap_or(());
-        self.curl
-            .timeout(std::time::Duration::from_secs(10))
-            .unwrap_or(());
+        self.curl.timeout(std::time::Duration::from_secs(10)).unwrap_or(());
         let mut contents = Vec::new();
         let local: DateTime<Local> = Local::now();
         let times = local.timestamp();
-        let hextoken =
-            hex::encode(hash(MessageDigest::md5(), &times.to_string().as_bytes()).unwrap());
+        let hextoken = hex::encode(hash(MessageDigest::md5(), &times.to_string().as_bytes()).unwrap());
         match method {
             Method::POST => {
                 let make_cookie = format!("version=0;{}={};JSESSIONID-WYYY=%2FKSy%2B4xG6fYVld42G9E%2BxAj9OyjC0BYXENKxOIRH%5CR72cpy9aBjkohZ24BNkpjnBxlB6lzAG4D%5C%2FMNUZ7VUeRUeVPJKYu%2BKBnZJjEmqgpOx%2BU6VYmypKB%5CXb%2F3W7%2BDjOElCb8KlhDS2cRkxkTb9PBDXro41Oq7aBB6M6OStEK8E%2Flyc8%3A{}; _iuqxldmzr_=32; _ntes_nnid={},{}; _ntes_nuid={}", name, value,times,hextoken,hextoken,times+50);
@@ -150,8 +133,7 @@ impl MusicApi {
             params.insert("password".to_owned(), hex::encode(password));
             params.insert("rememberLogin".to_owned(), "true".to_owned());
         } else {
-            let client_token =
-                "1_jVUMqWEPke0/1/Vu56xCmJpo5vP1grjn_SOVVDzOc78w8OKLVZ2JH7IfkjSXqgfmh";
+            let client_token = "1_jVUMqWEPke0/1/Vu56xCmJpo5vP1grjn_SOVVDzOc78w8OKLVZ2JH7IfkjSXqgfmh";
             path = "/weapi/login";
             params.insert("username".to_owned(), username);
             params.insert("password".to_owned(), hex::encode(password));
@@ -248,10 +230,7 @@ impl MusicApi {
         let mut json = json.trim_end_matches(",").to_owned();
         json.push_str("]");
         params.insert("c".to_owned(), json);
-        params.insert(
-            "ids".to_owned(),
-            serde_json::to_string(ids).unwrap_or("[]".to_owned()),
-        );
+        params.insert("ids".to_owned(), serde_json::to_string(ids).unwrap_or("[]".to_owned()));
         let result = self.request(Method::POST, path, &mut params, false);
         to_song_info(result, Parse::USL)
     }
@@ -265,10 +244,7 @@ impl MusicApi {
     pub fn songs_url(&mut self, ids: &[u32], rate: u32) -> Option<Vec<SongUrl>> {
         let path = "/weapi/song/enhance/player/url";
         let mut params = HashMap::new();
-        params.insert(
-            "ids".to_owned(),
-            serde_json::to_string(ids).unwrap_or("[]".to_owned()),
-        );
+        params.insert("ids".to_owned(), serde_json::to_string(ids).unwrap_or("[]".to_owned()));
         params.insert("br".to_owned(), (rate * 1000).to_string());
         let result = self.request(Method::POST, path, &mut params, false);
         to_song_url(result)
@@ -346,13 +322,7 @@ impl MusicApi {
     // offset: 起始点
     // limit: 数量
     #[allow(unused)]
-    pub fn search(
-        &mut self,
-        keywords: String,
-        types: u32,
-        offset: u16,
-        limit: u16,
-    ) -> Option<String> {
+    pub fn search(&mut self, keywords: String, types: u32, offset: u16, limit: u16) -> Option<String> {
         let path = "/weapi/cloudsearch/get/web";
         let mut params = HashMap::new();
         params.insert("s".to_owned(), keywords);
@@ -362,8 +332,7 @@ impl MusicApi {
         params.insert("limit".to_owned(), limit.to_string());
         let result = self.request(Method::POST, path, &mut params, false);
         match types {
-            1 => to_song_info(result, Parse::SEARCH)
-                .and_then(|s| Some(serde_json::to_string(&s).unwrap())),
+            1 => to_song_info(result, Parse::SEARCH).and_then(|s| Some(serde_json::to_string(&s).unwrap())),
             100 => to_singer_info(result).and_then(|s| Some(serde_json::to_string(&s).unwrap())),
             _ => None,
         }

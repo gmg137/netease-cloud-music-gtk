@@ -12,12 +12,12 @@ use crate::CACHED_PATH;
 use chrono::NaiveTime;
 use crossbeam_channel::Sender;
 use fragile::Fragile;
+use gdk_pixbuf::InterpType;
+use gdk_pixbuf::Pixbuf;
 use glib::{SignalHandlerId, WeakRef};
 use gst::ClockTime;
 use gtk::prelude::*;
 use gtk::{ActionBar, Builder, Button, Image, Label, RadioButton, Scale};
-use gdk_pixbuf::Pixbuf;
-use gdk_pixbuf::InterpType;
 use mpris_player::{Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -179,9 +179,7 @@ impl PlayerWidget {
         mpris.set_can_set_fullscreen(false);
 
         let mut config = player.get_config();
-        config.set_user_agent(
-            "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0",
-        );
+        config.set_user_agent("User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0");
         config.set_position_update_interval(250);
         player.set_config(config).unwrap();
 
@@ -264,13 +262,9 @@ impl PlayerWidget {
             let lock = data.lock().unwrap();
             let mut data = MusicData::new();
             if let Some(v) = data.songs_url(&[song_info.id], 320) {
-                sender
-                    .send(Action::Player(song_info, v[0].url.to_owned()))
-                    .unwrap();
+                sender.send(Action::Player(song_info, v[0].url.to_owned())).unwrap();
             } else {
-                sender
-                    .send(Action::ShowNotice("播放失败!".to_owned()))
-                    .unwrap();
+                sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
             }
         });
     }
@@ -282,24 +276,17 @@ impl PlayerWidget {
         }
         match *self.player_types.borrow() {
             PlayerTypes::Fm => {
-                self.sender
-                    .send(Action::RefreshMineFm(song_info.to_owned()))
-                    .unwrap();
+                self.sender.send(Action::RefreshMineFm(song_info.to_owned())).unwrap();
             }
             _ => (),
         }
-        self.sender
-            .send(Action::ShowNotice(song_info.name.to_owned()))
-            .unwrap();
+        self.sender.send(Action::ShowNotice(song_info.name.to_owned())).unwrap();
         self.info.init(&song_info);
         self.player.set_uri(&song_url);
         self.play();
     }
 
-    fn connect_update_slider(
-        slider: &Scale,
-        player: WeakRef<gst_player::Player>,
-    ) -> SignalHandlerId {
+    fn connect_update_slider(slider: &Scale, player: WeakRef<gst_player::Player>) -> SignalHandlerId {
         slider.connect_value_changed(move |slider| {
             let player = match player.upgrade() {
                 Some(p) => p,
@@ -423,25 +410,17 @@ impl PlayerWidget {
                         let lock = data.lock().unwrap();
                         let mut data = MusicData::new();
                         if data.like(true, id as u32) {
-                            sender
-                                .send(Action::ShowNotice("已添加到喜欢!".to_owned()))
-                                .unwrap();
-                            sender
-                                .send(Action::RefreshMineLikeList())
-                                .unwrap();
+                            sender.send(Action::ShowNotice("已添加到喜欢!".to_owned())).unwrap();
+                            sender.send(Action::RefreshMineLikeList()).unwrap();
                         } else {
-                            sender
-                                .send(Action::ShowNotice("收藏失败!".to_owned()))
-                                .unwrap();
+                            sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
                         }
                     });
                     return;
                 }
             }
         }
-        self.sender
-            .send(Action::ShowNotice("收藏失败!".to_owned()))
-            .unwrap();
+        self.sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
     }
 }
 
@@ -457,11 +436,7 @@ impl Deref for PlayerWrapper {
 
 impl PlayerWrapper {
     pub(crate) fn new(builder: &Builder, sender: &Sender<Action>, data: Arc<Mutex<u8>>) -> Self {
-        let w = PlayerWrapper(Rc::new(PlayerWidget::new(
-            builder,
-            data.clone(),
-            sender.clone(),
-        )));
+        let w = PlayerWrapper(Rc::new(PlayerWidget::new(builder, data.clone(), sender.clone())));
         w.init(sender);
         w
     }
@@ -483,23 +458,17 @@ impl PlayerWrapper {
         }));
 
         // Connect the pause button to the gst Player.
-        self.controls
-            .pause
-            .connect_clicked(clone!(weak => move |_| {
-                weak.upgrade().map(|p| p.pause());
-            }));
+        self.controls.pause.connect_clicked(clone!(weak => move |_| {
+            weak.upgrade().map(|p| p.pause());
+        }));
 
-        self.controls
-            .forward
-            .connect_clicked(clone!(weak => move |_| {
-                weak.upgrade().map(|p| p.forward());
-            }));
+        self.controls.forward.connect_clicked(clone!(weak => move |_| {
+            weak.upgrade().map(|p| p.forward());
+        }));
 
-        self.controls
-            .backward
-            .connect_clicked(clone!(weak => move |_| {
-                weak.upgrade().map(|p| p.backward());
-            }));
+        self.controls.backward.connect_clicked(clone!(weak => move |_| {
+            weak.upgrade().map(|p| p.backward());
+        }));
 
         self.controls.like.connect_clicked(clone!(weak => move |_| {
             weak.upgrade().map(|p| p.like());

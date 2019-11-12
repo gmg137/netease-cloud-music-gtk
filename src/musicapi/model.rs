@@ -64,18 +64,8 @@ pub fn to_singer_info(json: String) -> Option<Vec<SingerInfo>> {
             array.iter().for_each(|v| {
                 vec.push(SingerInfo {
                     id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                    name: v
-                        .get("name")
-                        .unwrap_or(&json!(""))
-                        .as_str()
-                        .unwrap_or("")
-                        .to_owned(),
-                    pic_url: v
-                        .get("picUrl")
-                        .unwrap_or(&json!(""))
-                        .as_str()
-                        .unwrap_or("")
-                        .to_owned(),
+                    name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
+                    pic_url: v.get("picUrl").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                 });
             });
             if vec.is_empty() {
@@ -108,12 +98,7 @@ pub fn to_song_url(json: String) -> Option<Vec<SongUrl>> {
             let list = json!([]);
             let array = value.get("data").unwrap_or(&list).as_array().unwrap();
             array.iter().for_each(|v| {
-                let url = v
-                    .get("url")
-                    .unwrap_or(&json!(""))
-                    .as_str()
-                    .unwrap_or("")
-                    .to_owned();
+                let url = v.get("url").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned();
                 if !url.is_empty() {
                     vec.push(SongUrl {
                         id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
@@ -175,12 +160,7 @@ pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
                         let duration = v.get("dt").unwrap_or(&json!(0)).as_u64().unwrap() as u32;
                         vec.push(SongInfo {
                             id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
+                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                             singer: v
                                 .get("ar")
                                 .unwrap_or(&json!(&list))
@@ -207,11 +187,7 @@ pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
                                 .as_str()
                                 .unwrap_or("")
                                 .to_owned(),
-                            duration: format!(
-                                "{:0>2}:{:0>2}",
-                                duration / 1000 / 60,
-                                duration / 1000 % 60
-                            ),
+                            duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
                             song_url: String::new(),
                         });
                     });
@@ -219,16 +195,10 @@ pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
                 Parse::RMD => {
                     let array = value.get("data").unwrap_or(&list).as_array().unwrap();
                     array.iter().for_each(|v| {
-                        let duration =
-                            v.get("duration").unwrap_or(&json!(0)).as_u64().unwrap() as u32;
+                        let duration = v.get("duration").unwrap_or(&json!(0)).as_u64().unwrap() as u32;
                         vec.push(SongInfo {
                             id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
+                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                             singer: v
                                 .get("artists")
                                 .unwrap_or(&json!(&list))
@@ -255,11 +225,7 @@ pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
                                 .as_str()
                                 .unwrap_or("")
                                 .to_owned(),
-                            duration: format!(
-                                "{:0>2}:{:0>2}",
-                                duration / 1000 / 60,
-                                duration / 1000 % 60
-                            ),
+                            duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
                             song_url: String::new(),
                         });
                     });
@@ -275,16 +241,10 @@ pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
                         .as_array()
                         .unwrap();
                     array.iter().for_each(|v| {
-                        let duration =
-                            v.get("duration").unwrap_or(&json!(0)).as_u64().unwrap() as u32;
+                        let duration = v.get("duration").unwrap_or(&json!(0)).as_u64().unwrap() as u32;
                         vec.push(SongInfo {
                             id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
+                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                             singer: v
                                 .get("artists")
                                 .unwrap_or(&json!(&list))
@@ -311,11 +271,7 @@ pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
                                 .as_str()
                                 .unwrap_or("")
                                 .to_owned(),
-                            duration: format!(
-                                "{:0>2}:{:0>2}",
-                                duration / 1000 / 60,
-                                duration / 1000 % 60
-                            ),
+                            duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
                             song_url: String::new(),
                         });
                     });
@@ -334,12 +290,7 @@ pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
                         let duration = v.get("dt").unwrap_or(&json!(0)).as_u64().unwrap() as u32;
                         vec.push(SongInfo {
                             id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
+                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                             singer: v
                                 .get("ar")
                                 .unwrap_or(&json!(&list))
@@ -366,11 +317,7 @@ pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
                                 .as_str()
                                 .unwrap_or("")
                                 .to_owned(),
-                            duration: format!(
-                                "{:0>2}:{:0>2}",
-                                duration / 1000 / 60,
-                                duration / 1000 % 60
-                            ),
+                            duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
                             song_url: String::new(),
                         });
                     });
@@ -381,12 +328,7 @@ pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
                         let duration = v.get("dt").unwrap_or(&json!(0)).as_u64().unwrap() as u32;
                         vec.push(SongInfo {
                             id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
+                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                             singer: v
                                 .get("ar")
                                 .unwrap_or(&json!(&list))
@@ -413,11 +355,7 @@ pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
                                 .as_str()
                                 .unwrap_or("")
                                 .to_owned(),
-                            duration: format!(
-                                "{:0>2}:{:0>2}",
-                                duration / 1000 / 60,
-                                duration / 1000 % 60
-                            ),
+                            duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
                             song_url: String::new(),
                         });
                     });
@@ -459,12 +397,7 @@ pub fn to_song_list(json: String, parse: Parse) -> Option<Vec<SongList>> {
                     array.iter().for_each(|v| {
                         vec.push(SongList {
                             id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
+                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                             cover_img_url: v
                                 .get("coverImgUrl")
                                 .unwrap_or(&json!(""))
@@ -479,18 +412,8 @@ pub fn to_song_list(json: String, parse: Parse) -> Option<Vec<SongList>> {
                     array.iter().for_each(|v| {
                         vec.push(SongList {
                             id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            cover_img_url: v
-                                .get("picUrl")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
+                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
+                            cover_img_url: v.get("picUrl").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                         });
                     });
                 }
@@ -499,18 +422,8 @@ pub fn to_song_list(json: String, parse: Parse) -> Option<Vec<SongList>> {
                     array.iter().for_each(|v| {
                         vec.push(SongList {
                             id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            cover_img_url: v
-                                .get("picUrl")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
+                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
+                            cover_img_url: v.get("picUrl").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                         });
                     });
                 }
@@ -519,12 +432,7 @@ pub fn to_song_list(json: String, parse: Parse) -> Option<Vec<SongList>> {
                     array.iter().for_each(|v| {
                         vec.push(SongList {
                             id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
+                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                             cover_img_url: v
                                 .get("coverImgUrl")
                                 .unwrap_or(&json!(""))
@@ -564,12 +472,7 @@ pub fn to_msg(json: String) -> Option<Msg> {
                 msg: "".to_owned(),
             })
         } else {
-            let msg = value
-                .get("msg")
-                .unwrap_or(&json!(""))
-                .as_str()
-                .unwrap_or("")
-                .to_owned();
+            let msg = value.get("msg").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned();
             Some(Msg { code, msg })
         }
     } else {
@@ -597,11 +500,7 @@ pub fn to_login_info(json: String) -> Option<LoginInfo> {
     if let Ok(value) = serde_json::from_str::<Value>(&json) {
         let code = value.get("code").unwrap_or(&json!(0)).as_i64().unwrap() as i32;
         if code.eq(&200) {
-            let profile = value
-                .get("profile")
-                .unwrap_or(&json!(null))
-                .as_object()
-                .unwrap();
+            let profile = value.get("profile").unwrap_or(&json!(null)).as_object().unwrap();
             Some(LoginInfo {
                 code,
                 uid: profile.get("userId").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
@@ -620,12 +519,7 @@ pub fn to_login_info(json: String) -> Option<LoginInfo> {
                 msg: "".to_owned(),
             })
         } else {
-            let msg = value
-                .get("msg")
-                .unwrap_or(&json!(""))
-                .as_str()
-                .unwrap_or("")
-                .to_owned();
+            let msg = value.get("msg").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned();
             Some(LoginInfo {
                 code,
                 uid: 0,

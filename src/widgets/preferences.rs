@@ -32,24 +32,16 @@ impl Preferences {
 
         let sender_clone = sender.clone();
         tray.connect_state_set(move |_, state| {
-            sender_clone
-                .send(Action::ConfigsSetTray(state))
-                .unwrap_or(());
+            sender_clone.send(Action::ConfigsSetTray(state)).unwrap_or(());
             Inhibit(false)
         });
 
         let sender_clone = sender.clone();
         lyrics.connect_state_set(move |_, state| {
-            sender_clone
-                .send(Action::ConfigsSetLyrics(state))
-                .unwrap_or(());
+            sender_clone.send(Action::ConfigsSetLyrics(state)).unwrap_or(());
             Inhibit(false)
         });
 
-        Preferences {
-            dialog,
-            tray,
-            lyrics,
-        }
+        Preferences { dialog, tray, lyrics }
     }
 }

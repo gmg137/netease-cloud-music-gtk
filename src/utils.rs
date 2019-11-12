@@ -9,17 +9,17 @@ use crate::musicapi::{model::SongInfo, MusicApi};
 use crate::{CONFIG_PATH, LYRICS_PATH};
 use cairo::{Context, ImageSurface};
 use crossbeam_channel::Sender;
+use curl::easy::Easy;
+use gdk::pixbuf_get_from_surface;
+use gdk::prelude::ContextExt;
+use gdk_pixbuf::Pixbuf;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use sled::*;
+use std::io::Write;
 use std::sync::{Arc, Mutex};
 use std::{io, io::Error};
-use curl::easy::Easy;
-use std::io::Write;
-use gdk_pixbuf::Pixbuf;
-use gdk::prelude::ContextExt;
-use gdk::pixbuf_get_from_surface;
 
 // 从网络下载图片
 // url: 网址
@@ -32,9 +32,7 @@ pub(crate) fn download_img(url: &str, path: &str, width: u32, high: u32) {
         let mut handle = Easy::new();
         handle.url(&image_url).ok();
         if let Ok(mut out) = std::fs::File::create(&path) {
-            handle.write_function(move |data| {
-                Ok(out.write(data).unwrap_or(0))
-            }).ok();
+            handle.write_function(move |data| Ok(out.write(data).unwrap_or(0))).ok();
             handle.perform().ok();
         }
     }
@@ -78,9 +76,7 @@ pub(crate) fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Action>, p
             });
             // 如果播放列表为空则提示
             if player_list.is_empty() && play {
-                sender
-                    .send(Action::ShowNotice("播放失败!".to_owned()))
-                    .unwrap();
+                sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
                 return;
             }
             // 播放列表长度
@@ -99,8 +95,7 @@ pub(crate) fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Action>, p
                     .unwrap();
             }
             // 将播放列表写入数据库
-            let config = Config::default()
-                .path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
+            let config = Config::default().path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
             if let Ok(db) = config.open() {
                 db.insert(
                     b"player_list_data",
@@ -124,8 +119,7 @@ pub(crate) fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Action>, p
 // update: 是否从头循环
 #[allow(unused)]
 pub(crate) fn get_player_list_song(pd: PD, shuffle: bool, update: bool) -> Option<SongInfo> {
-    let config = Config::default()
-        .path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
+    let config = Config::default().path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
     if let Ok(db) = config.open() {
         // 从数据库查询播放列表
         if let Some(player_list_data_v) = db.get(b"player_list_data").unwrap_or(None) {
@@ -135,14 +129,12 @@ pub(crate) fn get_player_list_song(pd: PD, shuffle: bool, update: bool) -> Optio
                 index,
                 shuffle_list,
                 play_flag,
-            } = serde_json::from_slice::<PlayerListData>(&player_list_data_v).unwrap_or(
-                PlayerListData {
-                    player_list: vec![],
-                    index: 0,
-                    shuffle_list: vec![],
-                    play_flag: vec![],
-                },
-            );
+            } = serde_json::from_slice::<PlayerListData>(&player_list_data_v).unwrap_or(PlayerListData {
+                player_list: vec![],
+                index: 0,
+                shuffle_list: vec![],
+                play_flag: vec![],
+            });
             let mut index_old = index;
             let mut index_new = index;
             let mut play_flag = play_flag;
@@ -235,8 +227,7 @@ pub(crate) fn get_player_list_song(pd: PD, shuffle: bool, update: bool) -> Optio
 pub(crate) fn update_player_list(sender: Sender<Action>) {
     let sender = sender.clone();
     std::thread::spawn(move || {
-        let config = Config::default()
-            .path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
+        let config = Config::default().path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
         if let Ok(db) = config.open() {
             // 从数据库查询播放列表
             if let Some(player_list_data_v) = db.get(b"player_list_data").unwrap_or(None) {
@@ -246,14 +237,12 @@ pub(crate) fn update_player_list(sender: Sender<Action>) {
                     index,
                     shuffle_list,
                     play_flag,
-                } = serde_json::from_slice::<PlayerListData>(&player_list_data_v).unwrap_or(
-                    PlayerListData {
-                        player_list: vec![],
-                        index: 0,
-                        shuffle_list: vec![],
-                        play_flag: vec![],
-                    },
-                );
+                } = serde_json::from_slice::<PlayerListData>(&player_list_data_v).unwrap_or(PlayerListData {
+                    player_list: vec![],
+                    index: 0,
+                    shuffle_list: vec![],
+                    play_flag: vec![],
+                });
                 // 提取歌曲 id 列表
                 let song_id_list = player_list.iter().map(|si| si.id).collect::<Vec<u32>>();
                 let mut api = MusicApi::new();
@@ -309,7 +298,7 @@ pub(crate) enum PD {
 
 // 创建圆形头像
 #[allow(unused)]
-pub(crate) fn create_round_avatar(src: String) -> io::Result<Pixbuf> {
+pub(crate) fn create_round_avatar(src: &str) -> io::Result<Pixbuf> {
     // 初始化图像
     let image = Pixbuf::new_from_file(src).map_err(|_| Error::last_os_error())?;
 
@@ -318,8 +307,7 @@ pub(crate) fn create_round_avatar(src: String) -> io::Result<Pixbuf> {
     let h = image.get_height();
 
     // 创建底图
-    let surface =
-        ImageSurface::create(cairo::Format::ARgb32, w, h).map_err(|_| Error::last_os_error())?;
+    let surface = ImageSurface::create(cairo::Format::ARgb32, w, h).map_err(|_| Error::last_os_error())?;
     let context = Context::new(&surface);
     // 画出圆弧
     context.arc(
@@ -336,8 +324,7 @@ pub(crate) fn create_round_avatar(src: String) -> io::Result<Pixbuf> {
     context.set_source_pixbuf(&image, 0.0, 0.0);
     context.paint();
 
-    let pixbuf = pixbuf_get_from_surface(&surface, 0, 0, w, h)
-        .ok_or(Error::last_os_error())?;
+    let pixbuf = pixbuf_get_from_surface(&surface, 0, 0, w, h).ok_or(Error::last_os_error())?;
 
     Ok(pixbuf)
 }
@@ -364,8 +351,7 @@ pub(crate) struct Configs {
 // 加载配置
 #[allow(unused)]
 pub(crate) fn load_config() -> Configs {
-    let config = Config::default()
-        .path(format!("{}/config.db", CONFIG_PATH.to_owned()));
+    let config = Config::default().path(format!("{}/config.db", CONFIG_PATH.to_owned()));
     if let Ok(db) = config.open() {
         if let Some(conf) = db.get(b"config").unwrap_or(None) {
             return serde_json::from_slice::<Configs>(&conf).unwrap_or(Configs {
@@ -385,8 +371,7 @@ pub(crate) fn load_config() -> Configs {
 // 保存配置
 #[allow(unused)]
 pub(crate) fn save_config(conf: &Configs) {
-    let config = Config::default()
-        .path(format!("{}/config.db", CONFIG_PATH.to_owned()));
+    let config = Config::default().path(format!("{}/config.db", CONFIG_PATH.to_owned()));
     if let Ok(db) = config.open() {
         db.insert(b"config", serde_json::to_vec(&conf).unwrap_or(vec![]));
         db.flush();

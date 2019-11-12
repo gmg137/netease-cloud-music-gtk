@@ -24,9 +24,7 @@ pub(crate) struct Found {
 
 impl Found {
     pub(crate) fn new(builder: &Builder, sender: Sender<Action>) -> Self {
-        let sidebar: ListBox = builder
-            .get_object("found_listbox")
-            .expect("无法获取 found_listbox .");
+        let sidebar: ListBox = builder.get_object("found_listbox").expect("无法获取 found_listbox .");
         let title: Label = builder
             .get_object("found_songs_title")
             .expect("无法获取 found_songs_title .");
@@ -71,26 +69,11 @@ impl Found {
             if event.get_event_type() == gdk::EventType::DoubleButtonPress {
                 if let Some((model, iter)) = tree.get_selection().get_selected() {
                     let id = model.get_value(&iter, 0).get::<u32>().unwrap_or(0);
-                    let name = model
-                        .get_value(&iter, 1)
-                        .get::<String>()
-                        .unwrap_or("".to_owned());
-                    let duration = model
-                        .get_value(&iter, 2)
-                        .get::<String>()
-                        .unwrap_or("".to_owned());
-                    let singer = model
-                        .get_value(&iter, 3)
-                        .get::<String>()
-                        .unwrap_or("".to_owned());
-                    let album = model
-                        .get_value(&iter, 4)
-                        .get::<String>()
-                        .unwrap_or("".to_owned());
-                    let pic_url = model
-                        .get_value(&iter, 5)
-                        .get::<String>()
-                        .unwrap_or("".to_owned());
+                    let name = model.get_value(&iter, 1).get::<String>().unwrap_or("".to_owned());
+                    let duration = model.get_value(&iter, 2).get::<String>().unwrap_or("".to_owned());
+                    let singer = model.get_value(&iter, 3).get::<String>().unwrap_or("".to_owned());
+                    let album = model.get_value(&iter, 4).get::<String>().unwrap_or("".to_owned());
+                    let pic_url = model.get_value(&iter, 5).get::<String>().unwrap_or("".to_owned());
                     sender
                         .send(Action::PlayerInit(
                             SongInfo {

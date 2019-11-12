@@ -37,11 +37,7 @@ pub(crate) struct View {
 }
 
 impl View {
-    pub(crate) fn new(
-        builder: &Builder,
-        sender: &Sender<Action>,
-        data: Arc<Mutex<u8>>,
-    ) -> Rc<Self> {
+    pub(crate) fn new(builder: &Builder, sender: &Sender<Action>, data: Arc<Mutex<u8>>) -> Rc<Self> {
         let stack: Stack = builder.get_object("stack").expect("无法获取 stack 窗口.");
         let main_stack: Stack = builder
             .get_object("stack_main_pages")
@@ -50,15 +46,9 @@ impl View {
             .get_object("stack_subpages")
             .expect("无法获取 stack_subpages 窗口.");
 
-        let home_stack: Stack = builder
-            .get_object("stack_home")
-            .expect("无法获取 stack_home 窗口.");
-        let found_stack: Stack = builder
-            .get_object("stack_found")
-            .expect("无法获取 stack_found 窗口.");
-        let mine_stack: Stack = builder
-            .get_object("stack_mine")
-            .expect("无法获取 stack_mine 窗口.");
+        let home_stack: Stack = builder.get_object("stack_home").expect("无法获取 stack_home 窗口.");
+        let found_stack: Stack = builder.get_object("stack_found").expect("无法获取 stack_found 窗口.");
+        let mine_stack: Stack = builder.get_object("stack_mine").expect("无法获取 stack_mine 窗口.");
 
         main_stack.add_titled(&home_stack, "home", "首页");
         main_stack.add_titled(&found_stack, "found", "发现");
@@ -102,18 +92,12 @@ impl View {
             let lock = data.lock().unwrap();
             let mut data = MusicData::new();
             if let Some(song_list) = data.song_list_detail(id, false) {
-                sender
-                    .send(Action::RefreshSubLowView(song_list))
-                    .unwrap_or(());
+                sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
             } else {
-                sender
-                    .send(Action::ShowNotice("网络异常!".to_owned()))
-                    .unwrap();
+                sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
             }
         });
-        self.sender
-            .send(Action::SwitchHeaderBar(name))
-            .unwrap_or(());
+        self.sender.send(Action::SwitchHeaderBar(name)).unwrap_or(());
         self.stack.set_visible_child(&self.subpages_stack);
     }
 
@@ -131,19 +115,13 @@ impl View {
             let mut data = MusicData::new();
             if let Some(json) = data.search(text_clone, 1, 0, 50) {
                 if let Ok(song_list) = serde_json::from_str::<Vec<SongInfo>>(&json) {
-                    sender
-                        .send(Action::RefreshSubLowView(song_list))
-                        .unwrap_or(());
+                    sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
                 }
             } else {
-                sender
-                    .send(Action::ShowNotice("网络异常!".to_owned()))
-                    .unwrap();
+                sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
             }
         });
-        self.sender
-            .send(Action::SwitchHeaderBar(text))
-            .unwrap_or(());
+        self.sender.send(Action::SwitchHeaderBar(text)).unwrap_or(());
         self.stack.set_visible_child(&self.subpages_stack);
     }
 
@@ -152,9 +130,7 @@ impl View {
     }
 
     pub(crate) fn update_sub_up_view(&self, id: u32, name: String, image_path: String) {
-        self.subpages
-            .borrow_mut()
-            .update_up_view(id, name, image_path);
+        self.subpages.borrow_mut().update_up_view(id, name, image_path);
         let sender = self.sender.clone();
         let data = self.data.clone();
         spawn(move || {
@@ -223,9 +199,7 @@ impl View {
                     .send(Action::RefreshHomeView(tsl[0..8].to_owned(), vec![]))
                     .unwrap_or(());
             } else {
-                sender
-                    .send(Action::ShowNotice("网络异常!".to_owned()))
-                    .unwrap();
+                sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
             }
         });
     }
@@ -261,9 +235,7 @@ impl View {
                     .send(Action::RefreshFoundView(song_list, title.to_string()))
                     .unwrap_or(());
             } else {
-                sender
-                    .send(Action::ShowNotice("网络异常!".to_owned()))
-                    .unwrap();
+                sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
             }
         });
     }
@@ -318,9 +290,7 @@ impl View {
                     }
                 }
             } else {
-                sender
-                    .send(Action::ShowNotice("获取 FM 歌单失败!".to_owned()))
-                    .unwrap();
+                sender.send(Action::ShowNotice("获取 FM 歌单失败!".to_owned())).unwrap();
             }
         });
     }
@@ -364,15 +334,11 @@ impl View {
                         if let Some(si) = data.songs_detail(&song_id_list) {
                             if !vsi.is_empty() {
                                 crate::utils::create_player_list(&si, sender.clone(), false);
-                                sender
-                                    .send(Action::RefreshMineFm(si[0].to_owned()))
-                                    .unwrap_or(());
+                                sender.send(Action::RefreshMineFm(si[0].to_owned())).unwrap_or(());
                             }
                         }
                     } else {
-                        sender
-                            .send(Action::ShowNotice("获取 FM 歌单失败!".to_owned()))
-                            .unwrap();
+                        sender.send(Action::ShowNotice("获取 FM 歌单失败!".to_owned())).unwrap();
                     }
                 });
             }
@@ -388,15 +354,10 @@ impl View {
             if row_id == 1 {
                 if let Some(song_list) = data.recommend_songs(refresh) {
                     sender
-                        .send(Action::RefreshMineView(
-                            song_list,
-                            "每日歌曲推荐".to_owned(),
-                        ))
+                        .send(Action::RefreshMineView(song_list, "每日歌曲推荐".to_owned()))
                         .unwrap_or(());
                 } else {
-                    sender
-                        .send(Action::ShowNotice("网络异常!".to_owned()))
-                        .unwrap();
+                    sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
                 }
             } else {
                 row_id -= 2;
@@ -407,9 +368,7 @@ impl View {
                         .send(Action::RefreshMineView(song_list, sl.name.to_owned()))
                         .unwrap_or(());
                 } else {
-                    sender
-                        .send(Action::ShowNotice("网络异常!".to_owned()))
-                        .unwrap();
+                    sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
                 }
             }
         });
@@ -440,9 +399,7 @@ impl View {
                 let sl = &data.user_song_list(uid, 0, 50).unwrap()[row_id as usize];
                 if data.song_list_like(false, sl.id) {
                     data.del(b"user_song_list");
-                    sender
-                        .send(Action::ShowNotice("已删除歌单!".to_owned()))
-                        .unwrap_or(());
+                    sender.send(Action::ShowNotice("已删除歌单!".to_owned())).unwrap_or(());
                     if let Some(vsl) = data.user_song_list(uid, 0, 50) {
                         sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
                     }

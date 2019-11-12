@@ -9,9 +9,7 @@ use crate::utils::{create_player_list, PlayerTypes};
 use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
 use gtk::prelude::*;
-use gtk::{
-    Builder, Button, CellRendererText, Grid, Image, Label, ListStore, TreeView, TreeViewColumn,
-};
+use gtk::{Builder, Button, CellRendererText, Grid, Image, Label, ListStore, TreeView, TreeViewColumn};
 
 #[derive(Clone)]
 pub(crate) struct Subpages {
@@ -35,9 +33,7 @@ pub(crate) struct Overview {
 
 impl Subpages {
     pub(crate) fn new(builder: &Builder, sender: Sender<Action>) -> Self {
-        let grid: Grid = builder
-            .get_object("subpages_grid")
-            .expect("无法获取 subpages_grid .");
+        let grid: Grid = builder.get_object("subpages_grid").expect("无法获取 subpages_grid .");
         let pic: Image = builder
             .get_object("subpages_album_image")
             .expect("无法获取 subpages_album_image .");
@@ -90,26 +86,11 @@ impl Subpages {
             if event.get_event_type() == gdk::EventType::DoubleButtonPress {
                 if let Some((model, iter)) = tree.get_selection().get_selected() {
                     let id = model.get_value(&iter, 0).get::<u32>().unwrap_or(0);
-                    let name = model
-                        .get_value(&iter, 1)
-                        .get::<String>()
-                        .unwrap_or("".to_owned());
-                    let duration = model
-                        .get_value(&iter, 2)
-                        .get::<String>()
-                        .unwrap_or("".to_owned());
-                    let singer = model
-                        .get_value(&iter, 3)
-                        .get::<String>()
-                        .unwrap_or("".to_owned());
-                    let album = model
-                        .get_value(&iter, 4)
-                        .get::<String>()
-                        .unwrap_or("".to_owned());
-                    let pic_url = model
-                        .get_value(&iter, 5)
-                        .get::<String>()
-                        .unwrap_or("".to_owned());
+                    let name = model.get_value(&iter, 1).get::<String>().unwrap_or("".to_owned());
+                    let duration = model.get_value(&iter, 2).get::<String>().unwrap_or("".to_owned());
+                    let singer = model.get_value(&iter, 3).get::<String>().unwrap_or("".to_owned());
+                    let album = model.get_value(&iter, 4).get::<String>().unwrap_or("".to_owned());
+                    let pic_url = model.get_value(&iter, 5).get::<String>().unwrap_or("".to_owned());
                     sender
                         .send(Action::PlayerInit(
                             SongInfo {

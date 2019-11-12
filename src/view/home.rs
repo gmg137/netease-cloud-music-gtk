@@ -8,10 +8,9 @@ use crate::app::Action;
 use crate::musicapi::model::*;
 use crate::CACHED_PATH;
 use crossbeam_channel::Sender;
+use gdk_pixbuf::{InterpType, Pixbuf};
 use gtk::prelude::*;
 use gtk::{Builder, EventBox, Grid, Image, Label};
-use gdk_pixbuf::Pixbuf;
-use gdk_pixbuf::InterpType;
 use rayon::prelude::*;
 
 #[derive(Clone)]
@@ -31,9 +30,7 @@ impl Home {
         let low_grid: Grid = builder
             .get_object("recommend_resource_grid")
             .expect("无法获取 recommend_resource_grid 窗口.");
-        let up_title: gtk::Box = builder
-            .get_object("home_top_title")
-            .expect("无法获取 top title.");
+        let up_title: gtk::Box = builder.get_object("home_top_title").expect("无法获取 top title.");
         let low_title: gtk::Box = builder
             .get_object("home_recommend_title")
             .expect("无法获取 recommend title.");
@@ -68,7 +65,7 @@ impl Home {
             let mut t = 0;
             tsl.par_iter().for_each(|sl| {
                 let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &sl.id);
-                crate::utils::download_img(&sl.cover_img_url, &image_path, 512, 512);
+                crate::utils::download_img(&sl.cover_img_url, &image_path, 210, 210);
             });
             tsl.iter().for_each(|sl| {
                 let event_box = EventBox::new();
@@ -98,11 +95,7 @@ impl Home {
                 let sender = self.sender.clone();
                 event_box.connect_button_press_event(move |_, _| {
                     sender
-                        .send(Action::SwitchStackSub((
-                            id,
-                            name.to_owned(),
-                            image_path.to_owned(),
-                        )))
+                        .send(Action::SwitchStackSub((id, name.to_owned(), image_path.to_owned())))
                         .unwrap_or(());
                     Inhibit(false)
                 });
@@ -110,7 +103,7 @@ impl Home {
             if !rr.is_empty() {
                 rr.par_iter().for_each(|sl| {
                     let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &sl.id);
-                    crate::utils::download_img(&sl.cover_img_url, &image_path, 512, 512);
+                    crate::utils::download_img(&sl.cover_img_url, &image_path, 210, 210);
                 });
                 let mut l = 0;
                 for sl in rr.iter() {
@@ -137,11 +130,7 @@ impl Home {
                         let sender = self.sender.clone();
                         event_box.connect_button_press_event(move |_, _| {
                             sender
-                                .send(Action::SwitchStackSub((
-                                    id,
-                                    name.to_owned(),
-                                    image_path.to_owned(),
-                                )))
+                                .send(Action::SwitchStackSub((id, name.to_owned(), image_path.to_owned())))
                                 .unwrap_or(());
                             Inhibit(false)
                         });

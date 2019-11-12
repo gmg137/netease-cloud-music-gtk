@@ -9,12 +9,12 @@ use crate::{
     utils::*,
 };
 use crossbeam_channel::Sender;
+use gdk_pixbuf::{InterpType, Pixbuf};
 use gtk::prelude::*;
 use gtk::{
-    Builder, Button, CellRendererText, Grid, Image, Label, ListBox, ListBoxRow, ListStore, Menu,
-    MenuItem, ScrolledWindow, TreeView, TreeViewColumn,
+    Builder, Button, CellRendererText, Grid, Image, Label, ListBox, ListBoxRow, ListStore, Menu, MenuItem,
+    ScrolledWindow, TreeView, TreeViewColumn,
 };
-use gdk_pixbuf::InterpType;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -62,18 +62,10 @@ pub(crate) struct Mine {
 
 impl Mine {
     pub(crate) fn new(builder: &Builder, sender: Sender<Action>) -> Self {
-        let view: gtk::Box = builder
-            .get_object("mine_view")
-            .expect("无法获取 mine_view .");
-        let sidebar: ListBox = builder
-            .get_object("mine_listbox")
-            .expect("无法获取 mine_listbox .");
-        let container: Grid = builder
-            .get_object("mine_fm_grid")
-            .expect("无法获取 mine_fm_grid .");
-        let image: Image = builder
-            .get_object("mine_fm_image")
-            .expect("无法获取 mine_fm_image .");
+        let view: gtk::Box = builder.get_object("mine_view").expect("无法获取 mine_view .");
+        let sidebar: ListBox = builder.get_object("mine_listbox").expect("无法获取 mine_listbox .");
+        let container: Grid = builder.get_object("mine_fm_grid").expect("无法获取 mine_fm_grid .");
+        let image: Image = builder.get_object("mine_fm_image").expect("无法获取 mine_fm_image .");
         let like: Button = builder
             .get_object("mine_fm_like_button")
             .expect("无法获取 mine_fm_like_button .");
@@ -83,12 +75,8 @@ impl Mine {
         let play: Button = builder
             .get_object("mine_fm_play_button")
             .expect("无法获取 mine_fm_play_button .");
-        let title: Label = builder
-            .get_object("mine_fm_title")
-            .expect("无法获取 mine_fm_title .");
-        let singer: Label = builder
-            .get_object("mine_fm_singer")
-            .expect("无法获取 mine_fm_singer .");
+        let title: Label = builder.get_object("mine_fm_title").expect("无法获取 mine_fm_title .");
+        let singer: Label = builder.get_object("mine_fm_singer").expect("无法获取 mine_fm_singer .");
         let fmview = FmView {
             container,
             image,
@@ -99,15 +87,9 @@ impl Mine {
             singer,
             nowplay: Rc::new(RefCell::new(None)),
         };
-        let container: Grid = builder
-            .get_object("mine_up_grid")
-            .expect("无法获取 mine_up_grid .");
-        let title: Label = builder
-            .get_object("mine_up_title")
-            .expect("无法获取 mine_up_title .");
-        let number: Label = builder
-            .get_object("mine_up_num")
-            .expect("无法获取 min_up_num .");
+        let container: Grid = builder.get_object("mine_up_grid").expect("无法获取 mine_up_grid .");
+        let title: Label = builder.get_object("mine_up_title").expect("无法获取 mine_up_title .");
+        let number: Label = builder.get_object("mine_up_num").expect("无法获取 min_up_num .");
         let play: Button = builder
             .get_object("mine_up_play_button")
             .expect("无法获取 mine_up_play_button .");
@@ -125,18 +107,14 @@ impl Mine {
             play,
             refresh,
         };
-        let container: ScrolledWindow = builder
-            .get_object("mine_low_view")
-            .expect("无法获取 mine_low_view .");
+        let container: ScrolledWindow = builder.get_object("mine_low_view").expect("无法获取 mine_low_view .");
         let popmenu: Menu = builder
             .get_object("song_list_popup_menu")
             .expect("无法获取 song_list_popup_menu .");
         let cc: MenuItem = builder
             .get_object("mine_cancel_collection")
             .expect("无法获取 mine_cancel_collection .");
-        let tree: TreeView = builder
-            .get_object("mine_tree_view")
-            .expect("无法获取 mine_tree_view .");
+        let tree: TreeView = builder.get_object("mine_tree_view").expect("无法获取 mine_tree_view .");
         let store: ListStore = ListStore::new(&[
             gtk::Type::U32,
             String::static_type(),
@@ -178,65 +156,45 @@ impl Mine {
         let sender = s.sender.clone();
         let listbox = s.sidebar.downgrade();
         let popmenu = s.lowview.popmenu.downgrade();
-        s.lowview
-            .tree
-            .connect_button_press_event(move |tree, event| {
-                if event.get_event_type() == gdk::EventType::ButtonPress && event.get_button() == 3
-                {
-                    if let Some(row) = listbox.upgrade().unwrap().get_selected_row() {
-                        if row.get_index() == 2 {
-                            popmenu.upgrade().unwrap().popup_easy(3, event.get_time());
-                        }
+        s.lowview.tree.connect_button_press_event(move |tree, event| {
+            if event.get_event_type() == gdk::EventType::ButtonPress && event.get_button() == 3 {
+                if let Some(row) = listbox.upgrade().unwrap().get_selected_row() {
+                    if row.get_index() == 2 {
+                        popmenu.upgrade().unwrap().popup_easy(3, event.get_time());
                     }
                 }
-                if event.get_event_type() == gdk::EventType::DoubleButtonPress {
-                    if let Some((model, iter)) = tree.get_selection().get_selected() {
-                        let id = model.get_value(&iter, 0).get::<u32>().unwrap_or(0);
-                        let name = model
-                            .get_value(&iter, 1)
-                            .get::<String>()
-                            .unwrap_or("".to_owned());
-                        let duration = model
-                            .get_value(&iter, 2)
-                            .get::<String>()
-                            .unwrap_or("".to_owned());
-                        let singer = model
-                            .get_value(&iter, 3)
-                            .get::<String>()
-                            .unwrap_or("".to_owned());
-                        let album = model
-                            .get_value(&iter, 4)
-                            .get::<String>()
-                            .unwrap_or("".to_owned());
-                        let pic_url = model
-                            .get_value(&iter, 5)
-                            .get::<String>()
-                            .unwrap_or("".to_owned());
-                        sender
-                            .send(Action::PlayerInit(
-                                SongInfo {
-                                    id,
-                                    name,
-                                    duration,
-                                    singer,
-                                    album,
-                                    pic_url,
-                                    song_url: String::new(),
-                                },
-                                PlayerTypes::Song,
-                            ))
-                            .unwrap_or(());
-                    }
+            }
+            if event.get_event_type() == gdk::EventType::DoubleButtonPress {
+                if let Some((model, iter)) = tree.get_selection().get_selected() {
+                    let id = model.get_value(&iter, 0).get::<u32>().unwrap_or(0);
+                    let name = model.get_value(&iter, 1).get::<String>().unwrap_or("".to_owned());
+                    let duration = model.get_value(&iter, 2).get::<String>().unwrap_or("".to_owned());
+                    let singer = model.get_value(&iter, 3).get::<String>().unwrap_or("".to_owned());
+                    let album = model.get_value(&iter, 4).get::<String>().unwrap_or("".to_owned());
+                    let pic_url = model.get_value(&iter, 5).get::<String>().unwrap_or("".to_owned());
+                    sender
+                        .send(Action::PlayerInit(
+                            SongInfo {
+                                id,
+                                name,
+                                duration,
+                                singer,
+                                album,
+                                pic_url,
+                                song_url: String::new(),
+                            },
+                            PlayerTypes::Song,
+                        ))
+                        .unwrap_or(());
                 }
-                Inhibit(false)
-            });
+            }
+            Inhibit(false)
+        });
 
         let sender = s.sender.clone();
         s.sidebar.connect_row_selected(move |_, row| {
             if let Some(row) = row.as_ref() {
-                sender
-                    .send(Action::RefreshMineViewInit(row.get_index()))
-                    .unwrap_or(());
+                sender.send(Action::RefreshMineViewInit(row.get_index())).unwrap_or(());
             }
         });
 
@@ -324,25 +282,16 @@ impl Mine {
     }
 
     pub(crate) fn update_fm_view(&self, song_info: &SongInfo) {
-        let image_path = format!(
-            "{}/{}.jpg",
-            crate::CACHED_PATH.to_owned(),
-            &song_info.id
-        );
-        download_img(&song_info.pic_url, &image_path, 512, 512);
-        // let path = format!("{}/{}_p210", crate::CACHED_PATH.to_owned(), &song_info.id);
-        /*
-        if create_round_avatar(path).is_ok() {
-            image_path = format!(
-                "{}/{}_p210.png",
-                crate::CACHED_PATH.to_owned(),
-                &song_info.id
-            );
-        }
-        */
-        if let Ok(image) = create_round_avatar(image_path) {
+        let image_path = format!("{}/{}.jpg", crate::CACHED_PATH.to_owned(), &song_info.id);
+        download_img(&song_info.pic_url, &image_path, 210, 210);
+        if let Ok(image) = create_round_avatar(&image_path) {
             let image = image.scale_simple(210, 210, InterpType::Bilinear);
             self.fmview.image.set_from_pixbuf(image.as_ref());
+        } else {
+            if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+                let image = image.scale_simple(210, 210, InterpType::Bilinear);
+                self.fmview.image.set_from_pixbuf(image.as_ref());
+            };
         }
         self.fmview.title.set_text(&song_info.name);
         self.fmview.singer.set_text(&song_info.singer);

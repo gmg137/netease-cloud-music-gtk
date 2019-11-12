@@ -14,8 +14,8 @@ use crate::{APP_VERSION, CACHED_PATH};
 use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::{
-    AboutDialog, Builder, Button, Dialog, Entry, Image, Label, MenuButton, ModelButton, Popover,
-    SearchBar, SearchEntry, StackSwitcher, ToggleButton,
+    AboutDialog, Builder, Button, Dialog, Entry, Image, Label, MenuButton, ModelButton, Popover, SearchBar,
+    SearchEntry, StackSwitcher, ToggleButton,
 };
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
@@ -57,87 +57,35 @@ pub(crate) struct LoginDialog {
 }
 
 impl Header {
-    pub(crate) fn new(
-        builder: &Builder,
-        sender: &Sender<Action>,
-        data: Arc<Mutex<u8>>,
-        configs: &Configs,
-    ) -> Rc<Self> {
-        let back: Button = builder
-            .get_object("back_button")
-            .expect("Couldn't get back button");
-        let switch: StackSwitcher = builder
-            .get_object("stack_switch")
-            .expect("Couldn't get stack switch");
-        let title: Label = builder
-            .get_object("subpages_title")
-            .expect("Couldn't get title");
-        let search: ToggleButton = builder
-            .get_object("search_button")
-            .expect("Couldn't get search button");
-        let search_bar: SearchBar = builder
-            .get_object("search_bar")
-            .expect("Couldn't get search bar");
-        let search_entry: SearchEntry = builder
-            .get_object("search_entry")
-            .expect("Couldn't get search entry");
-        let avatar: Image = builder
-            .get_object("avatar")
-            .expect("Couldn't get avatar image");
+    pub(crate) fn new(builder: &Builder, sender: &Sender<Action>, data: Arc<Mutex<u8>>, configs: &Configs) -> Rc<Self> {
+        let back: Button = builder.get_object("back_button").expect("Couldn't get back button");
+        let switch: StackSwitcher = builder.get_object("stack_switch").expect("Couldn't get stack switch");
+        let title: Label = builder.get_object("subpages_title").expect("Couldn't get title");
+        let search: ToggleButton = builder.get_object("search_button").expect("Couldn't get search button");
+        let search_bar: SearchBar = builder.get_object("search_bar").expect("Couldn't get search bar");
+        let search_entry: SearchEntry = builder.get_object("search_entry").expect("Couldn't get search entry");
+        let avatar: Image = builder.get_object("avatar").expect("Couldn't get avatar image");
         let username: Label = builder
             .get_object("username_label")
             .expect("Couldn't get username_label");
-        let menu: MenuButton = builder
-            .get_object("menu_button")
-            .expect("Couldn't get menu button");
-        let logoutbox: gtk::Box = builder
-            .get_object("logout_box")
-            .expect("Couldn't get login button");
-        let login: ModelButton = builder
-            .get_object("login_button")
-            .expect("Couldn't get login button");
-        let logout: Button = builder
-            .get_object("logout_button")
-            .expect("Couldn't get logout button");
-        let user_button: MenuButton = builder
-            .get_object("user_button")
-            .expect("Couldn't get user button");
+        let menu: MenuButton = builder.get_object("menu_button").expect("Couldn't get menu button");
+        let logoutbox: gtk::Box = builder.get_object("logout_box").expect("Couldn't get login button");
+        let login: ModelButton = builder.get_object("login_button").expect("Couldn't get login button");
+        let logout: Button = builder.get_object("logout_button").expect("Couldn't get logout button");
+        let user_button: MenuButton = builder.get_object("user_button").expect("Couldn't get user button");
         let preferences_button: ModelButton = builder
             .get_object("preferences_button")
             .expect("Couldn't get preferences button");
-        let about_button: ModelButton = builder
-            .get_object("about_button")
-            .expect("Couldn't get about button");
-        let close_button: ModelButton = builder
-            .get_object("close_button")
-            .expect("Couldn't get close button");
-        let about: AboutDialog = builder
-            .get_object("about_dialog")
-            .expect("Couldn't get about dialog");
-        let task: Button = builder
-            .get_object("task_button")
-            .expect("Couldn't get task button");
-        let dialog: Dialog = builder
-            .get_object("login_dialog")
-            .expect("Couldn't get login dialog");
-        let popover_user: Popover = builder
-            .get_object("popover_user")
-            .expect("Couldn't get popover");
-        let name: Entry = builder
-            .get_object("name_entry")
-            .expect("Couldn't get name entry");
-        let pass: Entry = builder
-            .get_object("pass_entry")
-            .expect("Couldn't get pass entry");
-        let ok: Button = builder
-            .get_object("login")
-            .expect("Couldn't get login button");
-        let login_dialog = LoginDialog {
-            dialog,
-            name,
-            pass,
-            ok,
-        };
+        let about_button: ModelButton = builder.get_object("about_button").expect("Couldn't get about button");
+        let close_button: ModelButton = builder.get_object("close_button").expect("Couldn't get close button");
+        let about: AboutDialog = builder.get_object("about_dialog").expect("Couldn't get about dialog");
+        let task: Button = builder.get_object("task_button").expect("Couldn't get task button");
+        let dialog: Dialog = builder.get_object("login_dialog").expect("Couldn't get login dialog");
+        let popover_user: Popover = builder.get_object("popover_user").expect("Couldn't get popover");
+        let name: Entry = builder.get_object("name_entry").expect("Couldn't get name entry");
+        let pass: Entry = builder.get_object("pass_entry").expect("Couldn't get pass entry");
+        let ok: Button = builder.get_object("login").expect("Couldn't get login button");
+        let login_dialog = LoginDialog { dialog, name, pass, ok };
         let preferences = Preferences::new(builder, sender.clone(), configs);
         let header = Header {
             back,
@@ -258,21 +206,19 @@ impl Header {
 
         // 关于按钮
         let about_weak = s.about.downgrade();
-        s.about_button
-            .connect_clicked(clone!(about_weak => move |_| {
-                let about = upgrade_weak!(about_weak);
-                about.run();
-                about.hide();
-            }));
+        s.about_button.connect_clicked(clone!(about_weak => move |_| {
+            let about = upgrade_weak!(about_weak);
+            about.run();
+            about.hide();
+        }));
 
         // 首选项
         let dialog_weak = s.preferences.dialog.downgrade();
-        s.preferences_button
-            .connect_clicked(clone!(dialog_weak => move |_| {
-                let dialog = upgrade_weak!(dialog_weak);
-                dialog.run();
-                dialog.hide();
-            }));
+        s.preferences_button.connect_clicked(clone!(dialog_weak => move |_| {
+            let dialog = upgrade_weak!(dialog_weak);
+            dialog.run();
+            dialog.hide();
+        }));
 
         // 关闭按钮
         let sen = sender.clone();
@@ -300,9 +246,7 @@ impl Header {
                     return;
                 }
             };
-            sender
-                .send(Action::ShowNotice("登陆异常!".to_owned()))
-                .unwrap();
+            sender.send(Action::ShowNotice("登陆异常!".to_owned())).unwrap();
         });
     }
 
@@ -348,7 +292,7 @@ impl Header {
         let image_url = format!("{}?param=37y37", &login_info.avatar_url);
         let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &login_info.uid);
         download_img(&image_url, &image_path, 37, 37);
-        if let Ok(image) = create_round_avatar(image_path) {
+        if let Ok(image) = create_round_avatar(&image_path) {
             self.avatar.set_from_pixbuf(Some(&image));
         }
         self.username.set_text(&login_info.nickname);
@@ -372,16 +316,12 @@ impl Header {
             let mut data = MusicData::new();
             if let Some(task) = data.daily_task() {
                 if task.code == 200 {
-                    sender
-                        .send(Action::ShowNotice("签到成功!".to_owned()))
-                        .unwrap();
+                    sender.send(Action::ShowNotice("签到成功!".to_owned())).unwrap();
                 } else {
                     sender.send(Action::ShowNotice(task.msg)).unwrap();
                 }
             } else {
-                sender
-                    .send(Action::ShowNotice("网络异常!".to_owned()))
-                    .unwrap();
+                sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
             }
         });
     }
