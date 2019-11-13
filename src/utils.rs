@@ -6,7 +6,7 @@
 use crate::app::Action;
 use crate::data::MusicData;
 use crate::musicapi::{model::SongInfo, MusicApi};
-use crate::{CONFIG_PATH, LYRICS_PATH};
+use crate::{CACHED_PATH, CONFIG_PATH, LYRICS_PATH};
 use cairo::{Context, ImageSurface};
 use crossbeam_channel::Sender;
 use curl::easy::Easy;
@@ -20,6 +20,20 @@ use sled::*;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 use std::{io, io::Error};
+
+// 下载音乐
+// url: 网址
+// path: 本地保存路径(包含文件名)
+pub(crate) fn download_music(url: &str, path: &str) {
+    if !std::path::Path::new(&path).exists() {
+        let mut handle = Easy::new();
+        handle.url(&url).ok();
+        if let Ok(mut out) = std::fs::File::create(&path) {
+            handle.write_function(move |data| Ok(out.write(data).unwrap_or(0))).ok();
+            handle.perform().ok();
+        }
+    }
+}
 
 // 从网络下载图片
 // url: 网址
@@ -87,12 +101,7 @@ pub(crate) fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Action>, p
             shuffle_list.shuffle(&mut rng);
             if play {
                 // 播放第一首歌曲
-                sender
-                    .send(Action::Player(
-                        player_list[0].to_owned(),
-                        player_list[0].song_url.to_owned(),
-                    ))
-                    .unwrap();
+                sender.send(Action::ReadyPlayer(player_list[0].to_owned())).unwrap();
             }
             // 将播放列表写入数据库
             let config = Config::default().path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
@@ -263,12 +272,12 @@ pub(crate) fn update_player_list(sender: Sender<Action>) {
                     if new_player_list.is_empty() {
                         return;
                     }
-                    // 播放第一首歌曲
+                    // 删除错误缓存
+                    let path = format!("{}/{}.mp3", CACHED_PATH.to_owned(), new_player_list[index as usize].id);
+                    std::fs::remove_file(path).unwrap_or(());
+                    // 继续播放歌曲
                     sender
-                        .send(Action::Player(
-                            new_player_list[index as usize].to_owned(),
-                            new_player_list[index as usize].song_url.to_owned(),
-                        ))
+                        .send(Action::ReadyPlayer(new_player_list[index as usize].to_owned()))
                         .unwrap();
                     // 将播放列表写入数据库
                     db.insert(

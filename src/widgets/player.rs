@@ -262,18 +262,31 @@ impl PlayerWidget {
             let lock = data.lock().unwrap();
             let mut data = MusicData::new();
             if let Some(v) = data.songs_url(&[song_info.id], 320) {
-                sender.send(Action::Player(song_info, v[0].url.to_owned())).unwrap();
+                // 缓存音乐到本地
+                let path = format!("{}/{}.mp3", CACHED_PATH.to_owned(), song_info.id);
+                download_music(&v[0].url, &path);
+                sender.send(Action::Player(song_info)).unwrap();
             } else {
                 sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
             }
         });
     }
 
-    pub(crate) fn player(&self, song_info: SongInfo, song_url: String, lyrics: bool) {
+    pub(crate) fn ready_player(&self, song_info: SongInfo, lyrics: bool) {
+        let sender = self.sender.clone();
         let data = self.data.clone();
-        if lyrics {
-            download_lyrics(&song_info.name, &song_info, data);
-        }
+        std::thread::spawn(move || {
+            if lyrics {
+                download_lyrics(&song_info.name, &song_info, data);
+            }
+            // 缓存音乐到本地
+            let path = format!("{}/{}.mp3", CACHED_PATH.to_owned(), song_info.id);
+            download_music(&song_info.song_url, &path);
+            sender.send(Action::Player(song_info)).unwrap();
+        });
+    }
+
+    pub(crate) fn player(&self, song_info: SongInfo) {
         match *self.player_types.borrow() {
             PlayerTypes::Fm => {
                 self.sender.send(Action::RefreshMineFm(song_info.to_owned())).unwrap();
@@ -282,7 +295,8 @@ impl PlayerWidget {
         }
         self.sender.send(Action::ShowNotice(song_info.name.to_owned())).unwrap();
         self.info.init(&song_info);
-        self.player.set_uri(&song_url);
+        let song_uri = format!("file://{}/{}.mp3", CACHED_PATH.to_owned(), song_info.id);
+        self.player.set_uri(&song_uri);
         self.play();
     }
 
@@ -329,9 +343,7 @@ impl PlayerWidget {
         match *self.player_types.borrow() {
             PlayerTypes::Fm => {
                 if let Some(si) = get_player_list_song(PD::FORWARD, false, false) {
-                    self.sender
-                        .send(Action::Player(si.to_owned(), si.song_url.to_owned()))
-                        .unwrap();
+                    self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
                 } else {
                     self.sender.send(Action::RefreshMineFmPlayerList).unwrap();
                 }
@@ -343,14 +355,10 @@ impl PlayerWidget {
             LoopsState::SHUFFLE => true,
             LoopsState::PLAYLIST => {
                 if let Some(si) = get_player_list_song(PD::FORWARD, false, false) {
-                    self.sender
-                        .send(Action::Player(si.to_owned(), si.song_url.to_owned()))
-                        .unwrap();
+                    self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
                 } else {
                     if let Some(si) = get_player_list_song(PD::FORWARD, false, true) {
-                        self.sender
-                            .send(Action::Player(si.to_owned(), si.song_url.to_owned()))
-                            .unwrap();
+                        self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
                     }
                 }
                 return;
@@ -362,9 +370,7 @@ impl PlayerWidget {
             LoopsState::CONSECUTIVE => false,
         };
         if let Some(si) = get_player_list_song(PD::FORWARD, state, false) {
-            self.sender
-                .send(Action::Player(si.to_owned(), si.song_url.to_owned()))
-                .unwrap();
+            self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
         }
     }
 
@@ -373,14 +379,10 @@ impl PlayerWidget {
             LoopsState::SHUFFLE => true,
             LoopsState::PLAYLIST => {
                 if let Some(si) = get_player_list_song(PD::BACKWARD, false, false) {
-                    self.sender
-                        .send(Action::Player(si.to_owned(), si.song_url.to_owned()))
-                        .unwrap();
+                    self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
                 } else {
                     if let Some(si) = get_player_list_song(PD::BACKWARD, false, true) {
-                        self.sender
-                            .send(Action::Player(si.to_owned(), si.song_url.to_owned()))
-                            .unwrap();
+                        self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
                     }
                 }
                 return;
@@ -393,9 +395,7 @@ impl PlayerWidget {
             LoopsState::CONSECUTIVE => false,
         };
         if let Some(si) = get_player_list_song(PD::BACKWARD, state, false) {
-            self.sender
-                .send(Action::Player(si.to_owned(), si.song_url.to_owned()))
-                .unwrap();
+            self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
         }
     }
 
