@@ -9,7 +9,8 @@ mod home;
 mod mine;
 mod subpages;
 use crate::app::Action;
-use crate::data::MusicData;
+// use crate::data::MusicData;
+use crate::MUSIC_DATA;
 use crate::musicapi::model::*;
 use crate::{TOP_ID, TOP_NAME};
 use crossbeam_channel::Sender;
@@ -90,7 +91,8 @@ impl View {
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if let Some(song_list) = data.song_list_detail(id, false) {
                 sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
             } else {
@@ -112,7 +114,8 @@ impl View {
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if let Some(json) = data.search(text_clone, 1, 0, 50) {
                 if let Ok(song_list) = serde_json::from_str::<Vec<SongInfo>>(&json) {
                     sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
@@ -136,7 +139,8 @@ impl View {
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if data.login_info().is_some() {
                 sender.send(Action::ShowSubLike(true)).unwrap_or(());
             } else {
@@ -156,7 +160,8 @@ impl View {
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if data.song_list_like(true, id) {
                 data.del(b"user_song_list");
                 sender
@@ -185,7 +190,8 @@ impl View {
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if let Some(tsl) = data.top_song_list("hot", 0, 9) {
                 if data.login {
                     if let Some(rr) = data.recommend_resource() {
@@ -229,7 +235,8 @@ impl View {
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if let Some(song_list) = data.song_list_detail(*lid, false) {
                 sender
                     .send(Action::RefreshFoundView(song_list, title.to_string()))
@@ -251,7 +258,8 @@ impl View {
         let data = self.data.clone();
         spawn(move || {
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if data.login {
                 sender.send(Action::MineShowFm).unwrap_or(());
                 if let Some(login_info) = data.login_info() {
@@ -277,7 +285,8 @@ impl View {
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if let Some(vsi) = data.personal_fm() {
                 // 提取歌曲 id 列表
                 let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u32>>();
@@ -327,7 +336,8 @@ impl View {
                 let data = self.data.clone();
                 spawn(move || {
                     let lock = data.lock().unwrap();
-                    let mut data = MusicData::new();
+                    // let mut data = MusicData::new();
+                    let mut data = MUSIC_DATA.lock().unwrap();
                     if let Some(vsi) = data.personal_fm() {
                         // 提取歌曲 id 列表
                         let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u32>>();
@@ -350,7 +360,8 @@ impl View {
         let data = self.data.clone();
         spawn(move || {
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if row_id == 1 {
                 if let Some(song_list) = data.recommend_songs(refresh) {
                     sender
@@ -393,7 +404,8 @@ impl View {
             spawn(move || {
                 #[allow(unused_variables)]
                 let lock = data.lock().unwrap();
-                let mut data = MusicData::new();
+                // let mut data = MusicData::new();
+                let mut data = MUSIC_DATA.lock().unwrap();
                 row_id -= 2;
                 let uid = data.login_info().unwrap().uid;
                 let sl = &data.user_song_list(uid, 0, 50).unwrap()[row_id as usize];
@@ -426,7 +438,8 @@ impl View {
             spawn(move || {
                 #[allow(unused_variables)]
                 let lock = data.lock().unwrap();
-                let mut data = MusicData::new();
+                // let mut data = MusicData::new();
+                let mut data = MUSIC_DATA.lock().unwrap();
                 data.like(true, si.id);
             });
         }
@@ -438,7 +451,8 @@ impl View {
             spawn(move || {
                 #[allow(unused_variables)]
                 let lock = data.lock().unwrap();
-                let mut data = MusicData::new();
+                // let mut data = MusicData::new();
+                let mut data = MUSIC_DATA.lock().unwrap();
                 data.fm_trash(si.id);
             });
         }
@@ -451,7 +465,8 @@ impl View {
             spawn(move || {
                 #[allow(unused_variables)]
                 let lock = data.lock().unwrap();
-                let mut data = MusicData::new();
+                // let mut data = MusicData::new();
+                let mut data = MUSIC_DATA.lock().unwrap();
                 data.like(false, id);
                 sender.send(Action::RefreshMineCurrentView()).unwrap_or(());
             });

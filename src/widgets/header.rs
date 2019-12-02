@@ -6,7 +6,8 @@
 
 use super::preferences::Preferences;
 use crate::app::Action;
-use crate::data::MusicData;
+// use crate::data::MusicData;
+use crate::MUSIC_DATA;
 use crate::musicapi::model::LoginInfo;
 use crate::utils::*;
 use crate::{clone, upgrade_weak};
@@ -234,7 +235,8 @@ impl Header {
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if let Some(login_info) = data.login(name, pass) {
                 if login_info.code == 200 {
                     sender.send(Action::RefreshHeaderUser).unwrap();
@@ -257,7 +259,8 @@ impl Header {
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             data.logout();
             sender.send(Action::RefreshHeaderUser).unwrap();
             sender.send(Action::RefreshHome).unwrap();
@@ -272,7 +275,8 @@ impl Header {
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if data.login {
                 if let Some(login_info) = data.login_info() {
                     sender
@@ -313,7 +317,8 @@ impl Header {
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if let Some(task) = data.daily_task() {
                 if task.code == 200 {
                     sender.send(Action::ShowNotice("签到成功!".to_owned())).unwrap();
