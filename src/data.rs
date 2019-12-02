@@ -7,7 +7,7 @@
 use crate::musicapi::{model::*, MusicApi};
 use crate::{CACHED_PATH, CONFIG_PATH, DATE_DAY, ISO_WEEK};
 use serde::{Deserialize, Serialize};
-use sled::Db;
+use sled::{Config, Db};
 use std::path::Path;
 use std::{fs, io};
 
@@ -41,8 +41,12 @@ pub(crate) struct MusicData {
 impl MusicData {
     #[allow(unused)]
     pub(crate) fn new() -> Self {
+        // println!("new MusicData!");
         // 加载数据文件
-        if let Ok(db) = Db::open(format!("{}/db", CONFIG_PATH.to_owned())) {
+        if let Ok(db) = Config::default()
+            .path(format!("{}/db", CONFIG_PATH.to_owned()))
+            .cache_capacity(1024 * 1024 * 10)
+            .open() {
             // 查询状态数据
             if let Some(status_data) = db.get(b"status_data").unwrap_or(None) {
                 if let Ok(status_data) = serde_json::from_slice::<StatusData>(&status_data) {

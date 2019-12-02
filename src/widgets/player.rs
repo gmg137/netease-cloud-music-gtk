@@ -5,7 +5,8 @@
 //
 use crate::app::Action;
 use crate::clone;
-use crate::data::MusicData;
+// use crate::data::MusicData;
+use crate::MUSIC_DATA;
 use crate::musicapi::model::SongInfo;
 use crate::utils::*;
 use crate::CACHED_PATH;
@@ -260,7 +261,8 @@ impl PlayerWidget {
         std::thread::spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
-            let mut data = MusicData::new();
+            // let mut data = MusicData::new();
+            let mut data = MUSIC_DATA.lock().unwrap();
             if let Some(v) = data.songs_url(&[song_info.id], 320) {
                 // 缓存音乐到本地
                 let path = format!("{}/{}.mp3", CACHED_PATH.to_owned(), song_info.id);
@@ -408,7 +410,8 @@ impl PlayerWidget {
                     std::thread::spawn(move || {
                         #[allow(unused_variables)]
                         let lock = data.lock().unwrap();
-                        let mut data = MusicData::new();
+                        // let mut data = MusicData::new();
+                        let mut data = MUSIC_DATA.lock().unwrap();
                         if data.like(true, id as u32) {
                             sender.send(Action::ShowNotice("已添加到喜欢!".to_owned())).unwrap();
                             sender.send(Action::RefreshMineLikeList()).unwrap();

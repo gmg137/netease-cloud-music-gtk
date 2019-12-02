@@ -4,7 +4,8 @@
 // Distributed under terms of the GPLv3 license.
 //
 use crate::app::Action;
-use crate::data::MusicData;
+// use crate::data::MusicData;
+use crate::MUSIC_DATA;
 use crate::musicapi::{model::SongInfo, MusicApi};
 use crate::{CACHED_PATH, CONFIG_PATH, LYRICS_PATH};
 use cairo::{Context, ImageSurface};
@@ -393,7 +394,8 @@ pub(crate) fn download_lyrics(file: &str, song_info: &SongInfo, data: Arc<Mutex<
     if !std::path::Path::new(&path).exists() {
         #[allow(unused_variables)]
         let lock = data.lock().unwrap();
-        let mut data = MusicData::new();
+        // let mut data = MusicData::new();
+        let mut data = MUSIC_DATA.lock().unwrap();
         if let Some(vec) = data.song_lyric(song_info.id) {
             let mut lrc = String::new();
             vec.iter().for_each(|v| {

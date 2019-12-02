@@ -13,6 +13,9 @@ mod view;
 mod widgets;
 use crate::app::App;
 use std::collections::HashMap;
+use std::sync::Mutex;
+use data::MusicData;
+
 static APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 lazy_static! {
@@ -107,6 +110,8 @@ lazy_static! {
         m.insert(17,"华语金曲榜");
         m
     };
+
+    static ref MUSIC_DATA: Mutex<MusicData> = Mutex::new(MusicData::new());
 }
 
 #[macro_export]
