@@ -1,7 +1,7 @@
 [package]
 name = "netease-cloud-music-gtk"
 description = "Linux 平台下基于 Rust + GTK 开发的网易云音乐播放器"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["gmg137 <gmg137@live.com>"]
 license = "GPL-v3"
 edition = "2018"
