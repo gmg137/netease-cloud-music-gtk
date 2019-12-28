@@ -43,7 +43,7 @@ crossbeam-channel = "*"
 cargo-rpm = "*"
 
 [features]
-default = []
+default = ["gtk_3_24"]
 gtk_3_18 = ["gtk/v3_18", "gio/v2_46"]
 gtk_3_22_30 = ["gtk_3_18", "gtk/v3_22_30", "gio/v2_56"]
 gtk_3_24 = ["gtk_3_22_30", "gtk/v3_24", "gio/v2_58"]
