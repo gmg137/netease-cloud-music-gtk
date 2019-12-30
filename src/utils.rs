@@ -5,14 +5,14 @@
 //
 use crate::app::Action;
 // use crate::data::MusicData;
-use crate::MUSIC_DATA;
 use crate::musicapi::{model::SongInfo, MusicApi};
+use crate::MUSIC_DATA;
 use crate::{CACHED_PATH, CONFIG_PATH, LYRICS_PATH};
 use cairo::{Context, ImageSurface};
 use crossbeam_channel::Sender;
 use curl::easy::Easy;
 use gdk::pixbuf_get_from_surface;
-use gdk::prelude::ContextExt;
+use gdk::prelude::GdkContextExt;
 use gdk_pixbuf::Pixbuf;
 use rand::seq::SliceRandom;
 use rand::thread_rng;

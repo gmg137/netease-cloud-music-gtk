@@ -116,7 +116,7 @@ impl Mine {
             .expect("无法获取 mine_cancel_collection .");
         let tree: TreeView = builder.get_object("mine_tree_view").expect("无法获取 mine_tree_view .");
         let store: ListStore = ListStore::new(&[
-            gtk::Type::U32,
+            glib::Type::U32,
             String::static_type(),
             String::static_type(),
             String::static_type(),
@@ -166,12 +166,32 @@ impl Mine {
             }
             if event.get_event_type() == gdk::EventType::DoubleButtonPress {
                 if let Some((model, iter)) = tree.get_selection().get_selected() {
-                    let id = model.get_value(&iter, 0).get::<u32>().unwrap_or(0);
-                    let name = model.get_value(&iter, 1).get::<String>().unwrap_or("".to_owned());
-                    let duration = model.get_value(&iter, 2).get::<String>().unwrap_or("".to_owned());
-                    let singer = model.get_value(&iter, 3).get::<String>().unwrap_or("".to_owned());
-                    let album = model.get_value(&iter, 4).get::<String>().unwrap_or("".to_owned());
-                    let pic_url = model.get_value(&iter, 5).get::<String>().unwrap_or("".to_owned());
+                    let id = model.get_value(&iter, 0).get_some::<u32>().unwrap_or(0);
+                    let name = model
+                        .get_value(&iter, 1)
+                        .get::<String>()
+                        .unwrap_or(None)
+                        .unwrap_or("".to_owned());
+                    let duration = model
+                        .get_value(&iter, 2)
+                        .get::<String>()
+                        .unwrap_or(None)
+                        .unwrap_or("".to_owned());
+                    let singer = model
+                        .get_value(&iter, 3)
+                        .get::<String>()
+                        .unwrap_or(None)
+                        .unwrap_or("".to_owned());
+                    let album = model
+                        .get_value(&iter, 4)
+                        .get::<String>()
+                        .unwrap_or(None)
+                        .unwrap_or("".to_owned());
+                    let pic_url = model
+                        .get_value(&iter, 5)
+                        .get::<String>()
+                        .unwrap_or(None)
+                        .unwrap_or("".to_owned());
                     sender
                         .send(Action::PlayerInit(
                             SongInfo {
@@ -233,7 +253,7 @@ impl Mine {
 
     pub(crate) fn get_song_id(&self) -> Option<u32> {
         if let Some((model, iter)) = self.lowview.tree.get_selection().get_selected() {
-            return model.get_value(&iter, 0).get::<u32>();
+            return model.get_value(&iter, 0).get_some::<u32>().ok();
         }
         None
     }

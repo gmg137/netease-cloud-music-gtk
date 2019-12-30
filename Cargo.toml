@@ -8,15 +8,15 @@ edition = "2018"
 homepage = "https://github.com/gmg137/netease-cloud-music-gtk"
 
 [dependencies]
-gtk = "*"
-gdk = "*"
-gio = "*"
-glib = "*"
-pango = "*"
-gdk-pixbuf ="*"
-gstreamer = "*"
-gstreamer-player = "*"
-cairo-rs = { version = "^0", features = ["png"] }
+gtk = "^0.8"
+gdk = "^0.12"
+gio = "^0.8"
+glib = "^0.9"
+pango = "^0.8"
+gdk-pixbuf ="^0.8"
+gstreamer = "^0.15"
+gstreamer-player = "^0.15"
+cairo-rs = { version = "^0.8", features = ["png"] }
 dbus = "*"
 
 curl = "*"
@@ -30,7 +30,7 @@ serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 regex = "*"
 serde_urlencoded = "*"
-sled = "0.29"
+sled = "^0.30"
 lazy_static = "*"
 chrono = "*"
 rayon = "*"
@@ -49,7 +49,7 @@ gtk_3_22_30 = ["gtk_3_18", "gtk/v3_22_30", "gio/v2_56"]
 gtk_3_24 = ["gtk_3_22_30", "gtk/v3_24", "gio/v2_58"]
 
 [dependencies.mpris-player]
-version = "0"
+version = "^0.5"
 git = "https://gitlab.gnome.org/World/Rust/mpris-player"
 
 [package.metadata.rpm.cargo]

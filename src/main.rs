@@ -12,9 +12,9 @@ mod utils;
 mod view;
 mod widgets;
 use crate::app::App;
+use data::MusicData;
 use std::collections::HashMap;
 use std::sync::Mutex;
-use data::MusicData;
 
 static APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
