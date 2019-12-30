@@ -10,8 +10,8 @@ mod mine;
 mod subpages;
 use crate::app::Action;
 // use crate::data::MusicData;
-use crate::MUSIC_DATA;
 use crate::musicapi::model::*;
+use crate::MUSIC_DATA;
 use crate::{TOP_ID, TOP_NAME};
 use crossbeam_channel::Sender;
 use found::*;
@@ -104,10 +104,9 @@ impl View {
     }
 
     pub(crate) fn switch_stack_search(&self, text: String) {
-        // 发送更新子页概览
-        self.sender
-            .send(Action::RefreshSubUpView(0, String::new(), String::new()))
-            .unwrap_or(());
+        //self.sender
+        //.send(Action::RefreshSubUpView(0, String::new(), String::new()))
+        //.unwrap_or(());
         let sender = self.sender.clone();
         let data = self.data.clone();
         let text_clone = text.clone();
@@ -118,7 +117,14 @@ impl View {
             let mut data = MUSIC_DATA.lock().unwrap();
             if let Some(json) = data.search(text_clone, 1, 0, 50) {
                 if let Ok(song_list) = serde_json::from_str::<Vec<SongInfo>>(&json) {
-                    sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
+                    // 发送更新子页概览, 用以清除原始歌曲列表
+                    if sender
+                        .send(Action::RefreshSubUpView(0, String::new(), String::new()))
+                        .is_ok()
+                    {
+                        // 刷新搜索结果
+                        sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
+                    }
                 }
             } else {
                 sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
