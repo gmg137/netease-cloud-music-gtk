@@ -6,10 +6,9 @@
 
 use super::preferences::Preferences;
 use crate::app::Action;
-// use crate::data::MusicData;
-use crate::MUSIC_DATA;
 use crate::musicapi::model::LoginInfo;
 use crate::utils::*;
+use crate::MUSIC_DATA;
 use crate::{clone, upgrade_weak};
 use crate::{APP_VERSION, CACHED_PATH};
 use crossbeam_channel::Sender;
@@ -172,19 +171,14 @@ impl Header {
         // 搜索框
         let search_entry_weak = s.search_entry.downgrade();
         let sender_clone = sender.clone();
-        s.search_entry
-            .connect_key_press_event(clone!(search_entry_weak =>move|_, key| {
-                // 回车键直接搜索
-                let keyval = key.get_keyval();
-                if keyval == 65293 || keyval == 65421 {
-                    if let Some(text) = search_entry_weak.upgrade().unwrap().get_text(){
-                        if !text.is_empty(){
-                            sender_clone.send(Action::Search(text.to_owned())).unwrap_or(());
-                        }
-                    }
+        s.search_entry.connect_activate(clone!(search_entry_weak =>move|_| {
+            // 回车键直接搜索
+            if let Some(text) = search_entry_weak.upgrade().unwrap().get_text(){
+                if !text.is_empty(){
+                    sender_clone.send(Action::Search(text.to_owned())).unwrap_or(());
                 }
-                Inhibit(false)
-            }));
+            }
+        }));
 
         // 返回按钮
         let sen = sender.clone();
