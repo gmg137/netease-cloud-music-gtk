@@ -82,19 +82,22 @@ impl View {
     }
 
     pub(crate) fn switch_stack_sub(&self, id: u32, name: String, image_path: String) {
-        // 发送更新子页概览
-        self.sender
-            .send(Action::RefreshSubUpView(id, name.to_owned(), image_path))
-            .unwrap_or(());
         let sender = self.sender.clone();
         let data = self.data.clone();
+        let name_clone = name.to_owned();
         spawn(move || {
             #[allow(unused_variables)]
             let lock = data.lock().unwrap();
             // let mut data = MusicData::new();
             let mut data = MUSIC_DATA.lock().unwrap();
             if let Some(song_list) = data.song_list_detail(id, false) {
-                sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
+                // 发送更新子页概览
+                if sender
+                    .send(Action::RefreshSubUpView(id, name_clone, image_path))
+                    .is_ok()
+                {
+                    sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
+                }
             } else {
                 sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
             }
@@ -104,9 +107,6 @@ impl View {
     }
 
     pub(crate) fn switch_stack_search(&self, text: String) {
-        //self.sender
-        //.send(Action::RefreshSubUpView(0, String::new(), String::new()))
-        //.unwrap_or(());
         let sender = self.sender.clone();
         let data = self.data.clone();
         let text_clone = text.clone();
