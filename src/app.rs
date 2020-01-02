@@ -101,8 +101,7 @@ impl App {
 
         let tray = configs.tray.clone();
         let weak_app = application.downgrade();
-        let weak_window = window.downgrade();
-        window.connect_delete_event(move |_, _| {
+        window.connect_delete_event(move |w, _| {
             if !tray {
                 let app = match weak_app.upgrade() {
                     Some(a) => a,
@@ -113,11 +112,7 @@ impl App {
                 app.quit();
                 return Inhibit(false);
             } else {
-                let window = match weak_window.upgrade() {
-                    Some(a) => a,
-                    None => return Inhibit(false),
-                };
-                window.iconify();
+                w.hide_on_delete();
                 return Inhibit(true);
             }
         });
