@@ -57,11 +57,6 @@
     <property name="icon_name">media-playback-pause-symbolic</property>
     <property name="icon_size">1</property>
   </object>
-  <object class="GtkImage" id="play_list">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="icon_name">folder-symbolic</property>
-  </object>
   <object class="GtkImage" id="play_list_image">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -507,6 +502,100 @@
     <property name="icon_name">media-playback-start-symbolic</property>
     <property name="icon_size">1</property>
   </object>
+  <object class="GtkImage" id="play_list_image2">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="icon_name">media-playback-start-symbolic</property>
+    <property name="icon_size">1</property>
+  </object>
+  <object class="GtkImage" id="play_list_image3">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="icon_name">media-playback-start-symbolic</property>
+    <property name="icon_size">1</property>
+  </object>
+  <object class="GtkPopover" id="popover-play">
+    <property name="width_request">137</property>
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkBox">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkRadioButton" id="shuffle_radio">
+            <property name="label" translatable="yes">随机播放</property>
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="receives_default">False</property>
+            <property name="image_position">right</property>
+            <property name="active">True</property>
+            <property name="draw_indicator">True</property>
+            <property name="group">consecutive_radio</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkRadioButton" id="playlist_radio">
+            <property name="label" translatable="yes">循环播放</property>
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="receives_default">False</property>
+            <property name="active">True</property>
+            <property name="draw_indicator">True</property>
+            <property name="group">consecutive_radio</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkRadioButton" id="none_radio">
+            <property name="label" translatable="yes">单曲循环</property>
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="receives_default">False</property>
+            <property name="active">True</property>
+            <property name="draw_indicator">True</property>
+            <property name="group">consecutive_radio</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkRadioButton" id="consecutive_radio">
+            <property name="label" translatable="yes">关闭循环</property>
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="receives_default">False</property>
+            <property name="active">True</property>
+            <property name="draw_indicator">True</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">3</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkImage" id="previous_image">
+    <property name="visible">True</property>
+    <property name="can_focus">True</property>
+    <property name="margin_top">1</property>
+    <property name="icon_name">media-skip-backward-symbolic</property>
+    <property name="icon_size">1</property>
+  </object>
   <object class="GtkImage" id="refresh_list_image">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -901,100 +990,6 @@
         <property name="title" translatable="yes">page0</property>
       </packing>
     </child>
-  </object>
-  <object class="GtkImage" id="play_list_image2">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="icon_name">media-playback-start-symbolic</property>
-    <property name="icon_size">1</property>
-  </object>
-  <object class="GtkImage" id="play_list_image3">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="icon_name">media-playback-start-symbolic</property>
-    <property name="icon_size">1</property>
-  </object>
-  <object class="GtkPopover" id="popover-play">
-    <property name="width_request">137</property>
-    <property name="can_focus">False</property>
-    <child>
-      <object class="GtkBox">
-        <property name="visible">True</property>
-        <property name="can_focus">False</property>
-        <property name="orientation">vertical</property>
-        <child>
-          <object class="GtkRadioButton" id="shuffle_radio">
-            <property name="label" translatable="yes">随机播放</property>
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="receives_default">False</property>
-            <property name="image_position">right</property>
-            <property name="active">True</property>
-            <property name="draw_indicator">True</property>
-            <property name="group">consecutive_radio</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkRadioButton" id="playlist_radio">
-            <property name="label" translatable="yes">循环播放</property>
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="receives_default">False</property>
-            <property name="active">True</property>
-            <property name="draw_indicator">True</property>
-            <property name="group">consecutive_radio</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkRadioButton" id="none_radio">
-            <property name="label" translatable="yes">单曲循环</property>
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="receives_default">False</property>
-            <property name="active">True</property>
-            <property name="draw_indicator">True</property>
-            <property name="group">consecutive_radio</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkRadioButton" id="consecutive_radio">
-            <property name="label" translatable="yes">关闭循环</property>
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="receives_default">False</property>
-            <property name="active">True</property>
-            <property name="draw_indicator">True</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">3</property>
-          </packing>
-        </child>
-      </object>
-    </child>
-  </object>
-  <object class="GtkImage" id="previous_image">
-    <property name="visible">True</property>
-    <property name="can_focus">True</property>
-    <property name="margin_top">1</property>
-    <property name="icon_name">media-skip-backward-symbolic</property>
-    <property name="icon_size">1</property>
   </object>
   <object class="GtkMenu" id="song_list_popup_menu">
     <property name="visible">True</property>
@@ -1862,6 +1857,7 @@
                 <property name="receives_default">True</property>
                 <property name="tooltip_text" translatable="yes">喜欢</property>
                 <property name="valign">center</property>
+                <property name="relief">none</property>
                 <child>
                   <object class="GtkImage">
                     <property name="visible">True</property>
@@ -1882,6 +1878,7 @@
                 <property name="tooltip_text" translatable="yes">播放模式</property>
                 <property name="halign">center</property>
                 <property name="valign">center</property>
+                <property name="relief">none</property>
                 <property name="popover">popover-play</property>
                 <child>
                   <object class="GtkBox">
@@ -1922,14 +1919,38 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton">
+              <object class="GtkVolumeButton" id="volume_button">
                 <property name="width_request">38</property>
-                <property name="can_focus">True</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="receives_default">True</property>
-                <property name="no_show_all">True</property>
-                <property name="tooltip_text" translatable="yes">播放列表</property>
+                <property name="tooltip_text" translatable="yes">音量</property>
                 <property name="valign">center</property>
-                <property name="image">play_list</property>
+                <property name="orientation">vertical</property>
+                <property name="size">button</property>
+                <property name="icons">audio-volume-muted-symbolic
+audio-volume-high-symbolic
+audio-volume-low-symbolic
+audio-volume-medium-symbolic</property>
+                <child internal-child="plus_button">
+                  <object class="GtkButton">
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <property name="relief">none</property>
+                  </object>
+                </child>
+                <child internal-child="minus_button">
+                  <object class="GtkButton">
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <property name="relief">none</property>
+                  </object>
+                </child>
               </object>
               <packing>
                 <property name="pack_type">end</property>

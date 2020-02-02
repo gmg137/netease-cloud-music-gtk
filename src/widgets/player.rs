@@ -6,10 +6,10 @@
 use crate::app::Action;
 use crate::clone;
 // use crate::data::MusicData;
-use crate::MUSIC_DATA;
 use crate::musicapi::model::SongInfo;
 use crate::utils::*;
 use crate::CACHED_PATH;
+use crate::MUSIC_DATA;
 use chrono::NaiveTime;
 use crossbeam_channel::Sender;
 use fragile::Fragile;
@@ -18,7 +18,7 @@ use gdk_pixbuf::Pixbuf;
 use glib::{SignalHandlerId, WeakRef};
 use gst::ClockTime;
 use gtk::prelude::*;
-use gtk::{ActionBar, Builder, Button, Image, Label, RadioButton, Scale};
+use gtk::{ActionBar, Builder, Button, Image, Label, RadioButton, Scale, VolumeButton};
 use mpris_player::{Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -32,6 +32,7 @@ struct PlayerControls {
     backward: Button,
     forward: Button,
     like: Button,
+    volume: VolumeButton,
 }
 
 #[derive(Debug, Clone)]
@@ -189,6 +190,8 @@ impl PlayerWidget {
         let forward: Button = builder.get_object("forward_button").unwrap();
         let backward: Button = builder.get_object("backward_button").unwrap();
         let like: Button = builder.get_object("like_button").unwrap();
+        let volume: VolumeButton = builder.get_object("volume_button").unwrap();
+        volume.set_value(player.get_volume());
 
         let controls = PlayerControls {
             play,
@@ -196,6 +199,7 @@ impl PlayerWidget {
             forward,
             backward,
             like,
+            volume,
         };
 
         let progressed: Label = builder.get_object("progress_time_label").unwrap();
@@ -425,6 +429,10 @@ impl PlayerWidget {
         }
         self.sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
     }
+
+    fn set_volume(&self, value: f64) {
+        self.player.set_volume(value);
+    }
 }
 
 #[derive(Clone)]
@@ -476,6 +484,12 @@ impl PlayerWrapper {
         self.controls.like.connect_clicked(clone!(weak => move |_| {
             weak.upgrade().map(|p| p.like());
         }));
+
+        self.controls
+            .volume
+            .connect_value_changed(clone!(weak => move |_, value| {
+                weak.upgrade().map(|p| p.set_volume(value));
+            }));
     }
 
     #[cfg_attr(rustfmt, rustfmt_skip)]
