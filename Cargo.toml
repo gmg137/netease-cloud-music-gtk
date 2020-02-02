@@ -18,6 +18,7 @@ gstreamer = "^0.15"
 gstreamer-player = "^0.15"
 cairo-rs = { version = "^0.8", features = ["png"] }
 dbus = "*"
+mpris-player = "*"
 
 curl = "*"
 dirs = "*"
@@ -47,10 +48,6 @@ default = ["gtk_3_24"]
 gtk_3_18 = ["gtk/v3_18", "gio/v2_46"]
 gtk_3_22_30 = ["gtk_3_18", "gtk/v3_22_30", "gio/v2_56"]
 gtk_3_24 = ["gtk_3_22_30", "gtk/v3_24", "gio/v2_58"]
-
-[dependencies.mpris-player]
-version = "^0.5"
-git = "https://gitlab.gnome.org/World/Rust/mpris-player"
 
 [package.metadata.rpm.cargo]
 buildflags = ["--release"]
