@@ -15,7 +15,7 @@ use openssl::hash::{hash, MessageDigest};
 use std::fs;
 
 static BASE_URL: &str = "https://music.163.com";
-use crate::CONFIG_PATH;
+use crate::NCM_CONFIG;
 
 pub struct MusicApi {
     curl: Easy,
@@ -40,7 +40,7 @@ impl MusicApi {
             .unwrap_or(());
         curl.http_headers(headers).unwrap_or(());
         curl.accept_encoding("gzip").unwrap_or(());
-        let cookie_path = format!("{}/cookie", CONFIG_PATH.to_owned());
+        let cookie_path = format!("{}cookie", NCM_CONFIG.to_string_lossy());
         curl.cookie_file(cookie_path).unwrap_or(());
         curl.cookie_list("RELOAD").unwrap_or(());
         Self { curl }
@@ -112,7 +112,7 @@ impl MusicApi {
         }
         if let Ok(cookies) = self.curl.cookies() {
             if !cookies.iter().collect::<Vec<&[u8]>>().is_empty() {
-                let cookie_path = format!("{}/cookie", CONFIG_PATH.to_owned());
+                let cookie_path = format!("{}cookie", NCM_CONFIG.to_string_lossy());
                 self.curl.cookie_jar(cookie_path).unwrap_or(());
             }
         }
@@ -171,7 +171,7 @@ impl MusicApi {
     // 退出
     #[allow(unused)]
     pub fn logout(&mut self) {
-        let cookie_path = format!("{}/cookie", CONFIG_PATH.to_owned());
+        let cookie_path = format!("{}cookie", NCM_CONFIG.to_string_lossy());
         fs::write(&cookie_path, "").unwrap_or(());
     }
 

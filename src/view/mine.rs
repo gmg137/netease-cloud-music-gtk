@@ -302,7 +302,7 @@ impl Mine {
     }
 
     pub(crate) fn update_fm_view(&self, song_info: &SongInfo) {
-        let image_path = format!("{}/{}.jpg", crate::CACHED_PATH.to_owned(), &song_info.id);
+        let image_path = format!("{}/{}.jpg", crate::NCM_CACHE.to_string_lossy(), &song_info.id);
         download_img(&song_info.pic_url, &image_path, 210, 210);
         if let Ok(image) = create_round_avatar(&image_path) {
             let image = image.scale_simple(210, 210, InterpType::Bilinear);

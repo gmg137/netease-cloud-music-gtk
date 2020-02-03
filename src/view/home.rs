@@ -6,7 +6,7 @@
 
 use crate::app::Action;
 use crate::musicapi::model::*;
-use crate::CACHED_PATH;
+use crate::NCM_CACHE;
 use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
 use gtk::prelude::*;
@@ -64,7 +64,7 @@ impl Home {
             let mut l = 0;
             let mut t = 0;
             tsl.par_iter().for_each(|sl| {
-                let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &sl.id);
+                let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
                 crate::utils::download_img(&sl.cover_img_url, &image_path, 210, 210);
             });
             tsl.iter().for_each(|sl| {
@@ -75,7 +75,7 @@ impl Home {
                 label.set_max_width_chars(16);
                 label.set_ellipsize(pango::EllipsizeMode::End);
                 label.set_line_wrap(true);
-                let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &sl.id);
+                let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
                 if let Ok(image) = Pixbuf::new_from_file(&image_path) {
                     let image = image.scale_simple(140, 140, InterpType::Bilinear);
                     let image = Image::new_from_pixbuf(image.as_ref());
@@ -102,7 +102,7 @@ impl Home {
             });
             if !rr.is_empty() {
                 rr.par_iter().for_each(|sl| {
-                    let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &sl.id);
+                    let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
                     crate::utils::download_img(&sl.cover_img_url, &image_path, 210, 210);
                 });
                 let mut l = 0;
@@ -115,7 +115,7 @@ impl Home {
                         label.set_max_width_chars(16);
                         label.set_ellipsize(pango::EllipsizeMode::End);
                         label.set_line_wrap(true);
-                        let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &sl.id);
+                        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
                         if let Ok(image) = Pixbuf::new_from_file(&image_path) {
                             let image = image.scale_simple(140, 140, InterpType::Bilinear);
                             let image = Image::new_from_pixbuf(image.as_ref());

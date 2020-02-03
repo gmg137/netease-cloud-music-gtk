@@ -5,7 +5,7 @@
 //
 
 use crate::musicapi::{model::*, MusicApi};
-use crate::{CACHED_PATH, CONFIG_PATH, DATE_DAY, ISO_WEEK};
+use crate::{DATE_DAY, ISO_WEEK, NCM_CACHE, NCM_CONFIG, NCM_DATA};
 use serde::{Deserialize, Serialize};
 use sled::{Config, Db};
 use std::path::Path;
@@ -44,15 +44,16 @@ impl MusicData {
         // println!("new MusicData!");
         // 加载数据文件
         if let Ok(db) = Config::default()
-            .path(format!("{}/db", CONFIG_PATH.to_owned()))
+            .path(format!("{}db", NCM_DATA.to_string_lossy()))
             .cache_capacity(1024 * 1024 * 10)
-            .open() {
+            .open()
+        {
             // 查询状态数据
             if let Some(status_data) = db.get(b"status_data").unwrap_or(None) {
                 if let Ok(status_data) = serde_json::from_slice::<StatusData>(&status_data) {
                     // 每周清理缓存
                     if status_data.week != *ISO_WEEK {
-                        clear_cache(Path::new(*CACHED_PATH));
+                        clear_cache(&NCM_CACHE);
                     }
                     // 对比缓存是否过期
                     if status_data.day == *DATE_DAY {
@@ -189,7 +190,7 @@ impl MusicData {
             }
         }
         self.login = false;
-        let cookie_path = format!("{}/cookie", CONFIG_PATH.to_owned());
+        let cookie_path = format!("{}cookie", NCM_CONFIG.to_string_lossy());
         std::fs::write(&cookie_path, "").unwrap_or(());
     }
 

@@ -10,7 +10,7 @@ use crate::musicapi::model::LoginInfo;
 use crate::utils::*;
 use crate::MUSIC_DATA;
 use crate::{clone, upgrade_weak};
-use crate::{APP_VERSION, CACHED_PATH};
+use crate::{APP_VERSION, NCM_CACHE};
 use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::{
@@ -288,7 +288,7 @@ impl Header {
         self.user_button.set_sensitive(true);
         self.popover_user.show_all();
         let image_url = format!("{}?param=37y37", &login_info.avatar_url);
-        let image_path = format!("{}/{}.jpg", CACHED_PATH.to_owned(), &login_info.uid);
+        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &login_info.uid);
         download_img(&image_url, &image_path, 37, 37);
         if let Ok(image) = create_round_avatar(&image_path) {
             self.avatar.set_from_pixbuf(Some(&image));

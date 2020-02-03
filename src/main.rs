@@ -14,32 +14,26 @@ mod widgets;
 use crate::app::App;
 use data::MusicData;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 static APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 lazy_static! {
-    // 配置文件目录
-    static ref CONFIG_PATH: &'static str = {
-        if let Some(path) = dirs::home_dir() {
-            let config_path = format!("{}/.config/NeteaseCloudMusicGtk", path.display());
-            if !std::path::Path::new(&config_path).exists() {
-                std::fs::create_dir(&config_path).unwrap_or(());
-            }
-            return Box::leak(Box::new(config_path));
-        }
-        ".config/NeteaseCloudMusicGtk"
+    pub(crate) static ref NCM_XDG: xdg::BaseDirectories = {
+        xdg::BaseDirectories::with_prefix("netease-cloud-music-gtk").unwrap()
     };
-    // 缓存文件目录
-    static ref CACHED_PATH: &'static str = {
-        if let Some(path) = dirs::home_dir() {
-            let cached_path = format!("{}/.cache/NeteaseCloudMusicGtk", path.display());
-            if !std::path::Path::new(&cached_path).exists() {
-                std::fs::create_dir_all(&cached_path).unwrap_or(());
-            }
-            return Box::leak(Box::new(cached_path));
-        }
-        ".cache/NeteaseCloudMusicGtk"
+    // 数据目录
+    pub(crate) static ref NCM_DATA: PathBuf = {
+        NCM_XDG.create_data_directory(NCM_XDG.get_data_home()).unwrap()
+    };
+    // 配置目录
+    pub(crate) static ref NCM_CONFIG: PathBuf = {
+        NCM_XDG.create_config_directory(NCM_XDG.get_config_home()).unwrap()
+    };
+    // 缓存目录
+    pub(crate) static ref NCM_CACHE: PathBuf = {
+        NCM_XDG.create_cache_directory(NCM_XDG.get_cache_home()).unwrap()
     };
     // 歌词文件目录
     static ref LYRICS_PATH: &'static str = {

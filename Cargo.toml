@@ -37,6 +37,7 @@ chrono = "*"
 rayon = "*"
 fragile = "*"
 image = "*"
+xdg = "*"
 
 log = "*"
 loggerv = "*"

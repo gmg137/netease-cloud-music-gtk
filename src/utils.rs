@@ -7,7 +7,7 @@ use crate::app::Action;
 // use crate::data::MusicData;
 use crate::musicapi::{model::SongInfo, MusicApi};
 use crate::MUSIC_DATA;
-use crate::{CACHED_PATH, CONFIG_PATH, LYRICS_PATH};
+use crate::{LYRICS_PATH, NCM_CACHE, NCM_CONFIG, NCM_DATA};
 use cairo::{Context, ImageSurface};
 use crossbeam_channel::Sender;
 use curl::easy::Easy;
@@ -105,7 +105,7 @@ pub(crate) fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Action>, p
                 sender.send(Action::ReadyPlayer(player_list[0].to_owned())).unwrap();
             }
             // 将播放列表写入数据库
-            let config = Config::default().path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
+            let config = Config::default().path(format!("{}player_list", NCM_DATA.to_string_lossy()));
             if let Ok(db) = config.open() {
                 db.insert(
                     b"player_list_data",
@@ -129,7 +129,7 @@ pub(crate) fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Action>, p
 // update: 是否从头循环
 #[allow(unused)]
 pub(crate) fn get_player_list_song(pd: PD, shuffle: bool, update: bool) -> Option<SongInfo> {
-    let config = Config::default().path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
+    let config = Config::default().path(format!("{}player_list", NCM_DATA.to_string_lossy()));
     if let Ok(db) = config.open() {
         // 从数据库查询播放列表
         if let Some(player_list_data_v) = db.get(b"player_list_data").unwrap_or(None) {
@@ -237,7 +237,7 @@ pub(crate) fn get_player_list_song(pd: PD, shuffle: bool, update: bool) -> Optio
 pub(crate) fn update_player_list(sender: Sender<Action>) {
     let sender = sender.clone();
     std::thread::spawn(move || {
-        let config = Config::default().path(format!("{}/player_list.db", CONFIG_PATH.to_owned()));
+        let config = Config::default().path(format!("{}player_list", NCM_DATA.to_string_lossy()));
         if let Ok(db) = config.open() {
             // 从数据库查询播放列表
             if let Some(player_list_data_v) = db.get(b"player_list_data").unwrap_or(None) {
@@ -274,7 +274,11 @@ pub(crate) fn update_player_list(sender: Sender<Action>) {
                         return;
                     }
                     // 删除错误缓存
-                    let path = format!("{}/{}.mp3", CACHED_PATH.to_owned(), new_player_list[index as usize].id);
+                    let path = format!(
+                        "{}{}.mp3",
+                        NCM_CACHE.to_string_lossy(),
+                        new_player_list[index as usize].id
+                    );
                     std::fs::remove_file(path).unwrap_or(());
                     // 继续播放歌曲
                     sender
@@ -361,7 +365,7 @@ pub(crate) struct Configs {
 // 加载配置
 #[allow(unused)]
 pub(crate) fn load_config() -> Configs {
-    let config = Config::default().path(format!("{}/config.db", CONFIG_PATH.to_owned()));
+    let config = Config::default().path(format!("{}config", NCM_CONFIG.to_string_lossy()));
     if let Ok(db) = config.open() {
         if let Some(conf) = db.get(b"config").unwrap_or(None) {
             return serde_json::from_slice::<Configs>(&conf).unwrap_or(Configs {
@@ -381,7 +385,7 @@ pub(crate) fn load_config() -> Configs {
 // 保存配置
 #[allow(unused)]
 pub(crate) fn save_config(conf: &Configs) {
-    let config = Config::default().path(format!("{}/config.db", CONFIG_PATH.to_owned()));
+    let config = Config::default().path(format!("{}config", NCM_CONFIG.to_string_lossy()));
     if let Ok(db) = config.open() {
         db.insert(b"config", serde_json::to_vec(&conf).unwrap_or(vec![]));
         db.flush();

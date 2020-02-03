@@ -8,8 +8,8 @@ use crate::clone;
 // use crate::data::MusicData;
 use crate::musicapi::model::SongInfo;
 use crate::utils::*;
-use crate::CACHED_PATH;
 use crate::MUSIC_DATA;
+use crate::NCM_CACHE;
 use chrono::NaiveTime;
 use crossbeam_channel::Sender;
 use fragile::Fragile;
@@ -49,7 +49,7 @@ impl PlayerInfo {
         self.song.set_text(&song_info.name);
         self.song.set_tooltip_text(Some(&song_info.name[..]));
         self.singer.set_text(&song_info.singer);
-        let image_path = format!("{}/{}.jpg", crate::CACHED_PATH.to_owned(), &song_info.id);
+        let image_path = format!("{}/{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
         download_img(&song_info.pic_url, &image_path, 512, 512);
         if let Ok(image) = Pixbuf::new_from_file(&image_path) {
             let image = image.scale_simple(38, 38, InterpType::Bilinear);
@@ -61,7 +61,7 @@ impl PlayerInfo {
         metadata.artist = Some(vec![song_info.singer.clone()]);
         metadata.title = Some(song_info.name.clone());
         // metadata.art_url = Some(song_info.pic_url.clone());
-        metadata.art_url = Some(format!("file://{}/{}.jpg", CACHED_PATH.to_owned(), song_info.id));
+        metadata.art_url = Some(format!("file://{}/{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id));
         metadata.track_number = Some(song_info.id as i32);
 
         self.mpris.set_metadata(metadata);
@@ -269,7 +269,7 @@ impl PlayerWidget {
             let mut data = MUSIC_DATA.lock().unwrap();
             if let Some(v) = data.songs_url(&[song_info.id], 320) {
                 // 缓存音乐到本地
-                let path = format!("{}/{}.mp3", CACHED_PATH.to_owned(), song_info.id);
+                let path = format!("{}/{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
                 download_music(&v[0].url, &path);
                 sender.send(Action::Player(song_info)).unwrap();
             } else {
@@ -286,7 +286,7 @@ impl PlayerWidget {
                 download_lyrics(&song_info.name, &song_info, data);
             }
             // 缓存音乐到本地
-            let path = format!("{}/{}.mp3", CACHED_PATH.to_owned(), song_info.id);
+            let path = format!("{}/{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
             download_music(&song_info.song_url, &path);
             sender.send(Action::Player(song_info)).unwrap();
         });
@@ -301,7 +301,7 @@ impl PlayerWidget {
         }
         self.sender.send(Action::ShowNotice(song_info.name.to_owned())).unwrap();
         self.info.init(&song_info);
-        let song_uri = format!("file://{}/{}.mp3", CACHED_PATH.to_owned(), song_info.id);
+        let song_uri = format!("file://{}/{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
         self.player.set_uri(&song_uri);
         self.play();
     }
