@@ -6,6 +6,7 @@
 use crate::app::Action;
 use crate::musicapi::model::SongInfo;
 use crate::utils::{create_player_list, PlayerTypes};
+use async_std::task;
 use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::{Builder, Button, CellRendererText, Label, ListBox, ListStore, TreeView, TreeViewColumn};
@@ -205,6 +206,9 @@ impl Found {
     }
 
     pub(crate) fn play_all(&self) {
-        create_player_list(&self.song_list, self.sender.clone(), true);
+        let song_list = self.song_list.clone();
+        let sender = self.sender.clone();
+        sender.send(Action::PlayerTypes(PlayerTypes::Song)).unwrap_or(());
+        task::spawn(async move { create_player_list(&song_list, sender, true).await.ok() });
     }
 }

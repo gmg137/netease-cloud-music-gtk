@@ -5,13 +5,12 @@
 //
 
 use crate::app::Action;
+use crate::model::NCM_CACHE;
 use crate::musicapi::model::*;
-use crate::NCM_CACHE;
 use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
 use gtk::prelude::*;
 use gtk::{Builder, EventBox, Grid, Image, Label};
-use rayon::prelude::*;
 
 #[derive(Clone)]
 pub(crate) struct Home {
@@ -63,10 +62,7 @@ impl Home {
         if !tsl.is_empty() {
             let mut l = 0;
             let mut t = 0;
-            tsl.par_iter().for_each(|sl| {
-                let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
-                crate::utils::download_img(&sl.cover_img_url, &image_path, 210, 210);
-            });
+
             tsl.iter().for_each(|sl| {
                 let event_box = EventBox::new();
                 let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -101,10 +97,6 @@ impl Home {
                 });
             });
             if !rr.is_empty() {
-                rr.par_iter().for_each(|sl| {
-                    let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
-                    crate::utils::download_img(&sl.cover_img_url, &image_path, 210, 210);
-                });
                 let mut l = 0;
                 for sl in rr.iter() {
                     if l < 4 {

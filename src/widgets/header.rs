@@ -8,9 +8,9 @@ use super::preferences::Preferences;
 use crate::app::Action;
 use crate::musicapi::model::LoginInfo;
 use crate::utils::*;
-use crate::MUSIC_DATA;
 use crate::{clone, upgrade_weak};
-use crate::{APP_VERSION, NCM_CACHE};
+use crate::{data::MusicData, model::NCM_CACHE, APP_VERSION};
+use async_std::task;
 use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::{
@@ -18,8 +18,6 @@ use gtk::{
     SearchEntry, StackSwitcher, ToggleButton,
 };
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
-use std::thread::spawn;
 
 #[derive(Clone)]
 pub(crate) struct Header {
@@ -45,7 +43,6 @@ pub(crate) struct Header {
     close_button: ModelButton,
     about: AboutDialog,
     sender: Sender<Action>,
-    data: Arc<Mutex<u8>>,
 }
 
 #[derive(Debug, Clone)]
@@ -57,7 +54,7 @@ pub(crate) struct LoginDialog {
 }
 
 impl Header {
-    pub(crate) fn new(builder: &Builder, sender: &Sender<Action>, data: Arc<Mutex<u8>>, configs: &Configs) -> Rc<Self> {
+    pub(crate) fn new(builder: &Builder, sender: &Sender<Action>, configs: &Configs) -> Rc<Self> {
         let back: Button = builder.get_object("back_button").expect("Couldn't get back button");
         let switch: StackSwitcher = builder.get_object("stack_switch").expect("Couldn't get stack switch");
         let title: Label = builder.get_object("subpages_title").expect("Couldn't get title");
@@ -110,7 +107,6 @@ impl Header {
             task,
             login_dialog,
             sender: sender.clone(),
-            data: data.clone(),
         };
         let h = Rc::new(header);
         Self::init(&h, &sender);
@@ -225,60 +221,59 @@ impl Header {
     // 登录
     pub(crate) fn login(&self, name: String, pass: String) {
         let sender = self.sender.clone();
-        let data = self.data.clone();
-        spawn(move || {
-            #[allow(unused_variables)]
-            let lock = data.lock().unwrap();
-            // let mut data = MusicData::new();
-            let mut data = MUSIC_DATA.lock().unwrap();
-            if let Some(login_info) = data.login(name, pass) {
-                if login_info.code == 200 {
-                    sender.send(Action::RefreshHeaderUser).unwrap();
-                    sender.send(Action::RefreshHome).unwrap();
-                    sender.send(Action::RefreshMine).unwrap();
-                    return;
-                } else {
-                    sender.send(Action::ShowNotice(login_info.msg)).unwrap();
-                    return;
-                }
-            };
-            sender.send(Action::ShowNotice("登陆异常!".to_owned())).unwrap();
+        task::spawn(async move {
+            if let Ok(mut data) = MusicData::new().await {
+                if let Ok(login_info) = data.login(name, pass).await {
+                    if login_info.code == 200 {
+                        sender.send(Action::RefreshHeaderUser).unwrap();
+                        sender.send(Action::RefreshHome).unwrap();
+                        sender.send(Action::RefreshMine).unwrap();
+                        return;
+                    } else {
+                        sender.send(Action::ShowNotice(login_info.msg)).unwrap();
+                        return;
+                    }
+                };
+                sender.send(Action::ShowNotice("登陆异常!".to_owned())).unwrap();
+            } else {
+                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+            }
         });
     }
 
     // 退出
     pub(crate) fn logout(&self) {
         let sender = self.sender.clone();
-        let data = self.data.clone();
-        spawn(move || {
-            #[allow(unused_variables)]
-            let lock = data.lock().unwrap();
-            // let mut data = MusicData::new();
-            let mut data = MUSIC_DATA.lock().unwrap();
-            data.logout();
-            sender.send(Action::RefreshHeaderUser).unwrap();
-            sender.send(Action::RefreshHome).unwrap();
-            sender.send(Action::RefreshMine).unwrap();
+        task::spawn(async move {
+            if let Ok(mut data) = MusicData::new().await {
+                data.logout().await.ok();
+                sender.send(Action::RefreshHeaderUser).unwrap();
+                sender.send(Action::RefreshHome).unwrap();
+                sender.send(Action::RefreshMine).unwrap();
+            } else {
+                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+            }
         });
     }
 
     // 更新用户头像和相关按钮
     pub(crate) fn update_user_button(&self) {
-        let data = self.data.clone();
         let sender = self.sender.clone();
-        spawn(move || {
-            #[allow(unused_variables)]
-            let lock = data.lock().unwrap();
-            // let mut data = MusicData::new();
-            let mut data = MUSIC_DATA.lock().unwrap();
-            if data.login {
-                if let Some(login_info) = data.login_info() {
-                    sender
-                        .send(Action::RefreshHeaderUserLogin(login_info.to_owned()))
-                        .unwrap();
+        task::spawn(async move {
+            if let Ok(mut data) = MusicData::new().await {
+                if data.login {
+                    if let Ok(login_info) = data.login_info().await {
+                        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &login_info.uid);
+                        download_img(&login_info.avatar_url, &image_path, 37, 37).await.ok();
+                        sender
+                            .send(Action::RefreshHeaderUserLogin(login_info.to_owned()))
+                            .unwrap();
+                    }
+                } else {
+                    sender.send(Action::RefreshHeaderUserLogout).unwrap();
                 }
             } else {
-                sender.send(Action::RefreshHeaderUserLogout).unwrap();
+                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
             }
         });
     }
@@ -286,10 +281,8 @@ impl Header {
     // 更新标题栏为已登录
     pub(crate) fn update_user_login(&self, login_info: LoginInfo) {
         self.user_button.set_sensitive(true);
-        self.popover_user.show_all();
-        let image_url = format!("{}?param=37y37", &login_info.avatar_url);
+        self.logoutbox.show_all();
         let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &login_info.uid);
-        download_img(&image_url, &image_path, 37, 37);
         if let Ok(image) = create_round_avatar(&image_path) {
             self.avatar.set_from_pixbuf(Some(&image));
         }
@@ -307,20 +300,19 @@ impl Header {
     // 签到
     pub(crate) fn daily_task(&self) {
         let sender = self.sender.clone();
-        let data = self.data.clone();
-        spawn(move || {
-            #[allow(unused_variables)]
-            let lock = data.lock().unwrap();
-            // let mut data = MusicData::new();
-            let mut data = MUSIC_DATA.lock().unwrap();
-            if let Some(task) = data.daily_task() {
-                if task.code == 200 {
-                    sender.send(Action::ShowNotice("签到成功!".to_owned())).unwrap();
+        task::spawn(async move {
+            if let Ok(mut data) = MusicData::new().await {
+                if let Ok(task) = data.daily_task().await {
+                    if task.code == 200 {
+                        sender.send(Action::ShowNotice("签到成功!".to_owned())).unwrap();
+                    } else {
+                        sender.send(Action::ShowNotice(task.msg)).unwrap();
+                    }
                 } else {
-                    sender.send(Action::ShowNotice(task.msg)).unwrap();
+                    sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
                 }
             } else {
-                sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
+                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
             }
         });
     }

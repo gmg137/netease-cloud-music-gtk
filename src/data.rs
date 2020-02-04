@@ -4,12 +4,13 @@
 // Distributed under terms of the GPLv3 license.
 //
 
+use crate::model::{
+    spawn_and_log_error, AsyncResult, Errors, NCMResult, DATE_DAY, ISO_WEEK, NCM_CACHE, NCM_CONFIG, NCM_DATA,
+};
 use crate::musicapi::{model::*, MusicApi};
-use crate::{DATE_DAY, ISO_WEEK, NCM_CACHE, NCM_CONFIG, NCM_DATA};
+use async_std::{fs, prelude::*};
 use serde::{Deserialize, Serialize};
-use sled::{Config, Db};
 use std::path::Path;
-use std::{fs, io};
 
 // 数据库字段说明
 // login_info: 用户登陆信息
@@ -34,169 +35,125 @@ struct StatusData {
 // login: 是否已经登录
 pub(crate) struct MusicData {
     musicapi: MusicApi,
-    db: Option<Db>,
     pub(crate) login: bool,
 }
 
 impl MusicData {
     #[allow(unused)]
-    pub(crate) fn new() -> Self {
-        // println!("new MusicData!");
-        // 加载数据文件
-        if let Ok(db) = Config::default()
-            .path(format!("{}db", NCM_DATA.to_string_lossy()))
-            .cache_capacity(1024 * 1024 * 10)
-            .open()
-        {
-            // 查询状态数据
-            if let Some(status_data) = db.get(b"status_data").unwrap_or(None) {
-                if let Ok(status_data) = serde_json::from_slice::<StatusData>(&status_data) {
-                    // 每周清理缓存
-                    if status_data.week != *ISO_WEEK {
-                        clear_cache(&NCM_CACHE);
-                    }
-                    // 对比缓存是否过期
-                    if status_data.day == *DATE_DAY {
-                        // 直接返回缓存数据
-                        return MusicData {
-                            musicapi: MusicApi::new(),
-                            db: Some(db),
-                            login: status_data.login,
-                        };
-                    } else {
-                        db.clear();
-                        // 重新查询登陆状态
-                        let mut musicapi = MusicApi::new();
-                        if let Some(login_info) = musicapi.login_status() {
-                            let data = StatusData {
-                                login: true,
-                                day: *DATE_DAY,
-                                week: *ISO_WEEK,
-                            };
-                            db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
-                            db.insert(b"login_info", serde_json::to_vec(&login_info).unwrap_or(vec![]));
-                            db.flush();
-                            return MusicData {
-                                musicapi,
-                                db: Some(db),
-                                login: true,
-                            };
-                        }
-                        let data = StatusData {
-                            login: false,
-                            day: *DATE_DAY,
-                            week: *ISO_WEEK,
-                        };
-                        db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
-                        db.flush();
-                        return MusicData {
-                            musicapi,
-                            db: Some(db),
-                            login: false,
-                        };
-                    }
-                }
+    pub(crate) async fn new() -> NCMResult<Self> {
+        if let Ok(buffer) = fs::read(format!("{}status_data.db", NCM_CONFIG.to_string_lossy())).await {
+            let status_data: StatusData = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
+            // 每周清理缓存
+            if status_data.week != *ISO_WEEK {
+                spawn_and_log_error(clear_cache(&NCM_CACHE));
+            }
+            // 对比缓存是否过期
+            if status_data.day == *DATE_DAY {
+                // 直接返回缓存数据
+                return Ok(MusicData {
+                    musicapi: MusicApi::new()?,
+                    login: status_data.login,
+                });
             } else {
-                db.clear();
-                let mut musicapi = MusicApi::new();
-                if let Some(login_info) = musicapi.login_status() {
-                    let data = StatusData {
-                        login: true,
-                        day: *DATE_DAY,
-                        week: *ISO_WEEK,
-                    };
-                    db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
-                    db.insert(b"login_info", serde_json::to_vec(&login_info).unwrap_or(vec![]));
-                    db.flush();
-                    return MusicData {
-                        musicapi,
-                        db: Some(db),
-                        login: true,
-                    };
-                }
+                spawn_and_log_error(clear_cache(&NCM_DATA));
+                // 重新查询登陆状态
+                let mut musicapi = MusicApi::new()?;
+                musicapi.login_status()?;
                 let data = StatusData {
-                    login: false,
+                    login: true,
                     day: *DATE_DAY,
                     week: *ISO_WEEK,
                 };
-                db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
-                db.flush();
-                return MusicData {
-                    musicapi,
-                    db: Some(db),
-                    login: false,
-                };
+                fs::write(
+                    format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
+                    bincode::serialize(&data).map_err(|_| Errors::NoneError)?,
+                )
+                .await?;
+                return Ok(MusicData { musicapi, login: true });
             }
         }
-        MusicData {
-            musicapi: MusicApi::new(),
-            db: None,
+        let data = StatusData {
             login: false,
-        }
+            day: *DATE_DAY,
+            week: *ISO_WEEK,
+        };
+        fs::write(
+            format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
+            bincode::serialize(&data).map_err(|_| Errors::NoneError)?,
+        )
+        .await?;
+        Ok(MusicData {
+            musicapi: MusicApi::new()?,
+            login: false,
+        })
     }
 
     // 登录
     #[allow(unused)]
-    pub(crate) fn login(&mut self, username: String, password: String) -> Option<LoginInfo> {
-        if let Some(login_info) = self.musicapi.login(username, password) {
-            if login_info.code.eq(&200) {
-                self.login = true;
-                if let Some(db) = &self.db {
-                    let data = StatusData {
-                        login: true,
-                        day: *DATE_DAY,
-                        week: *ISO_WEEK,
-                    };
-                    db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
-                    db.insert(b"login_info", serde_json::to_vec(&login_info).unwrap_or(vec![]));
-                    db.flush();
-                    return Some(login_info);
-                }
-            }
+    pub(crate) async fn login(&mut self, username: String, password: String) -> NCMResult<LoginInfo> {
+        let login_info = self.musicapi.login(username, password)?;
+        if login_info.code.eq(&200) {
+            self.login = true;
+            let data = StatusData {
+                login: true,
+                day: *DATE_DAY,
+                week: *ISO_WEEK,
+            };
+            fs::write(
+                format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
+                bincode::serialize(&data).map_err(|_| Errors::NoneError)?,
+            )
+            .await?;
+            fs::write(
+                format!("{}login_info.db", NCM_DATA.to_string_lossy()),
+                bincode::serialize(&login_info).map_err(|_| Errors::NoneError)?,
+            )
+            .await?;
+            return Ok(login_info);
         }
-        None
+        Err(Errors::NoneError)
     }
 
     // 获取登陆信息
     #[allow(unused)]
-    pub(crate) fn login_info(&mut self) -> Option<LoginInfo> {
+    pub(crate) async fn login_info(&mut self) -> NCMResult<LoginInfo> {
         if self.login {
-            if let Some(db) = &self.db {
-                if let Some(login_info_vec) = db.get(b"login_info").unwrap_or(None) {
-                    if let Ok(login_info) = serde_json::from_slice::<LoginInfo>(&login_info_vec) {
-                        return Some(login_info);
-                    }
-                }
+            if let Ok(buffer) = fs::read(format!("{}login_info.db", NCM_DATA.to_string_lossy())).await {
+                let login_info: LoginInfo = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
+                return Ok(login_info);
             }
         }
-        None
+        Err(Errors::NoneError)
     }
 
     // 退出
     #[allow(unused)]
-    pub(crate) fn logout(&mut self) {
+    pub(crate) async fn logout(&mut self) -> NCMResult<()> {
         if self.login {
-            if let Some(db) = &self.db {
-                let data = StatusData {
-                    login: false,
-                    day: *DATE_DAY,
-                    week: *ISO_WEEK,
-                };
-                db.insert(b"status_data", serde_json::to_vec(&data).unwrap_or(vec![]));
-                db.remove(b"user_song_list");
-                db.remove(b"recommend_resource");
-                db.remove(b"login_info");
-                db.flush();
-            }
+            let data = StatusData {
+                login: false,
+                day: *DATE_DAY,
+                week: *ISO_WEEK,
+            };
+            fs::write(
+                format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
+                bincode::serialize(&data).map_err(|_| Errors::NoneError)?,
+            )
+            .await?;
+            fs::remove_file(format!("{}user_song_list.db", NCM_DATA.to_string_lossy())).await?;
+            fs::remove_file(format!("{}recommend_resource.db", NCM_DATA.to_string_lossy())).await?;
+            fs::remove_file(format!("{}recommend_songs.db", NCM_DATA.to_string_lossy())).await?;
+            fs::remove_file(format!("{}login_info.db", NCM_DATA.to_string_lossy())).await?;
         }
         self.login = false;
         let cookie_path = format!("{}cookie", NCM_CONFIG.to_string_lossy());
-        std::fs::write(&cookie_path, "").unwrap_or(());
+        fs::write(&cookie_path, "").await?;
+        Ok(())
     }
 
     // 每日签到
     #[allow(unused)]
-    pub(crate) fn daily_task(&mut self) -> Option<Msg> {
+    pub(crate) async fn daily_task(&mut self) -> NCMResult<Msg> {
         self.musicapi.daily_task()
     }
 
@@ -205,56 +162,49 @@ impl MusicData {
     // offset: 列表起点号
     // limit: 列表长度
     #[allow(unused)]
-    pub(crate) fn user_song_list(&mut self, uid: u32, offset: u8, limit: u8) -> Option<Vec<SongList>> {
+    pub(crate) async fn user_song_list(&mut self, uid: u32, offset: u8, limit: u8) -> NCMResult<Vec<SongList>> {
         if self.login {
-            if let Some(db) = &self.db {
-                // 查询缓存
-                if let Some(user_song_list_vec) = db.get(b"user_song_list").unwrap_or(None) {
-                    if let Ok(user_song_list) = serde_json::from_slice::<Vec<SongList>>(&user_song_list_vec) {
-                        return Some(user_song_list);
-                    }
-                }
-                // 查询 api
-                if let Some(usl) = self.musicapi.user_song_list(uid, offset, limit) {
-                    if !usl.is_empty() {
-                        db.insert(b"user_song_list", serde_json::to_vec(&usl).unwrap_or(vec![]));
-                        db.flush();
-                    }
-                    return Some(usl);
+            let path = format!("{}user_song_list.db", NCM_DATA.to_string_lossy());
+            // 查询缓存
+            if let Ok(buffer) = fs::read(&path).await {
+                if let Ok(login_info) = bincode::deserialize::<Vec<SongList>>(&buffer) {
+                    return Ok(login_info);
                 }
             }
+            // 查询 api
+            let usl = self.musicapi.user_song_list(uid, offset, limit)?;
+            if !usl.is_empty() {
+                fs::write(path, bincode::serialize(&usl).map_err(|_| Errors::NoneError)?).await?;
+                return Ok(usl);
+            }
         }
-        None
+        Err(Errors::NoneError)
     }
 
     // 歌单详情
     // songlist_id: 歌单 id
     #[allow(unused)]
-    pub(crate) fn song_list_detail(&mut self, songlist_id: u32, refresh: bool) -> Option<Vec<SongInfo>> {
-        if let Some(db) = &self.db {
-            let key = format!("song_list_{}", songlist_id);
-            if !refresh {
-                if let Some(song_list_detail_vec) = db.get(key.as_bytes()).unwrap_or(None) {
-                    if let Ok(song_list_detail) = serde_json::from_slice::<Vec<SongInfo>>(&song_list_detail_vec) {
-                        return Some(song_list_detail);
-                    }
+    pub(crate) async fn song_list_detail(&mut self, songlist_id: u32, refresh: bool) -> NCMResult<Vec<SongInfo>> {
+        let path = format!("{}song_list_{}.db", NCM_DATA.to_string_lossy(), songlist_id);
+        if !refresh {
+            if let Ok(buffer) = fs::read(&path).await {
+                if let Ok(song_list_detail) = bincode::deserialize::<Vec<SongInfo>>(&buffer) {
+                    return Ok(song_list_detail);
                 }
-            }
-            if let Some(sld) = self.musicapi.song_list_detail(songlist_id) {
-                if !sld.is_empty() {
-                    db.insert(key.as_bytes(), serde_json::to_vec(&sld).unwrap_or(vec![]));
-                }
-                db.flush();
-                return Some(sld);
             }
         }
-        None
+        let sld = self.musicapi.song_list_detail(songlist_id)?;
+        if !sld.is_empty() {
+            fs::write(path, bincode::serialize(&sld).map_err(|_| Errors::NoneError)?).await?;
+            return Ok(sld);
+        }
+        Err(Errors::NoneError)
     }
 
     // 歌曲详情
     // ids: 歌曲 id 列表
     #[allow(unused)]
-    pub(crate) fn songs_detail(&mut self, ids: &[u32]) -> Option<Vec<SongInfo>> {
+    pub(crate) async fn songs_detail(&mut self, ids: &[u32]) -> NCMResult<Vec<SongInfo>> {
         self.musicapi.songs_detail(ids)
     }
 
@@ -264,59 +214,53 @@ impl MusicData {
     //       192: 192k
     //       128: 128k
     #[allow(unused)]
-    pub(crate) fn songs_url(&mut self, ids: &[u32], rate: u32) -> Option<Vec<SongUrl>> {
+    pub(crate) async fn songs_url(&mut self, ids: &[u32], rate: u32) -> NCMResult<Vec<SongUrl>> {
         self.musicapi.songs_url(ids, rate)
     }
 
     // 每日推荐歌单
     #[allow(unused)]
-    pub(crate) fn recommend_resource(&mut self) -> Option<Vec<SongList>> {
+    pub(crate) async fn recommend_resource(&mut self) -> NCMResult<Vec<SongList>> {
         if self.login {
-            if let Some(db) = &self.db {
-                if let Some(recommend_resource_vec) = db.get(b"recommend_resource").unwrap_or(None) {
-                    if let Ok(song_list) = serde_json::from_slice::<Vec<SongList>>(&recommend_resource_vec) {
-                        return Some(song_list);
-                    }
+            let path = format!("{}recommend_resource.db", NCM_DATA.to_string_lossy());
+            if let Ok(buffer) = fs::read(&path).await {
+                if let Ok(song_list) = bincode::deserialize::<Vec<SongList>>(&buffer) {
+                    return Ok(song_list);
                 }
-                if let Some(rr) = self.musicapi.recommend_resource() {
-                    if !rr.is_empty() {
-                        db.insert(b"recommend_resource", serde_json::to_vec(&rr).unwrap_or(vec![]));
-                    }
-                    db.flush();
-                    return Some(rr);
+            }
+            if let Ok(rr) = self.musicapi.recommend_resource() {
+                if !rr.is_empty() {
+                    fs::write(path, bincode::serialize(&rr).map_err(|_| Errors::NoneError)?).await?;
+                    return Ok(rr);
                 }
             }
         }
-        None
+        Err(Errors::NoneError)
     }
 
     // 每日推荐歌曲
     #[allow(unused)]
-    pub(crate) fn recommend_songs(&mut self, refresh: bool) -> Option<Vec<SongInfo>> {
+    pub(crate) async fn recommend_songs(&mut self, refresh: bool) -> NCMResult<Vec<SongInfo>> {
         if self.login {
-            if let Some(db) = &self.db {
-                if !refresh {
-                    if let Some(recommend_songs_vec) = db.get(b"recommend_songs").unwrap_or(None) {
-                        if let Ok(songs) = serde_json::from_slice::<Vec<SongInfo>>(&recommend_songs_vec) {
-                            return Some(songs);
-                        }
-                    }
+            let path = format!("{}recommend_songs.db", NCM_DATA.to_string_lossy());
+            if let Ok(buffer) = fs::read(&path).await {
+                if let Ok(songs) = bincode::deserialize::<Vec<SongInfo>>(&buffer) {
+                    return Ok(songs);
                 }
-                if let Some(rs) = self.musicapi.recommend_songs() {
-                    if !rs.is_empty() {
-                        db.insert(b"recommend_songs", serde_json::to_vec(&rs).unwrap_or(vec![]));
-                    }
-                    db.flush();
-                    return Some(rs);
+            }
+            if let Ok(rs) = self.musicapi.recommend_songs() {
+                if !rs.is_empty() {
+                    fs::write(path, bincode::serialize(&rs).map_err(|_| Errors::NoneError)?).await?;
+                    return Ok(rs);
                 }
             }
         }
-        None
+        Err(Errors::NoneError)
     }
 
     // 私人FM
     #[allow(unused)]
-    pub(crate) fn personal_fm(&mut self) -> Option<Vec<SongInfo>> {
+    pub(crate) async fn personal_fm(&mut self) -> NCMResult<Vec<SongInfo>> {
         self.musicapi.personal_fm()
     }
 
@@ -324,12 +268,12 @@ impl MusicData {
     // songid: 歌曲id
     // like: true 收藏，false 取消
     #[allow(unused)]
-    pub(crate) fn like(&mut self, like: bool, songid: u32) -> bool {
+    pub(crate) async fn like(&mut self, like: bool, songid: u32) -> bool {
         if self.musicapi.like(like, songid) {
-            if let Some(login_info) = self.login_info() {
-                if let Some(usl) = &self.user_song_list(login_info.uid, 0, 50) {
+            if let Ok(login_info) = self.login_info().await {
+                if let Ok(usl) = &self.user_song_list(login_info.uid, 0, 50).await {
                     let row_id = 0; // 假定喜欢的音乐歌单总排在第一位
-                    self.song_list_detail(usl[row_id].id, true);
+                    self.song_list_detail(usl[row_id].id, true).await;
                     return true;
                 }
             }
@@ -340,7 +284,7 @@ impl MusicData {
     // FM 不喜欢
     // songid: 歌曲id
     #[allow(unused)]
-    pub(crate) fn fm_trash(&mut self, songid: u32) -> bool {
+    pub(crate) async fn fm_trash(&mut self, songid: u32) -> bool {
         self.musicapi.fm_trash(songid)
     }
 
@@ -350,7 +294,7 @@ impl MusicData {
     // offset: 起始点
     // limit: 数量
     #[allow(unused)]
-    pub(crate) fn search(&mut self, keywords: String, types: u32, offset: u16, limit: u16) -> Option<String> {
+    pub(crate) async fn search(&mut self, keywords: String, types: u32, offset: u16, limit: u16) -> NCMResult<String> {
         self.musicapi.search(keywords, types, offset, limit)
     }
 
@@ -358,43 +302,45 @@ impl MusicData {
     // offset: 起始点
     // limit: 数量
     #[allow(unused)]
-    pub(crate) fn new_albums(&mut self, offset: u8, limit: u8) -> Option<Vec<SongList>> {
-        if let Some(db) = &self.db {
-            if let Some(new_albums_vec) = db.get(b"new_albums").unwrap_or(None) {
-                if let Ok(song_list) = serde_json::from_slice::<Vec<SongList>>(&new_albums_vec) {
-                    return Some(song_list);
-                }
-            }
-            if let Some(na) = self.musicapi.new_albums(offset, limit) {
-                if !na.is_empty() {
-                    db.insert(b"new_albums", serde_json::to_vec(&na).unwrap_or(vec![]));
-                }
-                db.flush();
-                return Some(na);
+    pub(crate) async fn new_albums(&mut self, offset: u8, limit: u8) -> NCMResult<Vec<SongList>> {
+        let path = format!("{}new_albums.db", NCM_DATA.to_string_lossy());
+        if let Ok(buffer) = fs::read(&path).await {
+            if let Ok(song_list) = bincode::deserialize::<Vec<SongList>>(&buffer) {
+                return Ok(song_list);
             }
         }
-        None
+        if let Ok(na) = self.musicapi.new_albums(offset, limit) {
+            if !na.is_empty() {
+                fs::write(
+                    path,
+                    bincode::serialize(&na)
+                        .map_err(|_| Errors::NoneError)
+                        .map_err(|_| Errors::NoneError)?,
+                )
+                .await?;
+                return Ok(na);
+            }
+        }
+        Err(Errors::NoneError)
     }
 
     // 专辑
     // album_id: 专辑 id
     #[allow(unused)]
-    pub(crate) fn album(&mut self, album_id: u32) -> Option<Vec<SongInfo>> {
-        if let Some(db) = &self.db {
-            if let Some(album_vec) = db.get(b"album").unwrap_or(None) {
-                if let Ok(album) = serde_json::from_slice::<Vec<SongInfo>>(&album_vec) {
-                    return Some(album);
-                }
-            }
-            if let Some(a) = self.musicapi.album(album_id) {
-                if !a.is_empty() {
-                    db.insert(b"album", serde_json::to_vec(&a).unwrap_or(vec![]));
-                }
-                db.flush();
-                return Some(a);
+    pub(crate) async fn album(&mut self, album_id: u32) -> NCMResult<Vec<SongInfo>> {
+        let path = format!("{}album.db", NCM_DATA.to_string_lossy());
+        if let Ok(buffer) = fs::read(&path).await {
+            if let Ok(album) = bincode::deserialize::<Vec<SongInfo>>(&buffer) {
+                return Ok(album);
             }
         }
-        None
+        if let Ok(a) = self.musicapi.album(album_id) {
+            if !a.is_empty() {
+                fs::write(path, bincode::serialize(&a).map_err(|_| Errors::NoneError)?).await?;
+                return Ok(a);
+            }
+        }
+        Err(Errors::NoneError)
     }
 
     // 热门推荐歌单
@@ -404,22 +350,20 @@ impl MusicData {
     //	      "hot": 热门，
     //        "new": 最新
     #[allow(unused)]
-    pub(crate) fn top_song_list(&mut self, order: &str, offset: u8, limit: u8) -> Option<Vec<SongList>> {
-        if let Some(db) = &self.db {
-            if let Some(top_song_list_vec) = db.get(b"top_song_list").unwrap_or(None) {
-                if let Ok(top_song_list) = serde_json::from_slice::<Vec<SongList>>(&top_song_list_vec) {
-                    return Some(top_song_list);
-                }
-            }
-            if let Some(tsl) = self.musicapi.top_song_list(order, offset, limit) {
-                if !tsl.is_empty() {
-                    db.insert(b"top_song_list", serde_json::to_vec(&tsl).unwrap_or(vec![]));
-                }
-                db.flush();
-                return Some(tsl);
+    pub(crate) async fn top_song_list(&mut self, order: &str, offset: u8, limit: u8) -> NCMResult<Vec<SongList>> {
+        let path = format!("{}top_song_list.db", NCM_DATA.to_string_lossy());
+        if let Ok(buffer) = fs::read(&path).await {
+            if let Ok(to_song_list) = bincode::deserialize::<Vec<SongList>>(&buffer) {
+                return Ok(to_song_list);
             }
         }
-        None
+        if let Ok(tsl) = self.musicapi.top_song_list(order, offset, limit) {
+            if !tsl.is_empty() {
+                fs::write(path, bincode::serialize(&tsl).map_err(|_| Errors::NoneError)?).await?;
+                return Ok(tsl);
+            }
+        }
+        Err(Errors::NoneError)
     }
 
     // 热门歌曲/排行榜
@@ -444,57 +388,61 @@ impl MusicData {
     // 香港电台中文歌曲龙虎榜: 10169002
     // 华语金曲榜: 4395559
     #[allow(unused)]
-    pub(crate) fn top_songs(&mut self, list_id: u32) -> Option<Vec<SongInfo>> {
-        self.song_list_detail(list_id, true)
+    pub(crate) async fn top_songs(&mut self, list_id: u32) -> NCMResult<Vec<SongInfo>> {
+        self.song_list_detail(list_id, true).await
     }
 
     // 查询歌词
     // music_id: 歌曲id
     #[allow(unused)]
-    pub(crate) fn song_lyric(&mut self, music_id: u32) -> Option<Vec<String>> {
-        if let Some(db) = &self.db {
-            let key = format!("song_lyric_{}", music_id);
-            if let Some(song_lyric_vec) = db.get(key.as_bytes()).unwrap_or(None) {
-                if let Ok(song_lyric) = serde_json::from_slice::<Vec<String>>(&song_lyric_vec) {
-                    return Some(song_lyric);
-                }
-            }
-            if let Some(sl) = self.musicapi.song_lyric(music_id) {
-                if !sl.is_empty() {
-                    db.insert(key.as_bytes(), serde_json::to_vec(&sl).unwrap_or(vec![]));
-                }
-                db.flush();
-                return Some(sl);
+    pub(crate) async fn song_lyric(&mut self, music_id: u32) -> NCMResult<Vec<String>> {
+        let path = format!("{}song_lyric_{}.db", NCM_DATA.to_string_lossy(), music_id);
+        if let Ok(buffer) = fs::read(&path).await {
+            if let Ok(song_lyric) = bincode::deserialize::<Vec<String>>(&buffer) {
+                return Ok(song_lyric);
             }
         }
-        None
-    }
-
-    // 删除指定键
-    #[allow(unused)]
-    pub(crate) fn del<K: AsRef<[u8]>>(&self, key: K) {
-        if let Some(db) = &self.db {
-            db.remove(key).unwrap_or(None);
-            db.flush();
+        if let Ok(sl) = self.musicapi.song_lyric(music_id) {
+            if !sl.is_empty() {
+                fs::write(path, bincode::serialize(&sl).map_err(|_| Errors::NoneError)?).await?;
+                return Ok(sl);
+            }
         }
+        Err(Errors::NoneError)
     }
 
     // 收藏/取消收藏歌单
     // like: true 收藏，false 取消
     // id: 歌单 id
     #[allow(unused)]
-    pub(crate) fn song_list_like(&mut self, like: bool, id: u32) -> bool {
+    pub(crate) async fn song_list_like(&mut self, like: bool, id: u32) -> bool {
         self.musicapi.song_list_like(like, id)
     }
 }
 
-// 删除上周缓存的图片文件
-fn clear_cache(dir: &Path) -> io::Result<()> {
+// 删除缓存文件
+async fn clear_cache(dir: &Path) -> AsyncResult<()> {
     if dir.is_dir() {
-        for file in fs::read_dir(dir)? {
-            let file = file?;
+        let mut entries = fs::read_dir(dir).await?;
+        while let Some(res) = entries.next().await {
+            let path = res?.path();
+            fs::remove_file(&path).await?;
+        }
+    }
+    Ok(())
+}
+
+#[allow(unused)]
+// 删除缓存文件
+async fn clear_cache_starts_with(dir: &Path, start: &str) -> AsyncResult<()> {
+    if dir.is_dir() {
+        let mut entries = fs::read_dir(dir).await?;
+        while let Some(res) = entries.next().await {
+            let file = res?;
             let path = file.path();
-            fs::remove_file(&path)?;
+            if file.file_name().to_string_lossy().starts_with(start) {
+                fs::remove_file(&path).await?;
+            }
         }
     }
     Ok(())
@@ -502,7 +450,7 @@ fn clear_cache(dir: &Path) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    //use super::*;
 
     #[test]
     fn test_db() {

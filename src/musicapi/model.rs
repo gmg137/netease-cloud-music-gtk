@@ -3,38 +3,33 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
+use crate::model::{Errors, NCMResult};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 #[allow(unused)]
-pub fn to_lyric(json: String) -> Option<Vec<String>> {
-    if let Ok(value) = serde_json::from_str::<Value>(&json) {
-        if value.get("code").unwrap_or(&json!(0)).eq(&200) {
-            let mut vec: Vec<String> = Vec::new();
-            let lyric = value
-                .get("lrc")
-                .unwrap_or(&json!(null))
-                .get("lyric")
-                .unwrap_or(&json!(""))
-                .as_str()
-                .unwrap_or("")
-                .to_owned();
-            vec = lyric
-                .split("\n")
-                .collect::<Vec<&str>>()
-                .iter()
-                .map(|s| s.to_string())
-                .filter(|s| !s.is_empty())
-                .collect::<Vec<String>>();
-            if vec.is_empty() {
-                return None;
-            }
-            return Some(vec);
-        }
-        None
-    } else {
-        None
+pub fn to_lyric(json: String) -> NCMResult<Vec<String>> {
+    let value = serde_json::from_str::<Value>(&json)?;
+    if value.get("code").ok_or(Errors::NoneError)?.eq(&200) {
+        let mut vec: Vec<String> = Vec::new();
+        let lyric = value
+            .get("lrc")
+            .ok_or(Errors::NoneError)?
+            .get("lyric")
+            .ok_or(Errors::NoneError)?
+            .as_str()
+            .ok_or(Errors::NoneError)?
+            .to_owned();
+        vec = lyric
+            .split("\n")
+            .collect::<Vec<&str>>()
+            .iter()
+            .map(|s| s.to_string())
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<String>>();
+        return Ok(vec);
     }
+    Err(Errors::NoneError)
 }
 
 // 歌手信息
@@ -49,34 +44,42 @@ pub struct SingerInfo {
 }
 
 #[allow(unused)]
-pub fn to_singer_info(json: String) -> Option<Vec<SingerInfo>> {
-    if let Ok(value) = serde_json::from_str::<Value>(&json) {
-        if value.get("code").unwrap_or(&json!(0)).eq(&200) {
-            let mut vec: Vec<SingerInfo> = Vec::new();
-            let list = json!([]);
-            let array = value
-                .get("result")
-                .unwrap_or(&json!(null))
-                .get("artists")
-                .unwrap_or(&list)
-                .as_array()
-                .unwrap();
-            array.iter().for_each(|v| {
-                vec.push(SingerInfo {
-                    id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                    name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                    pic_url: v.get("picUrl").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                });
+pub fn to_singer_info(json: String) -> NCMResult<Vec<SingerInfo>> {
+    let value = serde_json::from_str::<Value>(&json)?;
+    if value.get("code").ok_or(Errors::NoneError)?.eq(&200) {
+        let mut vec: Vec<SingerInfo> = Vec::new();
+        let list = json!([]);
+        let array = value
+            .get("result")
+            .ok_or(Errors::NoneError)?
+            .get("artists")
+            .ok_or(Errors::NoneError)?
+            .as_array()
+            .ok_or(Errors::NoneError)?;
+        for v in array.iter() {
+            vec.push(SingerInfo {
+                id: v
+                    .get("id")
+                    .ok_or(Errors::NoneError)?
+                    .as_u64()
+                    .ok_or(Errors::NoneError)? as u32,
+                name: v
+                    .get("name")
+                    .ok_or(Errors::NoneError)?
+                    .as_str()
+                    .ok_or(Errors::NoneError)?
+                    .to_owned(),
+                pic_url: v
+                    .get("picUrl")
+                    .ok_or(Errors::NoneError)?
+                    .as_str()
+                    .ok_or(Errors::NoneError)?
+                    .to_owned(),
             });
-            if vec.is_empty() {
-                return None;
-            }
-            return Some(vec);
         }
-        None
-    } else {
-        None
+        return Ok(vec);
     }
+    Err(Errors::NoneError)
 }
 
 // 歌曲 URL
@@ -91,31 +94,36 @@ pub struct SongUrl {
 }
 
 #[allow(unused)]
-pub fn to_song_url(json: String) -> Option<Vec<SongUrl>> {
-    if let Ok(value) = serde_json::from_str::<Value>(&json) {
-        if value.get("code").unwrap_or(&json!(0)).eq(&200) {
-            let mut vec: Vec<SongUrl> = Vec::new();
-            let list = json!([]);
-            let array = value.get("data").unwrap_or(&list).as_array().unwrap();
-            array.iter().for_each(|v| {
-                let url = v.get("url").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned();
-                if !url.is_empty() {
-                    vec.push(SongUrl {
-                        id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                        url,
-                        rate: v.get("br").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                    });
-                }
-            });
-            if vec.is_empty() {
-                return None;
+pub fn to_song_url(json: String) -> NCMResult<Vec<SongUrl>> {
+    let value = serde_json::from_str::<Value>(&json)?;
+    if value.get("code").ok_or(Errors::NoneError)?.eq(&200) {
+        let mut vec: Vec<SongUrl> = Vec::new();
+        let array = value
+            .get("data")
+            .ok_or(Errors::NoneError)?
+            .as_array()
+            .ok_or(Errors::NoneError)?;
+        for v in array.iter() {
+            let url = v.get("url").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned();
+            if !url.is_empty() {
+                vec.push(SongUrl {
+                    id: v
+                        .get("id")
+                        .ok_or(Errors::NoneError)?
+                        .as_u64()
+                        .ok_or(Errors::NoneError)? as u32,
+                    url,
+                    rate: v
+                        .get("br")
+                        .ok_or(Errors::NoneError)?
+                        .as_u64()
+                        .ok_or(Errors::NoneError)? as u32,
+                });
             }
-            return Some(vec);
         }
-        None
-    } else {
-        None
+        return Ok(vec);
     }
+    Err(Errors::NoneError)
 }
 
 // 歌曲信息
@@ -139,238 +147,309 @@ pub struct SongInfo {
 
 // parse: 解析方式
 #[allow(unused)]
-pub fn to_song_info(json: String, parse: Parse) -> Option<Vec<SongInfo>> {
-    if let Ok(value) = serde_json::from_str::<Value>(&json) {
-        if value.get("code").unwrap_or(&json!(0)).eq(&200) {
-            let mut vec: Vec<SongInfo> = Vec::new();
-            let list = json!([]);
-            match parse {
-                Parse::USL => {
-                    let mut array = value.get("songs").unwrap_or(&list).as_array().unwrap();
-                    if array.is_empty() {
-                        array = value
-                            .get("playlist")
-                            .unwrap_or(&json!(null))
-                            .get("tracks")
-                            .unwrap_or(&list)
-                            .as_array()
-                            .unwrap();
-                    }
-                    array.iter().for_each(|v| {
-                        let duration = v.get("dt").unwrap_or(&json!(0)).as_u64().unwrap() as u32;
-                        vec.push(SongInfo {
-                            id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                            singer: v
-                                .get("ar")
-                                .unwrap_or(&json!(&list))
-                                .get(0)
-                                .unwrap_or(&json!(null))
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            album: v
-                                .get("al")
-                                .unwrap_or(&json!(null))
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            pic_url: v
-                                .get("al")
-                                .unwrap_or(&json!(null))
-                                .get("picUrl")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
-                            song_url: String::new(),
-                        });
-                    });
-                }
-                Parse::RMD => {
-                    let array = value.get("data").unwrap_or(&list).as_array().unwrap();
-                    array.iter().for_each(|v| {
-                        let duration = v.get("duration").unwrap_or(&json!(0)).as_u64().unwrap() as u32;
-                        vec.push(SongInfo {
-                            id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                            singer: v
-                                .get("artists")
-                                .unwrap_or(&json!(&list))
-                                .get(0)
-                                .unwrap_or(&json!(null))
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            album: v
-                                .get("album")
-                                .unwrap_or(&json!(null))
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            pic_url: v
-                                .get("album")
-                                .unwrap_or(&json!(null))
-                                .get("picUrl")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
-                            song_url: String::new(),
-                        });
-                    });
-                }
-                Parse::RMDS => {
-                    let array = value
-                        .get("data")
-                        .unwrap_or(&json!(null))
-                        .as_object()
-                        .unwrap()
-                        .get("dailySongs")
-                        .unwrap_or(&list)
+pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
+    let value = serde_json::from_str::<Value>(&json)?;
+    if value.get("code").ok_or(Errors::NoneError)?.eq(&200) {
+        let mut vec: Vec<SongInfo> = Vec::new();
+        let list = json!([]);
+        match parse {
+            Parse::USL => {
+                let mut array = value
+                    .get("songs")
+                    .unwrap_or(&list)
+                    .as_array()
+                    .ok_or(Errors::NoneError)?;
+                if array.is_empty() {
+                    array = value
+                        .get("playlist")
+                        .ok_or(Errors::NoneError)?
+                        .get("tracks")
+                        .ok_or(Errors::NoneError)?
                         .as_array()
-                        .unwrap();
-                    array.iter().for_each(|v| {
-                        let duration = v.get("duration").unwrap_or(&json!(0)).as_u64().unwrap() as u32;
-                        vec.push(SongInfo {
-                            id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                            singer: v
-                                .get("artists")
-                                .unwrap_or(&json!(&list))
-                                .get(0)
-                                .unwrap_or(&json!(null))
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            album: v
-                                .get("album")
-                                .unwrap_or(&json!(null))
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            pic_url: v
-                                .get("album")
-                                .unwrap_or(&json!(null))
-                                .get("picUrl")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
-                            song_url: String::new(),
-                        });
+                        .ok_or(Errors::NoneError)?;
+                }
+                for v in array.iter() {
+                    let duration = v
+                        .get("dt")
+                        .ok_or(Errors::NoneError)?
+                        .as_u64()
+                        .ok_or(Errors::NoneError)? as u32;
+                    vec.push(SongInfo {
+                        id: v
+                            .get("id")
+                            .ok_or(Errors::NoneError)?
+                            .as_u64()
+                            .ok_or(Errors::NoneError)? as u32,
+                        name: v
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        singer: v
+                            .get("ar")
+                            .ok_or(Errors::NoneError)?
+                            .get(0)
+                            .ok_or(Errors::NoneError)?
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        album: v
+                            .get("al")
+                            .ok_or(Errors::NoneError)?
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        pic_url: v
+                            .get("al")
+                            .ok_or(Errors::NoneError)?
+                            .get("picUrl")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
+                        song_url: String::new(),
                     });
                 }
-                Parse::SEARCH => {
-                    let array = value
-                        .get("result")
-                        .unwrap_or(&json!(null))
-                        .as_object()
-                        .unwrap()
-                        .get("songs")
-                        .unwrap_or(&list)
-                        .as_array()
-                        .unwrap();
-                    array.iter().for_each(|v| {
-                        let duration = v.get("dt").unwrap_or(&json!(0)).as_u64().unwrap() as u32;
-                        vec.push(SongInfo {
-                            id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                            singer: v
-                                .get("ar")
-                                .unwrap_or(&json!(&list))
-                                .get(0)
-                                .unwrap_or(&json!(null))
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            album: v
-                                .get("al")
-                                .unwrap_or(&json!(null))
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            pic_url: v
-                                .get("al")
-                                .unwrap_or(&json!(null))
-                                .get("picUrl")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
-                            song_url: String::new(),
-                        });
-                    });
-                }
-                Parse::ALBUM => {
-                    let array = value.get("songs").unwrap_or(&list).as_array().unwrap();
-                    array.iter().for_each(|v| {
-                        let duration = v.get("dt").unwrap_or(&json!(0)).as_u64().unwrap() as u32;
-                        vec.push(SongInfo {
-                            id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                            singer: v
-                                .get("ar")
-                                .unwrap_or(&json!(&list))
-                                .get(0)
-                                .unwrap_or(&json!(null))
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap()
-                                .to_owned(),
-                            album: value
-                                .get("album")
-                                .unwrap_or(&json!(null))
-                                .get("name")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            pic_url: value
-                                .get("album")
-                                .unwrap_or(&json!(null))
-                                .get("picUrl")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                            duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
-                            song_url: String::new(),
-                        });
-                    });
-                }
-                _ => {}
             }
-            if vec.is_empty() {
-                return None;
+            Parse::RMD => {
+                let array = value
+                    .get("data")
+                    .ok_or(Errors::NoneError)?
+                    .as_array()
+                    .ok_or(Errors::NoneError)?;
+                for v in array.iter() {
+                    let duration = v
+                        .get("duration")
+                        .ok_or(Errors::NoneError)?
+                        .as_u64()
+                        .ok_or(Errors::NoneError)? as u32;
+                    vec.push(SongInfo {
+                        id: v
+                            .get("id")
+                            .ok_or(Errors::NoneError)?
+                            .as_u64()
+                            .ok_or(Errors::NoneError)? as u32,
+                        name: v
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        singer: v
+                            .get("artists")
+                            .ok_or(Errors::NoneError)?
+                            .get(0)
+                            .ok_or(Errors::NoneError)?
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        album: v
+                            .get("album")
+                            .ok_or(Errors::NoneError)?
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        pic_url: v
+                            .get("album")
+                            .ok_or(Errors::NoneError)?
+                            .get("picUrl")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
+                        song_url: String::new(),
+                    });
+                }
             }
-            return Some(vec);
+            Parse::RMDS => {
+                let array = value
+                    .get("data")
+                    .ok_or(Errors::NoneError)?
+                    .as_object()
+                    .ok_or(Errors::NoneError)?
+                    .get("dailySongs")
+                    .ok_or(Errors::NoneError)?
+                    .as_array()
+                    .ok_or(Errors::NoneError)?;
+                for v in array.iter() {
+                    let duration = v
+                        .get("duration")
+                        .ok_or(Errors::NoneError)?
+                        .as_u64()
+                        .ok_or(Errors::NoneError)? as u32;
+                    vec.push(SongInfo {
+                        id: v
+                            .get("id")
+                            .ok_or(Errors::NoneError)?
+                            .as_u64()
+                            .ok_or(Errors::NoneError)? as u32,
+                        name: v
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        singer: v
+                            .get("artists")
+                            .ok_or(Errors::NoneError)?
+                            .get(0)
+                            .ok_or(Errors::NoneError)?
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        album: v
+                            .get("album")
+                            .ok_or(Errors::NoneError)?
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        pic_url: v
+                            .get("album")
+                            .ok_or(Errors::NoneError)?
+                            .get("picUrl")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
+                        song_url: String::new(),
+                    });
+                }
+            }
+            Parse::SEARCH => {
+                let array = value
+                    .get("result")
+                    .ok_or(Errors::NoneError)?
+                    .as_object()
+                    .ok_or(Errors::NoneError)?
+                    .get("songs")
+                    .ok_or(Errors::NoneError)?
+                    .as_array()
+                    .ok_or(Errors::NoneError)?;
+                for v in array.iter() {
+                    let duration = v
+                        .get("dt")
+                        .ok_or(Errors::NoneError)?
+                        .as_u64()
+                        .ok_or(Errors::NoneError)? as u32;
+                    vec.push(SongInfo {
+                        id: v
+                            .get("id")
+                            .ok_or(Errors::NoneError)?
+                            .as_u64()
+                            .ok_or(Errors::NoneError)? as u32,
+                        name: v
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        singer: v
+                            .get("ar")
+                            .ok_or(Errors::NoneError)?
+                            .get(0)
+                            .ok_or(Errors::NoneError)?
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        album: v
+                            .get("al")
+                            .ok_or(Errors::NoneError)?
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        pic_url: v
+                            .get("al")
+                            .ok_or(Errors::NoneError)?
+                            .get("picUrl")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
+                        song_url: String::new(),
+                    });
+                }
+            }
+            Parse::ALBUM => {
+                let array = value
+                    .get("songs")
+                    .ok_or(Errors::NoneError)?
+                    .as_array()
+                    .ok_or(Errors::NoneError)?;
+                for v in array.iter() {
+                    let duration = v
+                        .get("dt")
+                        .ok_or(Errors::NoneError)?
+                        .as_u64()
+                        .ok_or(Errors::NoneError)? as u32;
+                    vec.push(SongInfo {
+                        id: v
+                            .get("id")
+                            .ok_or(Errors::NoneError)?
+                            .as_u64()
+                            .ok_or(Errors::NoneError)? as u32,
+                        name: v
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        singer: v
+                            .get("ar")
+                            .ok_or(Errors::NoneError)?
+                            .get(0)
+                            .ok_or(Errors::NoneError)?
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        album: value
+                            .get("album")
+                            .ok_or(Errors::NoneError)?
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        pic_url: value
+                            .get("album")
+                            .ok_or(Errors::NoneError)?
+                            .get("picUrl")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
+                        song_url: String::new(),
+                    });
+                }
+            }
+            _ => {}
         }
-        None
-    } else {
-        None
+        return Ok(vec);
     }
+    Err(Errors::NoneError)
 }
 
 // 歌单信息
@@ -386,73 +465,128 @@ pub struct SongList {
 
 // parse: 解析方式
 #[allow(unused)]
-pub fn to_song_list(json: String, parse: Parse) -> Option<Vec<SongList>> {
-    if let Ok(value) = serde_json::from_str::<Value>(&json) {
-        if value.get("code").unwrap_or(&json!(0)).eq(&200) {
-            let mut vec: Vec<SongList> = Vec::new();
-            let list = json!([]);
-            match parse {
-                Parse::USL => {
-                    let array = value.get("playlist").unwrap_or(&list).as_array().unwrap();
-                    array.iter().for_each(|v| {
-                        vec.push(SongList {
-                            id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                            cover_img_url: v
-                                .get("coverImgUrl")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                        });
+pub fn to_song_list(json: String, parse: Parse) -> NCMResult<Vec<SongList>> {
+    let value = serde_json::from_str::<Value>(&json)?;
+    if value.get("code").ok_or(Errors::NoneError)?.eq(&200) {
+        let mut vec: Vec<SongList> = Vec::new();
+        match parse {
+            Parse::USL => {
+                let array = value
+                    .get("playlist")
+                    .ok_or(Errors::NoneError)?
+                    .as_array()
+                    .ok_or(Errors::NoneError)?;
+                for v in array.iter() {
+                    vec.push(SongList {
+                        id: v
+                            .get("id")
+                            .ok_or(Errors::NoneError)?
+                            .as_u64()
+                            .ok_or(Errors::NoneError)? as u32,
+                        name: v
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        cover_img_url: v
+                            .get("coverImgUrl")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
                     });
                 }
-                Parse::RMD => {
-                    let array = value.get("recommend").unwrap_or(&list).as_array().unwrap();
-                    array.iter().for_each(|v| {
-                        vec.push(SongList {
-                            id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                            cover_img_url: v.get("picUrl").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                        });
-                    });
-                }
-                Parse::ALBUM => {
-                    let array = value.get("albums").unwrap_or(&list).as_array().unwrap();
-                    array.iter().for_each(|v| {
-                        vec.push(SongList {
-                            id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                            cover_img_url: v.get("picUrl").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                        });
-                    });
-                }
-                Parse::TOP => {
-                    let array = value.get("playlists").unwrap_or(&list).as_array().unwrap();
-                    array.iter().for_each(|v| {
-                        vec.push(SongList {
-                            id: v.get("id").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                            name: v.get("name").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
-                            cover_img_url: v
-                                .get("coverImgUrl")
-                                .unwrap_or(&json!(""))
-                                .as_str()
-                                .unwrap_or("")
-                                .to_owned(),
-                        });
-                    });
-                }
-                _ => {}
             }
-            if vec.is_empty() {
-                return None;
+            Parse::RMD => {
+                let array = value
+                    .get("recommend")
+                    .ok_or(Errors::NoneError)?
+                    .as_array()
+                    .ok_or(Errors::NoneError)?;
+                for v in array.iter() {
+                    vec.push(SongList {
+                        id: v
+                            .get("id")
+                            .ok_or(Errors::NoneError)?
+                            .as_u64()
+                            .ok_or(Errors::NoneError)? as u32,
+                        name: v
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        cover_img_url: v
+                            .get("picUrl")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                    });
+                }
             }
-            return Some(vec);
+            Parse::ALBUM => {
+                let array = value
+                    .get("albums")
+                    .ok_or(Errors::NoneError)?
+                    .as_array()
+                    .ok_or(Errors::NoneError)?;
+                for v in array.iter() {
+                    vec.push(SongList {
+                        id: v
+                            .get("id")
+                            .ok_or(Errors::NoneError)?
+                            .as_u64()
+                            .ok_or(Errors::NoneError)? as u32,
+                        name: v
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        cover_img_url: v
+                            .get("picUrl")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                    });
+                }
+            }
+            Parse::TOP => {
+                let array = value
+                    .get("playlists")
+                    .ok_or(Errors::NoneError)?
+                    .as_array()
+                    .ok_or(Errors::NoneError)?;
+                for v in array.iter() {
+                    vec.push(SongList {
+                        id: v
+                            .get("id")
+                            .ok_or(Errors::NoneError)?
+                            .as_u64()
+                            .ok_or(Errors::NoneError)? as u32,
+                        name: v
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        cover_img_url: v
+                            .get("coverImgUrl")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                    });
+                }
+            }
+            _ => {}
         }
-        None
-    } else {
-        None
+        return Ok(vec);
     }
+    Err(Errors::NoneError)
 }
 
 // 消息
@@ -463,21 +597,26 @@ pub struct Msg {
 }
 
 #[allow(unused)]
-pub fn to_msg(json: String) -> Option<Msg> {
-    if let Ok(value) = serde_json::from_str::<Value>(&json) {
-        let code = value.get("code").unwrap_or(&json!(0)).as_i64().unwrap() as i32;
-        if code.eq(&200) {
-            Some(Msg {
-                code: 200,
-                msg: "".to_owned(),
-            })
-        } else {
-            let msg = value.get("msg").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned();
-            Some(Msg { code, msg })
-        }
-    } else {
-        None
+pub fn to_msg(json: String) -> NCMResult<Msg> {
+    let value = serde_json::from_str::<Value>(&json)?;
+    let code = value
+        .get("code")
+        .ok_or(Errors::NoneError)?
+        .as_i64()
+        .ok_or(Errors::NoneError)? as i32;
+    if code.eq(&200) {
+        return Ok(Msg {
+            code: 200,
+            msg: "".to_owned(),
+        });
     }
+    let msg = value
+        .get("msg")
+        .ok_or(Errors::NoneError)?
+        .as_str()
+        .ok_or(Errors::NoneError)?
+        .to_owned();
+    Ok(Msg { code, msg })
 }
 
 // 登陆信息
@@ -496,41 +635,54 @@ pub struct LoginInfo {
 }
 
 #[allow(unused)]
-pub fn to_login_info(json: String) -> Option<LoginInfo> {
-    if let Ok(value) = serde_json::from_str::<Value>(&json) {
-        let code = value.get("code").unwrap_or(&json!(0)).as_i64().unwrap() as i32;
-        if code.eq(&200) {
-            let profile = value.get("profile").unwrap_or(&json!(null)).as_object().unwrap();
-            Some(LoginInfo {
-                code,
-                uid: profile.get("userId").unwrap_or(&json!(0)).as_u64().unwrap() as u32,
-                nickname: profile
-                    .get("nickname")
-                    .unwrap_or(&json!(""))
-                    .as_str()
-                    .unwrap_or("")
-                    .to_owned(),
-                avatar_url: profile
-                    .get("avatarUrl")
-                    .unwrap_or(&json!(""))
-                    .as_str()
-                    .unwrap_or("")
-                    .to_owned(),
-                msg: "".to_owned(),
-            })
-        } else {
-            let msg = value.get("msg").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned();
-            Some(LoginInfo {
-                code,
-                uid: 0,
-                nickname: "".to_owned(),
-                avatar_url: "".to_owned(),
-                msg,
-            })
-        }
-    } else {
-        None
+pub fn to_login_info(json: String) -> NCMResult<LoginInfo> {
+    let value = serde_json::from_str::<Value>(&json)?;
+    let code = value
+        .get("code")
+        .ok_or(Errors::NoneError)?
+        .as_i64()
+        .ok_or(Errors::NoneError)? as i32;
+    if code.eq(&200) {
+        let profile = value
+            .get("profile")
+            .ok_or(Errors::NoneError)?
+            .as_object()
+            .ok_or(Errors::NoneError)?;
+        return Ok(LoginInfo {
+            code,
+            uid: profile
+                .get("userId")
+                .ok_or(Errors::NoneError)?
+                .as_u64()
+                .ok_or(Errors::NoneError)? as u32,
+            nickname: profile
+                .get("nickname")
+                .ok_or(Errors::NoneError)?
+                .as_str()
+                .ok_or(Errors::NoneError)?
+                .to_owned(),
+            avatar_url: profile
+                .get("avatarUrl")
+                .ok_or(Errors::NoneError)?
+                .as_str()
+                .ok_or(Errors::NoneError)?
+                .to_owned(),
+            msg: "".to_owned(),
+        });
     }
+    let msg = value
+        .get("msg")
+        .ok_or(Errors::NoneError)?
+        .as_str()
+        .ok_or(Errors::NoneError)?
+        .to_owned();
+    Ok(LoginInfo {
+        code,
+        uid: 0,
+        nickname: "".to_owned(),
+        avatar_url: "".to_owned(),
+        msg,
+    })
 }
 
 // 请求方式

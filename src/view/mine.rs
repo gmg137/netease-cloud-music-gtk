@@ -8,6 +8,7 @@ use crate::{
     musicapi::model::{SongInfo, SongList},
     utils::*,
 };
+use async_std::task;
 use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
 use gtk::prelude::*;
@@ -302,8 +303,7 @@ impl Mine {
     }
 
     pub(crate) fn update_fm_view(&self, song_info: &SongInfo) {
-        let image_path = format!("{}/{}.jpg", crate::NCM_CACHE.to_string_lossy(), &song_info.id);
-        download_img(&song_info.pic_url, &image_path, 210, 210);
+        let image_path = format!("{}/{}.jpg", crate::model::NCM_CACHE.to_string_lossy(), &song_info.id);
         if let Ok(image) = create_round_avatar(&image_path) {
             let image = image.scale_simple(210, 210, InterpType::Bilinear);
             self.fmview.image.set_from_pixbuf(image.as_ref());
@@ -402,7 +402,10 @@ impl Mine {
     }
 
     pub(crate) fn play_all(&self) {
-        create_player_list(&self.song_list, self.sender.clone(), true);
+        let song_list = self.song_list.clone();
+        let sender = self.sender.clone();
+        sender.send(Action::PlayerTypes(PlayerTypes::Song)).unwrap_or(());
+        task::spawn(async move { create_player_list(&song_list, sender, true).await.ok() });
     }
 
     pub(crate) fn set_now_play(&self, si: SongInfo) {

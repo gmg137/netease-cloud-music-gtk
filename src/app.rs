@@ -4,20 +4,19 @@
 // Distributed under terms of the GPLv3 license.
 //
 
-use crossbeam_channel::{unbounded, Receiver, Sender};
-use gio::{self, prelude::*};
-use glib;
-use gtk::prelude::*;
-use gtk::{ApplicationWindow, Builder, Overlay};
-
 use crate::musicapi::model::{LoginInfo, SongInfo, SongList};
 use crate::utils::*;
 use crate::view::*;
 use crate::widgets::{header::*, mark_all_notif, notice::*, player::*};
+use async_std::task;
+use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
+use gio::{self, prelude::*};
+use glib;
+use gtk::prelude::*;
+use gtk::{ApplicationWindow, Builder, Overlay};
 use std::cell::RefCell;
 use std::env;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub(crate) enum Action {
@@ -52,6 +51,7 @@ pub(crate) enum Action {
     CancelCollection,
     Search(String),
     PlayerInit(SongInfo, PlayerTypes),
+    PlayerTypes(PlayerTypes),
     ReadyPlayer(SongInfo),
     Player(SongInfo),
     PlayerSubpages,
@@ -82,8 +82,6 @@ pub(crate) struct App {
 impl App {
     pub(crate) fn new(application: &gtk::Application) -> Rc<Self> {
         let (sender, receiver) = unbounded();
-        // 初始化数据锁
-        let data = Arc::new(Mutex::new(0u8));
 
         let glade_src = include_str!("../ui/window.ui");
         let builder = Builder::new_from_string(glade_src);
@@ -92,10 +90,10 @@ impl App {
         window.set_application(Some(application));
         window.set_title("网易云音乐");
 
-        let configs = load_config();
-        let view = View::new(&builder, &sender, data.clone());
-        let header = Header::new(&builder, &sender, data.clone(), &configs);
-        let player = PlayerWrapper::new(&builder, &sender, data.clone());
+        let configs = task::block_on(async { get_config().await }).unwrap();
+        let view = View::new(&builder, &sender);
+        let header = Header::new(&builder, &sender, &configs);
+        let player = PlayerWrapper::new(&builder, &sender);
 
         window.show_all();
 
@@ -141,8 +139,6 @@ impl App {
     }
 
     fn setup_action_channel(&self) -> glib::Continue {
-        use crossbeam_channel::TryRecvError;
-
         let action = match self.receiver.try_recv() {
             Ok(a) => a,
             Err(TryRecvError::Empty) => return glib::Continue(true),
@@ -190,6 +186,7 @@ impl App {
             Action::Logout => self.header.logout(),
             Action::DailyTask => self.header.daily_task(),
             Action::PlayerInit(info, pt) => self.player.initialize_player(info, pt),
+            Action::PlayerTypes(pt) => self.player.set_player_typers(pt),
             Action::Player(info) => self.player.player(info),
             Action::ReadyPlayer(info) => self.player.ready_player(info, self.configs.borrow().lyrics),
             Action::ShowNotice(text) => {
@@ -203,12 +200,20 @@ impl App {
             Action::PlayerMine => self.view.play_mine(),
             Action::QuitMain => self.window.destroy(),
             Action::ConfigsSetTray(state) => {
-                self.configs.borrow_mut().tray = state;
-                save_config(&self.configs.borrow());
+                task::spawn(async move {
+                    if let Ok(mut conf) = get_config().await {
+                        conf.tray = state;
+                        save_config(&conf).await.ok();
+                    }
+                });
             }
             Action::ConfigsSetLyrics(state) => {
-                self.configs.borrow_mut().lyrics = state;
-                save_config(&self.configs.borrow());
+                task::spawn(async move {
+                    if let Ok(mut conf) = get_config().await {
+                        conf.lyrics = state;
+                        save_config(&conf).await.ok();
+                    }
+                });
             }
         }
 
