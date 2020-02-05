@@ -244,7 +244,7 @@ impl App {
                     info!("GApplication::activate");
                     if let Some(app) = weak.upgrade() {
                         // Ideally Gtk4/GtkBuilder make this irrelvent
-                        app.window.show_all();
+                        app.window.show_now();
                         app.window.present();
                         info!("Window presented");
                     } else {
