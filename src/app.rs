@@ -97,9 +97,15 @@ impl App {
 
         window.show_all();
 
-        let tray = configs.tray.clone();
         let weak_app = application.downgrade();
         window.connect_delete_event(move |w, _| {
+            let tray = task::block_on(async {
+                if let Ok(conf) = get_config().await {
+                    conf.tray
+                } else {
+                    false
+                }
+            });
             if !tray {
                 let app = match weak_app.upgrade() {
                     Some(a) => a,

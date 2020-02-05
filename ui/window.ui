@@ -2491,7 +2491,6 @@ audio-volume-medium-symbolic</property>
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="tooltip_text" translatable="yes">重启后生效</property>
                     <property name="label" translatable="yes">关闭至后台运行</property>
                   </object>
                   <packing>
