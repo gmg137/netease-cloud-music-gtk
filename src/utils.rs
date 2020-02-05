@@ -247,7 +247,7 @@ pub(crate) async fn update_player_list(sender: Sender<Action>) -> NCMResult<()> 
                 NCM_CACHE.to_string_lossy(),
                 new_player_list[index as usize].id
             );
-            fs::remove_file(&path).await.ok();
+            fs::remove_file(&mp3_path).await.ok();
             // 继续播放歌曲
             sender
                 .send(Action::ReadyPlayer(new_player_list[index as usize].to_owned()))
