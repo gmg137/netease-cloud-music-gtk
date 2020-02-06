@@ -268,10 +268,11 @@ impl Header {
                         sender
                             .send(Action::RefreshHeaderUserLogin(login_info.to_owned()))
                             .unwrap();
+                        return;
                     }
-                } else {
-                    sender.send(Action::RefreshHeaderUserLogout).unwrap();
                 }
+                sender.send(Action::RefreshHeaderUserLogout).unwrap();
+                return;
             } else {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
             }

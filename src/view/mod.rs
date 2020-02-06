@@ -206,7 +206,7 @@ impl View {
                         t.await;
                     }
                     // 判断是否已经登陆
-                    if data.login {
+                    if data.login_info().await.is_ok() {
                         if let Ok(rr) = data.recommend_resource().await {
                             // 异步并行下载图片
                             let mut tasks = Vec::with_capacity(rr.len());
@@ -285,7 +285,7 @@ impl View {
         let sender = self.sender.clone();
         task::spawn(async move {
             if let Ok(mut data) = MusicData::new().await {
-                if data.login {
+                if data.login_info().await.is_ok() {
                     sender.send(Action::MineShowFm).unwrap_or(());
                     if let Ok(login_info) = data.login_info().await {
                         if let Ok(vsl) = data.user_song_list(login_info.uid, 0, 50).await {

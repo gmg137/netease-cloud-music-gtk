@@ -122,6 +122,17 @@ impl MusicData {
                 let login_info: LoginInfo = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
                 return Ok(login_info);
             }
+            self.login = false;
+            let data = StatusData {
+                login: false,
+                day: *DATE_DAY,
+                week: *ISO_WEEK,
+            };
+            fs::write(
+                format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
+                bincode::serialize(&data).map_err(|_| Errors::NoneError)?,
+            )
+            .await?;
         }
         Err(Errors::NoneError)
     }
