@@ -294,22 +294,26 @@ impl PlayerWidget {
         let sender = self.sender.clone();
         task::spawn(async move {
             if let Ok(mut data) = MusicData::new().await {
-                if let Ok(v) = data.songs_url(&[song_info.id], 320).await {
-                    if v.len() > 0 {
-                        let mut song_info = song_info;
-                        song_info.song_url = v[0].url.to_string();
-                        // 缓存音乐到本地
-                        let path = format!("{}/{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
-                        download_music(&song_info.song_url, &path).await.ok();
-                        // 缓存音乐图片
-                        let image_path = format!("{}/{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
-                        download_img(&song_info.pic_url, &image_path, 210, 210).await.ok();
-                        sender.send(Action::Player(song_info)).unwrap();
+                let path = format!("{}/{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
+                if std::path::Path::new(&path).exists() {
+                    sender.send(Action::Player(song_info)).unwrap();
+                } else {
+                    if let Ok(v) = data.songs_url(&[song_info.id], 320).await {
+                        if v.len() > 0 {
+                            let mut song_info = song_info;
+                            song_info.song_url = v[0].url.to_string();
+                            // 缓存音乐到本地
+                            download_music(&song_info.song_url, &path).await.ok();
+                            // 缓存音乐图片
+                            let image_path = format!("{}/{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
+                            download_img(&song_info.pic_url, &image_path, 210, 210).await.ok();
+                            sender.send(Action::Player(song_info)).unwrap();
+                        } else {
+                            sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
+                        }
                     } else {
                         sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
                     }
-                } else {
-                    sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
                 }
             } else {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
