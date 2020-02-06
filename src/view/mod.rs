@@ -92,7 +92,7 @@ impl View {
                         sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
                     }
                 } else {
-                    sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
+                    sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                 }
             } else {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
@@ -119,7 +119,7 @@ impl View {
                         }
                     }
                 } else {
-                    sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
+                    sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                 }
             } else {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
@@ -231,7 +231,7 @@ impl View {
                         .send(Action::RefreshHomeView(tsl[0..8].to_owned(), vec![]))
                         .unwrap_or(());
                 } else {
-                    sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
+                    sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                 }
             } else {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
@@ -267,7 +267,7 @@ impl View {
                         .send(Action::RefreshFoundView(song_list, title.to_string()))
                         .unwrap_or(());
                 } else {
-                    sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
+                    sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                 }
             } else {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
@@ -400,7 +400,7 @@ impl View {
                             .send(Action::RefreshMineView(song_list, "每日歌曲推荐".to_owned()))
                             .unwrap_or(());
                     } else {
-                        sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
+                        sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                     }
                 } else {
                     row_id -= 2;
@@ -414,7 +414,7 @@ impl View {
                                     ))
                                     .unwrap_or(());
                             } else {
-                                sender.send(Action::ShowNotice("网络异常!".to_owned())).unwrap();
+                                sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                             }
                         }
                     }
