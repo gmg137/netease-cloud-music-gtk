@@ -48,7 +48,6 @@ pub fn to_singer_info(json: String) -> NCMResult<Vec<SingerInfo>> {
     let value = serde_json::from_str::<Value>(&json)?;
     if value.get("code").ok_or(Errors::NoneError)?.eq(&200) {
         let mut vec: Vec<SingerInfo> = Vec::new();
-        let list = json!([]);
         let array = value
             .get("result")
             .ok_or(Errors::NoneError)?
@@ -69,12 +68,7 @@ pub fn to_singer_info(json: String) -> NCMResult<Vec<SingerInfo>> {
                     .as_str()
                     .ok_or(Errors::NoneError)?
                     .to_owned(),
-                pic_url: v
-                    .get("picUrl")
-                    .ok_or(Errors::NoneError)?
-                    .as_str()
-                    .ok_or(Errors::NoneError)?
-                    .to_owned(),
+                pic_url: v.get("picUrl").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
             });
         }
         return Ok(vec);
@@ -168,12 +162,53 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                         .as_array()
                         .ok_or(Errors::NoneError)?;
                 }
+                let mut a = 0;
                 for v in array.iter() {
                     let duration = v
                         .get("dt")
                         .ok_or(Errors::NoneError)?
                         .as_u64()
                         .ok_or(Errors::NoneError)? as u32;
+                    a += 1;
+                    if a == 88 {
+                        let id = v
+                            .get("id")
+                            .ok_or(Errors::NoneError)?
+                            .as_u64()
+                            .ok_or(Errors::NoneError)? as u32;
+                        let name = v
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned();
+                        let singer = v
+                            .get("ar")
+                            .ok_or(Errors::NoneError)?
+                            .get(0)
+                            .ok_or(Errors::NoneError)?
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned();
+                        let album = v
+                            .get("al")
+                            .ok_or(Errors::NoneError)?
+                            .get("name")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned();
+                        let pic_url = v
+                            .get("al")
+                            .ok_or(Errors::NoneError)?
+                            .get("picUrl")
+                            .unwrap_or(&json!(""))
+                            .as_str()
+                            .unwrap_or("")
+                            .to_owned();
+                    }
                     vec.push(SongInfo {
                         id: v
                             .get("id")
@@ -208,9 +243,9 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get("al")
                             .ok_or(Errors::NoneError)?
                             .get("picUrl")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!(""))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or("")
                             .to_owned(),
                         duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
                         song_url: String::new(),
@@ -263,9 +298,9 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get("album")
                             .ok_or(Errors::NoneError)?
                             .get("picUrl")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!(""))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or("")
                             .to_owned(),
                         duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
                         song_url: String::new(),
@@ -322,9 +357,9 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get("album")
                             .ok_or(Errors::NoneError)?
                             .get("picUrl")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!(""))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or("")
                             .to_owned(),
                         duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
                         song_url: String::new(),
@@ -381,9 +416,9 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get("al")
                             .ok_or(Errors::NoneError)?
                             .get("picUrl")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!(""))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or("")
                             .to_owned(),
                         duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
                         song_url: String::new(),
@@ -436,9 +471,9 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get("album")
                             .ok_or(Errors::NoneError)?
                             .get("picUrl")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!(""))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or("")
                             .to_owned(),
                         duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
                         song_url: String::new(),
@@ -517,12 +552,7 @@ pub fn to_song_list(json: String, parse: Parse) -> NCMResult<Vec<SongList>> {
                             .as_str()
                             .ok_or(Errors::NoneError)?
                             .to_owned(),
-                        cover_img_url: v
-                            .get("picUrl")
-                            .ok_or(Errors::NoneError)?
-                            .as_str()
-                            .ok_or(Errors::NoneError)?
-                            .to_owned(),
+                        cover_img_url: v.get("picUrl").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                     });
                 }
             }
@@ -545,12 +575,7 @@ pub fn to_song_list(json: String, parse: Parse) -> NCMResult<Vec<SongList>> {
                             .as_str()
                             .ok_or(Errors::NoneError)?
                             .to_owned(),
-                        cover_img_url: v
-                            .get("picUrl")
-                            .ok_or(Errors::NoneError)?
-                            .as_str()
-                            .ok_or(Errors::NoneError)?
-                            .to_owned(),
+                        cover_img_url: v.get("picUrl").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                     });
                 }
             }
