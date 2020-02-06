@@ -53,6 +53,7 @@ struct LowView {
 #[derive(Clone)]
 pub(crate) struct Mine {
     view: gtk::Box,
+    not_login: Grid,
     sidebar: ListBox,
     fmview: FmView,
     upview: UpView,
@@ -64,6 +65,7 @@ pub(crate) struct Mine {
 impl Mine {
     pub(crate) fn new(builder: &Builder, sender: Sender<Action>) -> Self {
         let view: gtk::Box = builder.get_object("mine_view").expect("无法获取 mine_view .");
+        let not_login: Grid = builder.get_object("not_login_grid").expect("无法获取 not_login_grid .");
         let sidebar: ListBox = builder.get_object("mine_listbox").expect("无法获取 mine_listbox .");
         let container: Grid = builder.get_object("mine_fm_grid").expect("无法获取 mine_fm_grid .");
         let image: Image = builder.get_object("mine_fm_image").expect("无法获取 mine_fm_image .");
@@ -135,6 +137,7 @@ impl Mine {
 
         let s = Mine {
             view,
+            not_login,
             sidebar,
             fmview,
             upview,
@@ -261,18 +264,21 @@ impl Mine {
 
     pub(crate) fn hide_all(&self) {
         self.view.hide();
+        self.not_login.show_all();
     }
 
     pub(crate) fn show_fm(&self) {
         if let Some(one_row) = self.sidebar.get_row_at_index(0) {
             self.sidebar.select_row(Some(&one_row));
         }
+        self.not_login.hide();
         self.view.show_all();
         self.upview.container.hide();
         self.lowview.container.hide();
     }
 
     pub(crate) fn hide_fm(&self) {
+        self.not_login.hide();
         self.view.show_all();
         self.fmview.container.hide();
     }

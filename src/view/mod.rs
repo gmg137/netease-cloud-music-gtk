@@ -285,12 +285,10 @@ impl View {
         let sender = self.sender.clone();
         task::spawn(async move {
             if let Ok(mut data) = MusicData::new().await {
-                if data.login_info().await.is_ok() {
+                if let Ok(login_info) = data.login_info().await {
                     sender.send(Action::MineShowFm).unwrap_or(());
-                    if let Ok(login_info) = data.login_info().await {
-                        if let Ok(vsl) = data.user_song_list(login_info.uid, 0, 50).await {
-                            sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
-                        }
+                    if let Ok(vsl) = data.user_song_list(login_info.uid, 0, 50).await {
+                        sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
                     }
                 }
             } else {

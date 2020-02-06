@@ -51,6 +51,7 @@ pub(crate) struct LoginDialog {
     name: Entry,
     pass: Entry,
     ok: Button,
+    cancel: Button,
 }
 
 impl Header {
@@ -82,7 +83,14 @@ impl Header {
         let name: Entry = builder.get_object("name_entry").expect("Couldn't get name entry");
         let pass: Entry = builder.get_object("pass_entry").expect("Couldn't get pass entry");
         let ok: Button = builder.get_object("login").expect("Couldn't get login button");
-        let login_dialog = LoginDialog { dialog, name, pass, ok };
+        let cancel: Button = builder.get_object("cancel_login").expect("Couldn't get login button");
+        let login_dialog = LoginDialog {
+            dialog,
+            name,
+            pass,
+            ok,
+            cancel,
+        };
         let preferences = Preferences::new(builder, sender.clone(), configs);
         let header = Header {
             back,
@@ -146,6 +154,13 @@ impl Header {
                 sen.send(Action::Login(name,pass)).unwrap();
                 dialog.hide();
             }}));
+
+        // 取消登陆按钮
+        let dialog_weak = s.login_dialog.dialog.downgrade();
+        s.login_dialog.cancel.connect_clicked(clone!(dialog_weak=>move|_| {
+            let dialog = upgrade_weak!(dialog_weak);
+            dialog.hide();
+        }));
 
         // 签到按钮
         let sen = sender.clone();
