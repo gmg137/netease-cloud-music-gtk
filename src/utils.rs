@@ -24,8 +24,11 @@ use std::{io, io::Error};
 // path: 本地保存路径(包含文件名)
 pub(crate) async fn download_music(url: &str, path: &str) -> Result<(), surf::Exception> {
     if !std::path::Path::new(&path).exists() {
-        let buffer = surf::get(url).recv_bytes().await?;
-        fs::write(path, buffer).await?;
+        if url.starts_with("http://") || url.starts_with("https://") {
+            let music_url = url.replace("https:", "http:");
+            let buffer = surf::get(music_url).recv_bytes().await?;
+            fs::write(path, buffer).await?;
+        }
     }
     Ok(())
 }
@@ -37,9 +40,11 @@ pub(crate) async fn download_music(url: &str, path: &str) -> Result<(), surf::Ex
 // high: 高度
 pub(crate) async fn download_img(url: &str, path: &str, width: u32, high: u32) -> Result<(), surf::Exception> {
     if !std::path::Path::new(&path).exists() {
-        let image_url = format!("{}?param={}y{}", url, width, high).replace("https:", "http:");
-        let buffer = surf::get(image_url).recv_bytes().await?;
-        fs::write(path, buffer).await?;
+        if url.starts_with("http://") || url.starts_with("https://") {
+            let image_url = format!("{}?param={}y{}", url, width, high).replace("https:", "http:");
+            let buffer = surf::get(image_url).recv_bytes().await?;
+            fs::write(path, buffer).await?;
+        }
     }
     Ok(())
 }

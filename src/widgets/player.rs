@@ -346,7 +346,8 @@ impl PlayerWidget {
         if Path::new(&song_uri).exists() {
             self.player.set_uri(&format!("file://{}", song_uri));
         } else {
-            self.player.set_uri(&song_info.song_url);
+            let music_url = song_info.song_url.replace("https:", "http:");
+            self.player.set_uri(&music_url);
         }
         self.play();
     }
