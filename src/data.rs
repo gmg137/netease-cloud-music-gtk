@@ -4,11 +4,10 @@
 // Distributed under terms of the GPLv3 license.
 //
 
-use crate::model::{
-    spawn_and_log_error, AsyncResult, Errors, NCMResult, DATE_DAY, ISO_WEEK, NCM_CACHE, NCM_CONFIG, NCM_DATA,
-};
+use crate::model::{Errors, NCMResult, DATE_DAY, ISO_WEEK, NCM_CACHE, NCM_CONFIG, NCM_DATA};
 use crate::musicapi::{model::*, MusicApi};
 use async_std::{fs, prelude::*};
+use openssl::hash::{hash, MessageDigest};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -38,6 +37,12 @@ pub(crate) struct MusicData {
     pub(crate) login: bool,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct LoginKey {
+    username: String,
+    password: String,
+}
+
 impl MusicData {
     #[allow(unused)]
     pub(crate) async fn new() -> NCMResult<Self> {
@@ -45,32 +50,17 @@ impl MusicData {
             let status_data: StatusData = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
             // 每周清理缓存
             if status_data.week != *ISO_WEEK {
-                spawn_and_log_error(clear_cache(&NCM_CACHE));
+                clear_cache(&NCM_CACHE).await;
             }
-            // 对比缓存是否过期
-            if status_data.day == *DATE_DAY {
-                // 直接返回缓存数据
-                return Ok(MusicData {
-                    musicapi: MusicApi::new()?,
-                    login: status_data.login,
-                });
-            } else {
-                spawn_and_log_error(clear_cache(&NCM_DATA));
-                // 重新查询登陆状态
-                let mut musicapi = MusicApi::new()?;
-                musicapi.login_status()?;
-                let data = StatusData {
-                    login: true,
-                    day: *DATE_DAY,
-                    week: *ISO_WEEK,
-                };
-                fs::write(
-                    format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
-                    bincode::serialize(&data).map_err(|_| Errors::NoneError)?,
-                )
-                .await?;
-                return Ok(MusicData { musicapi, login: true });
+            // 对比缓存数据是否过期
+            if status_data.day != *DATE_DAY {
+                // 清理缓存数据
+                clear_cache(&NCM_DATA).await;
             }
+            return Ok(MusicData {
+                musicapi: MusicApi::new()?,
+                login: status_data.login,
+            });
         }
         let data = StatusData {
             login: false,
@@ -91,7 +81,8 @@ impl MusicData {
     // 登录
     #[allow(unused)]
     pub(crate) async fn login(&mut self, username: String, password: String) -> NCMResult<LoginInfo> {
-        let login_info = self.musicapi.login(username, password)?;
+        let password = hex::encode(hash(MessageDigest::md5(), &password.as_bytes())?);
+        let login_info = self.musicapi.login(username.to_owned(), password.to_owned())?;
         if login_info.code.eq(&200) {
             self.login = true;
             let data = StatusData {
@@ -99,6 +90,11 @@ impl MusicData {
                 day: *DATE_DAY,
                 week: *ISO_WEEK,
             };
+            fs::write(
+                format!("{}login_key.db", NCM_CONFIG.to_string_lossy()),
+                bincode::serialize(&LoginKey { username, password }).map_err(|_| Errors::NoneError)?,
+            )
+            .await?;
             fs::write(
                 format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
                 bincode::serialize(&data).map_err(|_| Errors::NoneError)?,
@@ -111,6 +107,35 @@ impl MusicData {
             .await?;
             return Ok(login_info);
         }
+        Ok(login_info)
+    }
+
+    // 重新登录
+    #[allow(unused)]
+    async fn re_login(&mut self) -> NCMResult<LoginInfo> {
+        if let Ok(buffer) = fs::read(format!("{}login_key.db", NCM_CONFIG.to_string_lossy())).await {
+            let LoginKey { username, password } = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
+            let login_info = self.musicapi.login(username, password)?;
+            if login_info.code.eq(&200) {
+                self.login = true;
+                let data = StatusData {
+                    login: true,
+                    day: *DATE_DAY,
+                    week: *ISO_WEEK,
+                };
+                fs::write(
+                    format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
+                    bincode::serialize(&data).map_err(|_| Errors::NoneError)?,
+                )
+                .await?;
+                fs::write(
+                    format!("{}login_info.db", NCM_DATA.to_string_lossy()),
+                    bincode::serialize(&login_info).map_err(|_| Errors::NoneError)?,
+                )
+                .await?;
+                return Ok(login_info);
+            }
+        }
         Err(Errors::NoneError)
     }
 
@@ -120,6 +145,9 @@ impl MusicData {
         if self.login {
             if let Ok(buffer) = fs::read(format!("{}login_info.db", NCM_DATA.to_string_lossy())).await {
                 let login_info: LoginInfo = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
+                return Ok(login_info);
+            }
+            if let Ok(login_info) = self.re_login().await {
                 return Ok(login_info);
             }
             self.login = false;
@@ -432,7 +460,7 @@ impl MusicData {
 }
 
 // 删除缓存文件
-async fn clear_cache(dir: &Path) -> AsyncResult<()> {
+async fn clear_cache(dir: &Path) -> NCMResult<()> {
     if dir.is_dir() {
         let mut entries = fs::read_dir(dir).await?;
         while let Some(res) = entries.next().await {
@@ -445,7 +473,7 @@ async fn clear_cache(dir: &Path) -> AsyncResult<()> {
 
 #[allow(unused)]
 // 删除缓存文件
-async fn clear_cache_starts_with(dir: &Path, start: &str) -> AsyncResult<()> {
+async fn clear_cache_starts_with(dir: &Path, start: &str) -> NCMResult<()> {
     if dir.is_dir() {
         let mut entries = fs::read_dir(dir).await?;
         while let Some(res) = entries.next().await {

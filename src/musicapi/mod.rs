@@ -121,18 +121,17 @@ impl MusicApi {
     #[allow(unused)]
     pub fn login(&mut self, username: String, password: String) -> NCMResult<LoginInfo> {
         let mut params = HashMap::new();
-        let password = hash(MessageDigest::md5(), &password.as_bytes())?;
         let path;
         if username.len().eq(&11) && username.parse::<u32>().is_ok() {
             path = "/weapi/login/cellphone";
             params.insert("phone".to_owned(), username);
-            params.insert("password".to_owned(), hex::encode(password));
+            params.insert("password".to_owned(), password);
             params.insert("rememberLogin".to_owned(), "true".to_owned());
         } else {
             let client_token = "1_jVUMqWEPke0/1/Vu56xCmJpo5vP1grjn_SOVVDzOc78w8OKLVZ2JH7IfkjSXqgfmh";
             path = "/weapi/login";
             params.insert("username".to_owned(), username);
-            params.insert("password".to_owned(), hex::encode(password));
+            params.insert("password".to_owned(), password);
             params.insert("rememberLogin".to_owned(), "true".to_owned());
             params.insert("clientToken".to_owned(), client_token.to_owned());
         }

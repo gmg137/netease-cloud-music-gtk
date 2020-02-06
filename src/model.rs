@@ -3,10 +3,10 @@
 // Copyright (C) 2020 gmg137 <gmg137@live.com>
 // Distributed under terms of the MIT license.
 //
-use async_std::{io, task};
+use async_std::io;
 use custom_error::custom_error;
 use lazy_static::lazy_static;
-use std::{collections::HashMap, future::Future, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf};
 
 pub(crate) type NCMResult<T> = Result<T, Errors>;
 
@@ -145,17 +145,4 @@ custom_error! { pub Errors
     ParseError{ source: std::num::ParseIntError } = "parse Error",
     AsyncIoError{ source: io::Error } = "async io Error",
     NoneError = "None Error",
-}
-
-pub(crate) type AsyncResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-
-pub(crate) fn spawn_and_log_error<F>(fut: F) -> task::JoinHandle<()>
-where
-    F: Future<Output = AsyncResult<()>> + Send + 'static,
-{
-    task::spawn(async move {
-        if let Err(e) = fut.await {
-            error!("{}", e)
-        }
-    })
 }
