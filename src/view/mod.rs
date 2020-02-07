@@ -317,7 +317,7 @@ impl View {
                             // 创建播放列表
                             create_player_list(&si, sender.clone(), false).await.ok();
                             // 下载专辑图片
-                            let image_path = format!("{}/{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
+                            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
                             download_img(&si[0].pic_url, &image_path, 210, 210).await.ok();
                             if sender.send(Action::RefreshMineFm(si[0].to_owned())).is_ok() {
                                 sender.send(Action::PlayerFm).unwrap_or(());
@@ -372,7 +372,7 @@ impl View {
                                     // 创建播放列表
                                     create_player_list(&si, sender.clone(), false).await.ok();
                                     // 下载专辑图片
-                                    let image_path = format!("{}/{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
+                                    let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
                                     download_img(&si[0].pic_url, &image_path, 210, 210).await.ok();
                                     sender.send(Action::RefreshMineFm(si[0].to_owned())).unwrap_or(());
                                 }

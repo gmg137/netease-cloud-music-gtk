@@ -51,7 +51,7 @@ impl PlayerInfo {
         self.song.set_text(&song_info.name);
         self.song.set_tooltip_text(Some(&song_info.name[..]));
         self.singer.set_text(&song_info.singer);
-        let image_path = format!("{}/{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
+        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
         if let Ok(image) = Pixbuf::new_from_file(&image_path) {
             let image = image.scale_simple(38, 38, InterpType::Bilinear);
             self.cover.set_from_pixbuf(image.as_ref());
@@ -61,7 +61,7 @@ impl PlayerInfo {
         let mut metadata = Metadata::new();
         metadata.artist = Some(vec![song_info.singer.clone()]);
         metadata.title = Some(song_info.name.clone());
-        metadata.art_url = Some(format!("file://{}/{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id));
+        metadata.art_url = Some(format!("file://{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id));
         metadata.track_number = Some(song_info.id as i32);
 
         self.mpris.set_metadata(metadata);
@@ -294,7 +294,7 @@ impl PlayerWidget {
         let sender = self.sender.clone();
         task::spawn(async move {
             if let Ok(mut data) = MusicData::new().await {
-                let path = format!("{}/{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
+                let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
                 if std::path::Path::new(&path).exists() {
                     sender.send(Action::Player(song_info)).unwrap();
                 } else {
@@ -302,16 +302,21 @@ impl PlayerWidget {
                         if v.len() > 0 {
                             let mut song_info = song_info;
                             song_info.song_url = v[0].url.to_string();
+                            // 缓存音乐图片
+                            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
+                            download_img(&song_info.pic_url, &image_path, 210, 210).await.ok();
+                            sender.send(Action::Player(song_info.clone())).unwrap();
                             // 缓存音乐到本地
                             download_music(&song_info.song_url, &path).await.ok();
-                            // 缓存音乐图片
-                            let image_path = format!("{}/{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
-                            download_img(&song_info.pic_url, &image_path, 210, 210).await.ok();
-                            sender.send(Action::Player(song_info)).unwrap();
                         } else {
+                            warn!(
+                                "未能获取 {}[id:{}] 的播放链接!(版权或VIP限制)",
+                                song_info.name, song_info.id
+                            );
                             sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
                         }
                     } else {
+                        warn!("解析 {}[id:{}] 的播放链接失败!", song_info.name, song_info.id);
                         sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
                     }
                 }
@@ -328,16 +333,17 @@ impl PlayerWidget {
                 download_lyrics(&song_info.name, &song_info).await.ok();
             }
             // 缓存音乐图片
-            let image_path = format!("{}/{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id);
+            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id);
             download_img(&song_info.pic_url, &image_path, 210, 210).await.ok();
             sender.send(Action::Player(song_info.clone())).unwrap();
             // 缓存音乐到本地
-            let path = format!("{}/{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
+            let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
             download_music(&song_info.song_url, &path).await.ok();
         });
     }
 
     pub(crate) fn player(&self, song_info: SongInfo) {
+        info!("准备播放音乐: {:?}", song_info);
         match *self.player_types.borrow() {
             PlayerTypes::Fm => {
                 self.sender.send(Action::RefreshMineFm(song_info.to_owned())).unwrap();
@@ -346,11 +352,13 @@ impl PlayerWidget {
         }
         self.sender.send(Action::ShowNotice(song_info.name.to_owned())).unwrap();
         self.info.init(&song_info);
-        let song_uri = format!("{}/{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
+        let song_uri = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
         if Path::new(&song_uri).exists() {
+            info!("播放音乐缓存: {}", song_uri);
             self.player.set_uri(&format!("file://{}", song_uri));
         } else {
             let music_url = song_info.song_url.replace("https:", "http:");
+            info!("播放在线音乐: {}", music_url);
             self.player.set_uri(&music_url);
         }
         self.play();

@@ -15,7 +15,6 @@ use glib;
 use gtk::prelude::*;
 use gtk::{ApplicationWindow, Builder, Overlay};
 use std::cell::RefCell;
-use std::env;
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
@@ -241,25 +240,20 @@ impl App {
 
                 let weak = Rc::downgrade(&app);
                 application.connect_activate(move |_| {
-                    info!("GApplication::activate");
                     if let Some(app) = weak.upgrade() {
-                        // Ideally Gtk4/GtkBuilder make this irrelvent
                         app.window.show_now();
                         app.window.present();
-                        info!("Window presented");
                     } else {
                         debug_assert!(false, "I hate computers");
                     }
                 });
-
-                info!("Init complete");
+                info!("Init GApplication complete");
             });
         });
 
         glib::set_application_name("netease-cloud-music-gtk");
         glib::set_prgname(Some("netease-cloud-music-gtk"));
         gtk::Window::set_default_icon_name("netease-cloud-music-gtk");
-        let args: Vec<String> = env::args().collect();
-        ApplicationExtManual::run(&application, &args);
+        ApplicationExtManual::run(&application, &[]);
     }
 }
