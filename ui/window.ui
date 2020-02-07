@@ -657,6 +657,24 @@
                                 <property name="can_focus">False</property>
                                 <property name="halign">start</property>
                                 <property name="margin_left">18</property>
+                                <property name="label" translatable="yes">音乐云盘</property>
+                                <property name="ellipsize">end</property>
+                                <property name="max_width_chars">17</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkListBoxRow">
+                            <property name="height_request">58</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="halign">start</property>
+                                <property name="margin_left">18</property>
                                 <property name="label" translatable="yes">每日歌曲推荐</property>
                                 <property name="ellipsize">end</property>
                                 <property name="max_width_chars">17</property>

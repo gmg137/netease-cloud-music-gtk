@@ -252,6 +252,52 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                     });
                 }
             }
+            Parse::UCD => {
+                let array = value
+                    .get("data")
+                    .ok_or(Errors::NoneError)?
+                    .as_array()
+                    .ok_or(Errors::NoneError)?;
+                let mut a = 0;
+                for v in array.iter() {
+                    let duration = v
+                        .get("simpleSong")
+                        .ok_or(Errors::NoneError)?
+                        .get("dt")
+                        .ok_or(Errors::NoneError)?
+                        .as_u64()
+                        .ok_or(Errors::NoneError)? as u32;
+                    a += 1;
+                    vec.push(SongInfo {
+                        id: v
+                            .get("songId")
+                            .ok_or(Errors::NoneError)?
+                            .as_u64()
+                            .ok_or(Errors::NoneError)? as u32,
+                        name: v
+                            .get("songName")
+                            .ok_or(Errors::NoneError)?
+                            .as_str()
+                            .ok_or(Errors::NoneError)?
+                            .to_owned(),
+                        singer: v
+                            .get("artist")
+                            .unwrap_or(&json!("未知"))
+                            .as_str()
+                            .unwrap_or(&"未知")
+                            .to_owned(),
+                        album: v
+                            .get("album")
+                            .unwrap_or(&json!("未知"))
+                            .as_str()
+                            .unwrap_or(&"未知")
+                            .to_owned(),
+                        pic_url: String::new(),
+                        duration: format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60),
+                        song_url: String::new(),
+                    });
+                }
+            }
             Parse::RMD => {
                 let array = value
                     .get("data")
@@ -720,6 +766,7 @@ pub enum Method {
 
 // 解析方式
 // USL: 用户
+// UCD: 云盘
 // RMD: 推荐
 // RMDS: 推荐歌曲
 // SEARCH: 搜索
@@ -730,6 +777,7 @@ pub enum Method {
 #[derive(Debug)]
 pub enum Parse {
     USL,
+    UCD,
     RMD,
     RMDS,
     SEARCH,

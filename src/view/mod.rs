@@ -393,7 +393,15 @@ impl View {
         task::spawn(async move {
             if let Ok(mut data) = MusicData::new().await {
                 if row_id == 1 {
-                    if let Ok(song_list) = data.recommend_songs(refresh).await {
+                    if let Ok(song_list) = data.cloud_disk(refresh).await {
+                        sender
+                            .send(Action::RefreshMineView(song_list, "音乐云盘".to_owned()))
+                            .unwrap_or(());
+                    } else {
+                        sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
+                    }
+                } else if row_id == 2 {
+                    if let Ok(song_list) = data.recommend_songs().await {
                         sender
                             .send(Action::RefreshMineView(song_list, "每日歌曲推荐".to_owned()))
                             .unwrap_or(());
@@ -401,7 +409,7 @@ impl View {
                         sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                     }
                 } else {
-                    row_id -= 2;
+                    row_id -= 3;
                     if let Ok(login_info) = data.login_info().await {
                         if let Ok(user_song_list) = &data.user_song_list(login_info.uid, 0, 50).await {
                             if let Ok(song_list) = data.song_list_detail(user_song_list[row_id].id, refresh).await {
@@ -436,11 +444,11 @@ impl View {
 
     pub(crate) fn dis_like_song_list(&self) {
         let mut row_id = self.mine.borrow().get_selected_row_id();
-        if row_id > 2 {
+        if row_id > 3 {
             let sender = self.sender.clone();
             task::spawn(async move {
                 if let Ok(mut data) = MusicData::new().await {
-                    row_id -= 2;
+                    row_id -= 3;
                     if let Ok(login_info) = data.login_info().await {
                         if let Ok(sl) = &data.user_song_list(login_info.uid, 0, 50).await {
                             if data.song_list_like(false, sl[row_id as usize].id).await {

@@ -27,7 +27,9 @@ pub(crate) async fn download_music(url: &str, path: &str) -> Result<(), surf::Ex
         if url.starts_with("http://") || url.starts_with("https://") {
             let music_url = url.replace("https:", "http:");
             let buffer = surf::get(music_url).recv_bytes().await?;
-            fs::write(path, buffer).await?;
+            if !buffer.is_empty() {
+                fs::write(path, buffer).await?;
+            }
         }
     }
     Ok(())

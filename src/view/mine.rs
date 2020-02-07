@@ -163,7 +163,7 @@ impl Mine {
         s.lowview.tree.connect_button_press_event(move |tree, event| {
             if event.get_event_type() == gdk::EventType::ButtonPress && event.get_button() == 3 {
                 if let Some(row) = listbox.upgrade().unwrap().get_selected_row() {
-                    if row.get_index() == 2 {
+                    if row.get_index() == 3 {
                         popmenu.upgrade().unwrap().popup_easy(3, event.get_time());
                     }
                 }
@@ -286,11 +286,11 @@ impl Mine {
     pub(crate) fn update_sidebar(&self, song_list: Vec<SongList>) {
         if let Some(one_row) = self.sidebar.get_row_at_index(0) {
             self.sidebar.select_row(Some(&one_row));
-            self.sidebar.get_children()[2..].iter().for_each(|w| {
+            self.sidebar.get_children()[3..].iter().for_each(|w| {
                 self.sidebar.remove(w);
             });
         }
-        let row = self.sidebar.get_row_at_index(3);
+        let row = self.sidebar.get_row_at_index(4);
         if row.is_none() {
             song_list.iter().for_each(|sl| {
                 let label = Label::new(Some(&sl.name[..]));
@@ -328,7 +328,7 @@ impl Mine {
         self.upview.dislike.hide();
         if let Some(row) = self.sidebar.get_selected_row() {
             let index = row.get_index();
-            if index > 2 {
+            if index > 3 {
                 self.upview.dislike.set_visible(true);
                 self.upview.dislike.show_all();
             }

@@ -192,6 +192,18 @@ impl MusicApi {
         to_song_list(result, Parse::USL)
     }
 
+    // 用户云盘
+    #[allow(unused)]
+    pub fn user_cloud_disk(&mut self) -> NCMResult<Vec<SongInfo>> {
+        let path = "/weapi/v1/cloud/get";
+        let mut params = HashMap::new();
+        params.insert("offset".to_owned(), 0.to_string());
+        params.insert("limit".to_owned(), 1000.to_string());
+        params.insert("csrf_token".to_owned(), "".to_string());
+        let result = self.request(Method::POST, path, &mut params, false)?;
+        to_song_info(result, Parse::UCD)
+    }
+
     // 歌单详情
     // songlist_id: 歌单 id
     #[allow(unused)]

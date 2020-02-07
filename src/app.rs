@@ -247,7 +247,6 @@ impl App {
                         debug_assert!(false, "I hate computers");
                     }
                 });
-                info!("Init GApplication complete");
             });
         });
 

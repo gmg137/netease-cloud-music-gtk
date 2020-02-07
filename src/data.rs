@@ -279,7 +279,7 @@ impl MusicData {
 
     // 每日推荐歌曲
     #[allow(unused)]
-    pub(crate) async fn recommend_songs(&mut self, refresh: bool) -> NCMResult<Vec<SongInfo>> {
+    pub(crate) async fn recommend_songs(&mut self) -> NCMResult<Vec<SongInfo>> {
         if self.login {
             let path = format!("{}recommend_songs.db", NCM_DATA.to_string_lossy());
             if let Ok(buffer) = fs::read(&path).await {
@@ -288,6 +288,28 @@ impl MusicData {
                 }
             }
             if let Ok(rs) = self.musicapi.recommend_songs() {
+                if !rs.is_empty() {
+                    fs::write(path, bincode::serialize(&rs).map_err(|_| Errors::NoneError)?).await?;
+                    return Ok(rs);
+                }
+            }
+        }
+        Err(Errors::NoneError)
+    }
+
+    // 音乐云盘
+    #[allow(unused)]
+    pub(crate) async fn cloud_disk(&mut self, refresh: bool) -> NCMResult<Vec<SongInfo>> {
+        if self.login {
+            let path = format!("{}cloud_disk.db", NCM_DATA.to_string_lossy());
+            if !refresh {
+                if let Ok(buffer) = fs::read(&path).await {
+                    if let Ok(songs) = bincode::deserialize::<Vec<SongInfo>>(&buffer) {
+                        return Ok(songs);
+                    }
+                }
+            }
+            if let Ok(rs) = self.musicapi.user_cloud_disk() {
                 if !rs.is_empty() {
                     fs::write(path, bincode::serialize(&rs).map_err(|_| Errors::NoneError)?).await?;
                     return Ok(rs);
