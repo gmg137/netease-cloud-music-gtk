@@ -409,18 +409,31 @@ pub(crate) async fn save_config(conf: &Configs) -> NCMResult<()> {
     Ok(())
 }
 
-// 下载歌词
-pub(crate) async fn download_lyrics(file: &str, song_info: &SongInfo) -> NCMResult<()> {
+// 下载 osdlyrics 歌词
+pub(crate) async fn download_lyrics(data: &mut MusicData, file: &str, song_info: &SongInfo) -> NCMResult<()> {
     let path = format!("{}/{}.lrc", *LYRICS_PATH, file);
     if !std::path::Path::new(&path).exists() {
-        let mut data = MusicData::new().await?;
         let vec = data.song_lyric(song_info.id).await?;
-        let mut lrc = String::new();
-        vec.iter().for_each(|v| {
-            lrc.push_str(v);
-            lrc.push_str("\n");
-        });
+        let lrc = vec.join("\n");
         fs::write(path, lrc).await?;
     }
     Ok(())
+}
+
+// 获取歌词
+pub(crate) async fn get_lyrics(data: &mut MusicData, song_id: u32) -> NCMResult<String> {
+    let path = format!("{}{}.lrc", NCM_CACHE.to_string_lossy(), song_id);
+    if !std::path::Path::new(&path).exists() {
+        let vec = data.song_lyric(song_id).await?;
+        let re = regex::Regex::new(r"\[\d+:\d+.\d+\]").unwrap();
+        let lrc = vec
+            .into_iter()
+            .map(|v| re.replace_all(&v, "").to_string())
+            .collect::<Vec<String>>()
+            .join("\n");
+        fs::write(&path, &lrc).await?;
+        return Ok(lrc);
+    }
+    let lrc = fs::read_to_string(&path).await?;
+    Ok(lrc)
 }

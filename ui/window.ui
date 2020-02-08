@@ -1961,6 +1961,44 @@
               </packing>
             </child>
             <child>
+              <object class="GtkVolumeButton" id="volume_button">
+                <property name="width_request">38</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
+                <property name="receives_default">True</property>
+                <property name="tooltip_text" translatable="yes">音量</property>
+                <property name="valign">center</property>
+                <property name="orientation">vertical</property>
+                <property name="size">button</property>
+                <property name="icons">audio-volume-muted-symbolic
+audio-volume-high-symbolic
+audio-volume-low-symbolic
+audio-volume-medium-symbolic</property>
+                <child internal-child="plus_button">
+                  <object class="GtkButton">
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <property name="relief">none</property>
+                  </object>
+                </child>
+                <child internal-child="minus_button">
+                  <object class="GtkButton">
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <property name="relief">none</property>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="position">6</property>
+              </packing>
+            </child>
+            <child>
               <object class="GtkMenuButton">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -2009,36 +2047,26 @@
               </packing>
             </child>
             <child>
-              <object class="GtkVolumeButton" id="volume_button">
-                <property name="width_request">38</property>
+              <object class="GtkMenuButton" id="lyrics_button">
                 <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="receives_default">True</property>
-                <property name="tooltip_text" translatable="yes">音量</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="halign">center</property>
                 <property name="valign">center</property>
-                <property name="orientation">vertical</property>
-                <property name="size">button</property>
-                <property name="icons">audio-volume-muted-symbolic
-audio-volume-high-symbolic
-audio-volume-low-symbolic
-audio-volume-medium-symbolic</property>
-                <child internal-child="plus_button">
-                  <object class="GtkButton">
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
+                <property name="relief">none</property>
+                <property name="direction">up</property>
+                <property name="popover">lyrics_popover</property>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
                     <property name="halign">center</property>
                     <property name="valign">center</property>
-                    <property name="relief">none</property>
-                  </object>
-                </child>
-                <child internal-child="minus_button">
-                  <object class="GtkButton">
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                    <property name="halign">center</property>
-                    <property name="valign">center</property>
-                    <property name="relief">none</property>
+                    <property name="label" translatable="yes">词</property>
+                    <property name="justify">center</property>
+                    <attributes>
+                      <attribute name="weight" value="bold"/>
+                    </attributes>
                   </object>
                 </child>
               </object>
@@ -2317,6 +2345,38 @@ audio-volume-medium-symbolic</property>
             <property name="fill">True</property>
             <property name="position">1</property>
           </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkPopover" id="lyrics_popover">
+    <property name="can_focus">False</property>
+    <property name="relative_to">lyrics_button</property>
+    <child>
+      <object class="GtkScrolledWindow">
+        <property name="width_request">350</property>
+        <property name="height_request">220</property>
+        <property name="visible">True</property>
+        <property name="can_focus">True</property>
+        <property name="margin_top">8</property>
+        <property name="margin_bottom">8</property>
+        <property name="shadow_type">in</property>
+        <child>
+          <object class="GtkTextView" id="lyrics_text_view">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="hscroll_policy">natural</property>
+            <property name="vscroll_policy">natural</property>
+            <property name="pixels_below_lines">1</property>
+            <property name="editable">False</property>
+            <property name="justification">center</property>
+            <property name="left_margin">8</property>
+            <property name="right_margin">8</property>
+            <property name="top_margin">18</property>
+            <property name="bottom_margin">18</property>
+            <property name="cursor_visible">False</property>
+            <property name="accepts_tab">False</property>
+          </object>
         </child>
       </object>
     </child>
@@ -2632,7 +2692,7 @@ audio-volume-medium-symbolic</property>
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">开启歌词 (依赖于 osdlyrics)</property>
+                    <property name="label" translatable="yes">桌面歌词 (依赖于 osdlyrics)</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>

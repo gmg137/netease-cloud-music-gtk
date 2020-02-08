@@ -55,6 +55,7 @@ pub(crate) enum Action {
     PlayerInit(SongInfo, PlayerTypes),
     PlayerTypes(PlayerTypes),
     ReadyPlayer(SongInfo),
+    RefreshLyricsText(String),
     Player(SongInfo),
     PlayerSubpages,
     PlayerFound,
@@ -194,10 +195,11 @@ impl App {
             Action::Login(name, pass) => self.header.login(name, pass),
             Action::Logout => self.header.logout(),
             Action::DailyTask => self.header.daily_task(),
-            Action::PlayerInit(info, pt) => self.player.initialize_player(info, pt),
+            Action::PlayerInit(info, pt) => self.player.initialize_player(info, pt, self.configs.borrow().lyrics),
             Action::PlayerTypes(pt) => self.player.set_player_typers(pt),
             Action::Player(info) => self.player.player(info),
             Action::ReadyPlayer(info) => self.player.ready_player(info, self.configs.borrow().lyrics),
+            Action::RefreshLyricsText(lrc) => self.player.update_lyrics_text(lrc),
             Action::ShowNotice(text) => {
                 let notif = mark_all_notif(text);
                 let old = self.notice.replace(Some(notif));
@@ -217,6 +219,7 @@ impl App {
                 });
             }
             Action::ConfigsSetLyrics(state) => {
+                self.configs.borrow_mut().lyrics = state;
                 task::spawn(async move {
                     if let Ok(mut conf) = get_config().await {
                         conf.lyrics = state;

@@ -18,7 +18,7 @@ use gdk_pixbuf::Pixbuf;
 use glib::{SignalHandlerId, WeakRef};
 use gst::ClockTime;
 use gtk::prelude::*;
-use gtk::{ActionBar, Builder, Button, Image, Label, RadioButton, Scale, VolumeButton};
+use gtk::{ActionBar, Builder, Button, Image, Label, MenuButton, RadioButton, Scale, TextView, VolumeButton};
 use mpris_player::{Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -35,6 +35,8 @@ struct PlayerControls {
     forward: Button,
     like: Button,
     volume: VolumeButton,
+    lyrics: MenuButton,
+    lyrics_text: TextView,
 }
 
 #[derive(Debug, Clone)]
@@ -43,7 +45,7 @@ struct PlayerInfo {
     singer: Label,
     cover: Image,
     mpris: Arc<MprisPlayer>,
-    episode_id: RefCell<Option<i32>>,
+    song_id: RefCell<Option<u32>>,
 }
 
 impl PlayerInfo {
@@ -57,12 +59,12 @@ impl PlayerInfo {
             self.cover.set_from_pixbuf(image.as_ref());
         };
         self.cover.set_tooltip_text(Some(&song_info.name[..]));
+        *self.song_id.borrow_mut() = Some(song_info.id);
 
         let mut metadata = Metadata::new();
         metadata.artist = Some(vec![song_info.singer.clone()]);
         metadata.title = Some(song_info.name.clone());
         metadata.art_url = Some(format!("file://{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id));
-        metadata.track_number = Some(song_info.id as i32);
 
         self.mpris.set_metadata(metadata);
         self.mpris.set_can_play(true);
@@ -191,6 +193,8 @@ impl PlayerWidget {
         let like: Button = builder.get_object("like_button").unwrap();
         let volume: VolumeButton = builder.get_object("volume_button").unwrap();
         volume.set_value(player.get_volume());
+        let lyrics: MenuButton = builder.get_object("lyrics_button").unwrap();
+        let lyrics_text: TextView = builder.get_object("lyrics_text_view").unwrap();
 
         let controls = PlayerControls {
             play,
@@ -199,6 +203,8 @@ impl PlayerWidget {
             backward,
             like,
             volume,
+            lyrics,
+            lyrics_text,
         };
 
         let progressed: Label = builder.get_object("progress_time_label").unwrap();
@@ -222,7 +228,7 @@ impl PlayerWidget {
             song,
             singer,
             cover,
-            episode_id: RefCell::new(None),
+            song_id: RefCell::new(None),
         };
 
         let shuffle: RadioButton = builder.get_object("shuffle_radio").unwrap();
@@ -289,11 +295,15 @@ impl PlayerWidget {
         self.action_bar.show();
     }
 
-    pub(crate) fn initialize_player(&self, song_info: SongInfo, player_types: PlayerTypes) {
+    pub(crate) fn initialize_player(&self, song_info: SongInfo, player_types: PlayerTypes, lyrics: bool) {
         *self.player_types.borrow_mut() = player_types;
         let sender = self.sender.clone();
         task::spawn(async move {
             if let Ok(mut data) = MusicData::new().await {
+                // 下载歌词
+                if lyrics {
+                    download_lyrics(&mut data, &song_info.name, &song_info).await.ok();
+                }
                 let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
                 if std::path::Path::new(&path).exists() {
                     sender.send(Action::Player(song_info)).unwrap();
@@ -329,8 +339,11 @@ impl PlayerWidget {
     pub(crate) fn ready_player(&self, song_info: SongInfo, lyrics: bool) {
         let sender = self.sender.clone();
         task::spawn(async move {
+            // 下载歌词
             if lyrics {
-                download_lyrics(&song_info.name, &song_info).await.ok();
+                if let Ok(mut data) = MusicData::new().await {
+                    download_lyrics(&mut data, &song_info.name, &song_info).await.ok();
+                }
             }
             // 缓存音乐图片
             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id);
@@ -465,30 +478,49 @@ impl PlayerWidget {
 
     fn like(&self) {
         let sender = self.sender.clone();
-        if let Ok(metadata) = self.info.mpris.get_metadata() {
-            if let Some(value) = metadata.get("xesam:trackNumber") {
-                if let Some(id) = value.0.as_i64() {
-                    task::spawn(async move {
-                        if let Ok(mut data) = MusicData::new().await {
-                            if data.like(true, id as u32).await {
-                                sender.send(Action::ShowNotice("已添加到喜欢!".to_owned())).unwrap();
-                                sender.send(Action::RefreshMineLikeList()).unwrap();
-                            } else {
-                                sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
-                            }
-                        } else {
-                            sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
-                        }
-                    });
-                    return;
+        let song_id = *self.info.song_id.borrow();
+        if let Some(id) = song_id {
+            task::spawn(async move {
+                if let Ok(mut data) = MusicData::new().await {
+                    if data.like(true, id).await {
+                        sender.send(Action::ShowNotice("已添加到喜欢!".to_owned())).unwrap();
+                        sender.send(Action::RefreshMineLikeList()).unwrap();
+                    } else {
+                        sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
+                    }
+                } else {
+                    sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
                 }
-            }
+            });
+            return;
         }
         self.sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
     }
 
     fn set_volume(&self, value: f64) {
         self.player.set_volume(value);
+    }
+
+    fn get_lyrics_text(&self) {
+        let sender = self.sender.clone();
+        let song_id = *self.info.song_id.borrow();
+        task::spawn(async move {
+            if let Ok(mut data) = MusicData::new().await {
+                if let Some(id) = song_id {
+                    let lrc = get_lyrics(&mut data, id).await.unwrap_or("没有找到歌词!".to_owned());
+                    sender.send(Action::RefreshLyricsText(lrc)).unwrap();
+                }
+            } else {
+                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+            }
+        });
+    }
+
+    pub(crate) fn update_lyrics_text(&self, lrc: String) {
+        if let Some(buffer) = self.controls.lyrics_text.get_buffer() {
+            buffer.set_text(&lrc);
+            self.controls.lyrics_text.set_buffer(Some(&buffer));
+        }
     }
 
     pub(crate) fn set_player_typers(&self, player_types: PlayerTypes) {
@@ -551,6 +583,10 @@ impl PlayerWrapper {
             .connect_value_changed(clone!(weak => move |_, value| {
                 weak.upgrade().map(|p| p.set_volume(value));
             }));
+
+        self.controls.lyrics.connect_clicked(clone!(weak => move |_| {
+            weak.upgrade().map(|p| p.get_lyrics_text());
+        }));
     }
 
     #[cfg_attr(rustfmt, rustfmt_skip)]
