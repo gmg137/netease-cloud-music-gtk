@@ -4,10 +4,13 @@
 // Distributed under terms of the GPLv3 license.
 //
 
-use crate::musicapi::model::{LoginInfo, SongInfo, SongList};
-use crate::utils::*;
-use crate::view::*;
-use crate::widgets::{header::*, mark_all_notif, notice::*, player::*};
+use crate::{
+    model::{DATE_DAY, DATE_MONTH, ISO_WEEK},
+    musicapi::model::{LoginInfo, SongInfo, SongList},
+    utils::*,
+    view::*,
+    widgets::{header::*, mark_all_notif, notice::*, player::*},
+};
 use async_std::task;
 use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
 use gio::{self, prelude::*};
@@ -63,6 +66,7 @@ pub(crate) enum Action {
     QuitMain,
     ConfigsSetTray(bool),
     ConfigsSetLyrics(bool),
+    ConfigsSetClear(u8),
 }
 
 #[derive(Clone)]
@@ -216,6 +220,28 @@ impl App {
                 task::spawn(async move {
                     if let Ok(mut conf) = get_config().await {
                         conf.lyrics = state;
+                        save_config(&conf).await.ok();
+                    }
+                });
+            }
+            Action::ConfigsSetClear(id) => {
+                task::spawn(async move {
+                    if let Ok(mut conf) = get_config().await {
+                        match id {
+                            0 => {
+                                conf.clear = ClearCached::NONE;
+                            }
+                            1 => {
+                                conf.clear = ClearCached::MONTH(*DATE_MONTH);
+                            }
+                            2 => {
+                                conf.clear = ClearCached::WEEK(*ISO_WEEK);
+                            }
+                            3 => {
+                                conf.clear = ClearCached::DAY(*DATE_DAY);
+                            }
+                            _ => {}
+                        }
                         save_config(&conf).await.ok();
                     }
                 });

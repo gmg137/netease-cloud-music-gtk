@@ -4,8 +4,8 @@
 // Distributed under terms of the GPLv3 license.
 //
 use crate::app::Action;
-use crate::data::MusicData;
-use crate::model::{Errors, NCMResult, LYRICS_PATH, NCM_CACHE, NCM_CONFIG, NCM_DATA};
+use crate::data::{clear_cache, MusicData};
+use crate::model::{Errors, NCMResult, DATE_DAY, DATE_MONTH, ISO_WEEK, LYRICS_PATH, NCM_CACHE, NCM_CONFIG, NCM_DATA};
 use crate::musicapi::model::SongInfo;
 use crate::widgets::player::LoopsState;
 use async_std::fs;
@@ -327,6 +327,19 @@ pub(crate) enum PlayerTypes {
     Fm,
 }
 
+// 缓存治理规则
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub(crate) enum ClearCached {
+    // 从不
+    NONE,
+    // 每月
+    MONTH(u32),
+    // 每周
+    WEEK(u32),
+    // 每天
+    DAY(u32),
+}
+
 // 全局配置
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) struct Configs {
@@ -336,6 +349,8 @@ pub(crate) struct Configs {
     pub(crate) lyrics: bool,
     // 循环模式
     pub(crate) loops: LoopsState,
+    // 自动清理缓存
+    pub(crate) clear: ClearCached,
 }
 
 // 加载配置
@@ -343,13 +358,42 @@ pub(crate) struct Configs {
 pub(crate) async fn get_config() -> NCMResult<Configs> {
     let path = format!("{}config.db", NCM_CONFIG.to_string_lossy());
     if let Ok(buffer) = fs::read(path).await {
-        let conf = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
-        return Ok(conf);
+        if let Ok(mut conf) = bincode::deserialize::<Configs>(&buffer).map_err(|_| Errors::NoneError) {
+            match conf.clear {
+                ClearCached::NONE => {}
+                ClearCached::MONTH(month) => {
+                    if month != *DATE_MONTH {
+                        // 清理缓存文件
+                        clear_cache(&NCM_CACHE).await;
+                        conf.clear = ClearCached::MONTH(*DATE_MONTH);
+                        save_config(&conf).await;
+                    }
+                }
+                ClearCached::WEEK(week) => {
+                    if week != *ISO_WEEK {
+                        // 清理缓存文件
+                        clear_cache(&NCM_CACHE).await;
+                        conf.clear = ClearCached::WEEK(*ISO_WEEK);
+                        save_config(&conf).await;
+                    }
+                }
+                ClearCached::DAY(day) => {
+                    if day != *DATE_DAY {
+                        // 清理缓存文件
+                        clear_cache(&NCM_CACHE).await;
+                        conf.clear = ClearCached::DAY(*DATE_DAY);
+                        save_config(&conf).await;
+                    }
+                }
+            }
+            return Ok(conf);
+        }
     }
     let conf = Configs {
         tray: false,
         lyrics: false,
         loops: LoopsState::CONSECUTIVE,
+        clear: ClearCached::NONE,
     };
     Ok(conf)
 }

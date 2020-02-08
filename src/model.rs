@@ -4,6 +4,7 @@
 // Distributed under terms of the MIT license.
 //
 use async_std::io;
+use chrono::prelude::*;
 use custom_error::custom_error;
 use lazy_static::lazy_static;
 use std::{collections::HashMap, path::PathBuf};
@@ -75,16 +76,20 @@ lazy_static! {
 
     // 当前时期-天
     pub(crate) static ref DATE_DAY: u32 = {
-        use chrono::prelude::*;
         let date = Local::now();
         date.day()
     };
 
     // 当前时期-周
     pub(crate) static ref ISO_WEEK: u32 = {
-        use chrono::prelude::*;
         let date = Local::now();
         date.iso_week().week()
+    };
+
+    // 当前时期-月
+    pub(crate) static ref DATE_MONTH: u32 = {
+        let date = Local::now();
+        date.month()
     };
 
     // 排行榜 id

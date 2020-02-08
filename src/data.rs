@@ -4,7 +4,7 @@
 // Distributed under terms of the GPLv3 license.
 //
 
-use crate::model::{Errors, NCMResult, DATE_DAY, ISO_WEEK, NCM_CACHE, NCM_CONFIG, NCM_DATA};
+use crate::model::{Errors, NCMResult, DATE_DAY, NCM_CONFIG, NCM_DATA};
 use crate::musicapi::{model::*, MusicApi};
 use async_std::{fs, prelude::*};
 use openssl::hash::{hash, MessageDigest};
@@ -22,12 +22,10 @@ use std::path::Path;
 // 状态数据
 // login: 是否已登录
 // day: 数据更新日期, 1-31, 每天只更新一次
-// week: 每年中的第几周，每周清除一次缓存
 #[derive(Debug, Deserialize, Serialize)]
 struct StatusData {
     login: bool,
     day: u32,
-    week: u32,
 }
 
 // 音乐数据本地缓存
@@ -47,15 +45,18 @@ impl MusicData {
     #[allow(unused)]
     pub(crate) async fn new() -> NCMResult<Self> {
         if let Ok(buffer) = fs::read(format!("{}status_data.db", NCM_CONFIG.to_string_lossy())).await {
-            let status_data: StatusData = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
-            // 每周清理缓存
-            if status_data.week != *ISO_WEEK {
-                clear_cache(&NCM_CACHE).await;
-            }
+            let mut status_data: StatusData = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
             // 对比缓存数据是否过期
             if status_data.day != *DATE_DAY {
                 // 清理缓存数据
                 clear_cache(&NCM_DATA).await;
+                // 更新日期
+                status_data.day = *DATE_DAY;
+                fs::write(
+                    format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
+                    bincode::serialize(&status_data).map_err(|_| Errors::NoneError)?,
+                )
+                .await?;
             }
             return Ok(MusicData {
                 musicapi: MusicApi::new()?,
@@ -65,7 +66,6 @@ impl MusicData {
         let data = StatusData {
             login: false,
             day: *DATE_DAY,
-            week: *ISO_WEEK,
         };
         fs::write(
             format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
@@ -88,7 +88,6 @@ impl MusicData {
             let data = StatusData {
                 login: true,
                 day: *DATE_DAY,
-                week: *ISO_WEEK,
             };
             fs::write(
                 format!("{}login_key.db", NCM_CONFIG.to_string_lossy()),
@@ -121,7 +120,6 @@ impl MusicData {
                 let data = StatusData {
                     login: true,
                     day: *DATE_DAY,
-                    week: *ISO_WEEK,
                 };
                 fs::write(
                     format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
@@ -154,7 +152,6 @@ impl MusicData {
             let data = StatusData {
                 login: false,
                 day: *DATE_DAY,
-                week: *ISO_WEEK,
             };
             fs::write(
                 format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
@@ -172,7 +169,6 @@ impl MusicData {
             let data = StatusData {
                 login: false,
                 day: *DATE_DAY,
-                week: *ISO_WEEK,
             };
             fs::write(
                 format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
@@ -482,7 +478,7 @@ impl MusicData {
 }
 
 // 删除缓存文件
-async fn clear_cache(dir: &Path) -> NCMResult<()> {
+pub(crate) async fn clear_cache(dir: &Path) -> NCMResult<()> {
     if dir.is_dir() {
         let mut entries = fs::read_dir(dir).await?;
         while let Some(res) = entries.next().await {
