@@ -774,7 +774,7 @@ pub enum Method {
 // ALBUM: 专辑
 // TOP: 热门
 #[allow(unused)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Parse {
     USL,
     UCD,

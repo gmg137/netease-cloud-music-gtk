@@ -6,7 +6,7 @@
 
 use crate::{
     model::{DATE_DAY, DATE_MONTH, ISO_WEEK},
-    musicapi::model::{LoginInfo, SongInfo, SongList},
+    musicapi::model::{LoginInfo, Parse, SongInfo, SongList},
     utils::*,
     view::*,
     widgets::{header::*, mark_all_notif, notice::*, player::*},
@@ -23,7 +23,7 @@ use std::rc::Rc;
 #[derive(Debug, Clone)]
 pub(crate) enum Action {
     SwitchStackMain,
-    SwitchStackSub((u32, String, String)),
+    SwitchStackSub((u32, String, String), Parse),
     SwitchHeaderBar(String),
     RefreshHeaderUser,
     RefreshHeaderUserLogin(LoginInfo),
@@ -38,13 +38,15 @@ pub(crate) enum Action {
     RefreshFoundViewInit(u8),
     RefreshFoundView(Vec<SongInfo>, String),
     RefreshMine,
-    MineHideAll,
+    MineShowLogin,
+    MineShowNotLogin,
     MineShowFm,
     RefreshMineViewInit(i32),
     RefreshMineCurrentView(),
     RefreshMineLikeList(),
     RefreshMineView(Vec<SongInfo>, String),
     RefreshMineFm(SongInfo),
+    RefreshMineRecommendView(Vec<SongList>),
     RefreshMineSidebar(Vec<SongList>),
     PlayerFm,
     FmLike,
@@ -167,20 +169,24 @@ impl App {
             Action::RefreshSubLowView(song_list) => self.view.update_sub_low_view(song_list),
             Action::ShowSubLike(show) => self.view.show_sub_like_button(show),
             Action::SwitchStackMain => self.view.switch_stack_main(),
-            Action::SwitchStackSub((id, name, image_path)) => self.view.switch_stack_sub(id, name, image_path),
+            Action::SwitchStackSub((id, name, image_path), parse) => {
+                self.view.switch_stack_sub(id, name, image_path, parse)
+            }
             Action::LikeSongList => self.view.sub_like_song_list(),
             Action::DisLikeSongList => self.view.dis_like_song_list(),
             Action::RefreshFoundViewInit(id) => self.view.update_found_view_data(id),
             Action::RefreshFoundView(song_list, title) => self.view.update_found_view(song_list, title),
             Action::RefreshMine => self.view.mine_init(),
-            Action::MineHideAll => self.view.mine_hide_all(),
-            Action::MineShowFm => self.view.mine_show_fm(),
+            Action::MineShowLogin => self.view.mine_switch_login(),
+            Action::MineShowNotLogin => self.view.mine_switch_not_login(),
+            Action::MineShowFm => self.view.mine_login_switch_fm(),
             Action::RefreshMineViewInit(id) => self.view.update_mine_view_data(id, false),
             Action::RefreshMineCurrentView() => self.view.update_mine_current_view_data(),
             Action::RefreshMineLikeList() => self.view.update_like_song_list(),
             Action::RefreshMineView(song_list, title) => self.view.update_mine_view(song_list, title),
             Action::RefreshMineFm(si) => self.view.update_mine_fm(si),
             Action::RefreshMineSidebar(vsl) => self.view.update_mine_sidebar(vsl),
+            Action::RefreshMineRecommendView(rr) => self.view.update_mine_recommend(rr),
             Action::RefreshMineFmPlayerList => {
                 self.view.refresh_fm_player_list();
             }

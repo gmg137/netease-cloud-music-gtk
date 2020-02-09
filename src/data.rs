@@ -385,7 +385,7 @@ impl MusicData {
     // album_id: 专辑 id
     #[allow(unused)]
     pub(crate) async fn album(&mut self, album_id: u32) -> NCMResult<Vec<SongInfo>> {
-        let path = format!("{}album.db", NCM_DATA.to_string_lossy());
+        let path = format!("{}album_{}.db", NCM_DATA.to_string_lossy(), album_id);
         if let Ok(buffer) = fs::read(&path).await {
             if let Ok(album) = bincode::deserialize::<Vec<SongInfo>>(&buffer) {
                 return Ok(album);

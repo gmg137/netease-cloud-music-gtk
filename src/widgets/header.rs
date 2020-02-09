@@ -238,10 +238,10 @@ impl Header {
         let sender = self.sender.clone();
         task::spawn(async move {
             if let Ok(mut data) = MusicData::new().await {
+                sender.send(Action::RefreshHome).unwrap();
                 if let Ok(login_info) = data.login(name, pass).await {
                     if login_info.code == 200 {
                         sender.send(Action::RefreshHeaderUser).unwrap();
-                        sender.send(Action::RefreshHome).unwrap();
                         sender.send(Action::RefreshMine).unwrap();
                         return;
                     } else {
@@ -263,7 +263,6 @@ impl Header {
             if let Ok(mut data) = MusicData::new().await {
                 data.logout().await.ok();
                 sender.send(Action::RefreshHeaderUser).unwrap();
-                sender.send(Action::RefreshHome).unwrap();
                 sender.send(Action::RefreshMine).unwrap();
             } else {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();

@@ -50,7 +50,7 @@ impl Home {
         sender.send(Action::RefreshHome).unwrap_or(());
     }
 
-    pub(crate) fn update(&mut self, tsl: Vec<SongList>, rr: Vec<SongList>) {
+    pub(crate) fn update(&mut self, tsl: Vec<SongList>, na: Vec<SongList>) {
         self.up_grid.foreach(|w| {
             self.up_grid.remove(w);
         });
@@ -76,6 +76,10 @@ impl Home {
                     let image = image.scale_simple(140, 140, InterpType::Bilinear);
                     let image = Image::new_from_pixbuf(image.as_ref());
                     boxs.add(&image);
+                } else {
+                    let image = Image::new_from_icon_name(Some("media-optical"), gtk::IconSize::Button);
+                    image.set_pixel_size(140);
+                    boxs.add(&image);
                 };
                 boxs.add(&label);
                 event_box.add(&boxs);
@@ -91,14 +95,17 @@ impl Home {
                 let sender = self.sender.clone();
                 event_box.connect_button_press_event(move |_, _| {
                     sender
-                        .send(Action::SwitchStackSub((id, name.to_owned(), image_path.to_owned())))
+                        .send(Action::SwitchStackSub(
+                            (id, name.to_owned(), image_path.to_owned()),
+                            Parse::USL,
+                        ))
                         .unwrap_or(());
                     Inhibit(false)
                 });
             });
-            if !rr.is_empty() {
+            if !na.is_empty() {
                 let mut l = 0;
-                for sl in rr.iter() {
+                for sl in na.iter() {
                     if l < 4 {
                         let event_box = EventBox::new();
                         let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -112,6 +119,10 @@ impl Home {
                             let image = image.scale_simple(140, 140, InterpType::Bilinear);
                             let image = Image::new_from_pixbuf(image.as_ref());
                             boxs.add(&image);
+                        } else {
+                            let image = Image::new_from_icon_name(Some("media-optical"), gtk::IconSize::Button);
+                            image.set_pixel_size(140);
+                            boxs.add(&image);
                         };
                         boxs.add(&label);
                         event_box.add(&boxs);
@@ -122,7 +133,10 @@ impl Home {
                         let sender = self.sender.clone();
                         event_box.connect_button_press_event(move |_, _| {
                             sender
-                                .send(Action::SwitchStackSub((id, name.to_owned(), image_path.to_owned())))
+                                .send(Action::SwitchStackSub(
+                                    (id, name.to_owned(), image_path.to_owned()),
+                                    Parse::ALBUM,
+                                ))
                                 .unwrap_or(());
                             Inhibit(false)
                         });

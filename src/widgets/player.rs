@@ -314,7 +314,7 @@ impl PlayerWidget {
                             song_info.song_url = v[0].url.to_string();
                             // 缓存音乐图片
                             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
-                            download_img(&song_info.pic_url, &image_path, 210, 210).await.ok();
+                            download_img(&song_info.pic_url, &image_path, 140, 140).await.ok();
                             sender.send(Action::Player(song_info.clone())).unwrap();
                             // 缓存音乐到本地
                             download_music(&song_info.song_url, &path).await.ok();
@@ -347,7 +347,7 @@ impl PlayerWidget {
             }
             // 缓存音乐图片
             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id);
-            download_img(&song_info.pic_url, &image_path, 210, 210).await.ok();
+            download_img(&song_info.pic_url, &image_path, 140, 140).await.ok();
             sender.send(Action::Player(song_info.clone())).unwrap();
             // 缓存音乐到本地
             let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);

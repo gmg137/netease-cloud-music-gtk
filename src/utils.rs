@@ -8,7 +8,7 @@ use crate::data::{clear_cache, MusicData};
 use crate::model::{Errors, NCMResult, DATE_DAY, DATE_MONTH, ISO_WEEK, LYRICS_PATH, NCM_CACHE, NCM_CONFIG, NCM_DATA};
 use crate::musicapi::model::SongInfo;
 use crate::widgets::player::LoopsState;
-use async_std::fs;
+use async_std::{fs, future};
 use cairo::{Context, ImageSurface};
 use crossbeam_channel::Sender;
 use gdk::pixbuf_get_from_surface;
@@ -17,7 +17,7 @@ use gdk_pixbuf::Pixbuf;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
-use std::{io, io::Error};
+use std::{io, io::Error, time::Duration};
 
 // 下载音乐
 // url: 网址
@@ -44,8 +44,9 @@ pub(crate) async fn download_img(url: &str, path: &str, width: u32, high: u32) -
     if !std::path::Path::new(&path).exists() {
         if url.starts_with("http://") || url.starts_with("https://") {
             let image_url = format!("{}?param={}y{}", url, width, high).replace("https:", "http:");
-            let buffer = surf::get(image_url).recv_bytes().await?;
-            fs::write(path, buffer).await?;
+            if let Ok(buffer) = future::timeout(Duration::from_secs(3), surf::get(image_url).recv_bytes()).await? {
+                fs::write(path, buffer).await?;
+            }
         }
     }
     Ok(())
