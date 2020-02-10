@@ -13,7 +13,7 @@ use crate::{
 use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
 use gtk::prelude::*;
-use gtk::{Builder, Button, EventBox, Grid, Image, Label};
+use gtk::{Builder, Button, EventBox, Frame, Grid, Image, Label, ShadowType};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -132,20 +132,23 @@ impl FmView {
                 let event_box = EventBox::new();
                 let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
                 let label = Label::new(Some(&sl.name[..]));
+                let frame = Frame::new(None);
+                frame.set_shadow_type(ShadowType::EtchedOut);
                 label.set_lines(2);
                 label.set_max_width_chars(16);
                 label.set_ellipsize(pango::EllipsizeMode::End);
                 label.set_line_wrap(true);
                 let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
-                if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+                let image = if let Ok(image) = Pixbuf::new_from_file(&image_path) {
                     let image = image.scale_simple(140, 140, InterpType::Bilinear);
-                    let image = Image::new_from_pixbuf(image.as_ref());
-                    boxs.add(&image);
+                    Image::new_from_pixbuf(image.as_ref())
                 } else {
                     let image = Image::new_from_icon_name(Some("media-optical"), gtk::IconSize::Button);
                     image.set_pixel_size(140);
-                    boxs.add(&image);
+                    image
                 };
+                frame.add(&image);
+                boxs.add(&frame);
                 boxs.add(&label);
                 event_box.add(&boxs);
 
