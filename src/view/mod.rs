@@ -611,6 +611,14 @@ impl View {
         }
     }
 
+    pub(crate) fn switch_fm_play(&self) {
+        self.mine.borrow_mut().fmview.switch_play();
+    }
+
+    pub(crate) fn switch_fm_pause(&self) {
+        self.mine.borrow_mut().fmview.switch_pause();
+    }
+
     pub(crate) fn cancel_collection(&self) {
         if let Some(id) = self.mine.borrow_mut().listview.get_song_id() {
             let sender = self.sender.clone();

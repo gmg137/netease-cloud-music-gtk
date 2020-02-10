@@ -17,6 +17,11 @@
     <property name="can_focus">False</property>
     <property name="icon_name">media-playback-start-symbolic</property>
   </object>
+  <object class="GtkImage" id="pause_image">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="icon_name">media-playback-pause-symbolic</property>
+  </object>
   <object class="GtkStack" id="mine_fm_stack">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -217,6 +222,22 @@
                                     <property name="position">2</property>
                                   </packing>
                                 </child>
+                                <child>
+                                  <object class="GtkButton" id="mine_fm_pause_button">
+                                    <property name="width_request">39</property>
+                                    <property name="height_request">39</property>
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="receives_default">True</property>
+                                    <property name="tooltip_text" translatable="yes">播放 FM</property>
+                                    <property name="image">pause_image</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">3</property>
+                                  </packing>
+                                </child>
                                 <style>
                                   <class name="linked"/>
                                 </style>
@@ -233,12 +254,6 @@
                             <property name="top_attach">3</property>
                             <property name="width">2</property>
                           </packing>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
                         </child>
                         <child>
                           <placeholder/>
@@ -350,6 +365,33 @@
                     <property name="column_spacing">15</property>
                     <property name="row_homogeneous">True</property>
                     <property name="column_homogeneous">True</property>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
                   </object>
                   <packing>
                     <property name="expand">False</property>

@@ -49,9 +49,12 @@ pub(crate) enum Action {
     RefreshMineRecommendView(Vec<SongList>),
     RefreshMineSidebar(Vec<SongList>),
     PlayerFm,
+    PauseFm,
     FmLike,
     FmDislike,
     RefreshMineFmPlayerList,
+    RefreshMineFmPlay,
+    RefreshMineFmPause,
     CancelCollection,
     Search(String),
     PlayerInit(SongInfo, PlayerTypes),
@@ -190,7 +193,10 @@ impl App {
             Action::RefreshMineFmPlayerList => {
                 self.view.refresh_fm_player_list();
             }
+            Action::RefreshMineFmPlay => self.view.switch_fm_play(),
+            Action::RefreshMineFmPause => self.view.switch_fm_pause(),
             Action::PlayerFm => self.view.play_fm(),
+            Action::PauseFm => self.player.pause(),
             Action::FmLike => self.view.like_fm(),
             Action::FmDislike => {
                 self.player.forward();

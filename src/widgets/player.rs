@@ -296,6 +296,15 @@ impl PlayerWidget {
     }
 
     pub(crate) fn initialize_player(&self, song_info: SongInfo, player_types: PlayerTypes, lyrics: bool) {
+        match player_types {
+            PlayerTypes::Fm => {
+                if song_info.id == self.info.song_id.borrow().unwrap_or(0) {
+                    self.play();
+                    return;
+                }
+            }
+            _ => (),
+        }
         *self.player_types.borrow_mut() = player_types;
         let sender = self.sender.clone();
         task::spawn(async move {
@@ -390,6 +399,13 @@ impl PlayerWidget {
     }
 
     fn play(&self) {
+        // 更新 FM 播放按钮
+        match *self.player_types.borrow() {
+            PlayerTypes::Fm => {
+                self.sender.send(Action::RefreshMineFmPause).unwrap();
+            }
+            _ => self.sender.send(Action::RefreshMineFmPlay).unwrap(),
+        }
         self.reveal();
 
         self.controls.pause.show();
@@ -399,7 +415,14 @@ impl PlayerWidget {
         self.info.mpris.set_playback_status(PlaybackStatus::Playing);
     }
 
-    fn pause(&self) {
+    pub(crate) fn pause(&self) {
+        // 更新 FM 播放按钮
+        match *self.player_types.borrow() {
+            PlayerTypes::Fm => {
+                self.sender.send(Action::RefreshMineFmPlay).unwrap();
+            }
+            _ => (),
+        }
         self.controls.pause.hide();
         self.controls.play.show();
 

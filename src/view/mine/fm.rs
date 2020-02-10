@@ -7,6 +7,7 @@ use crate::{
     app::Action,
     model::NCM_CACHE,
     musicapi::model::{Parse, SongInfo, SongList},
+    upgrade_weak,
     utils::*,
 };
 use crossbeam_channel::Sender;
@@ -22,6 +23,7 @@ pub struct FmView {
     like: Button,
     dislike: Button,
     play: Button,
+    pause: Button,
     title: Label,
     singer: Label,
     recommend: Grid,
@@ -43,6 +45,9 @@ impl FmView {
         let play: Button = mine_login_fm_builder
             .get_object("mine_fm_play_button")
             .expect("无法获取 mine_fm_play_button .");
+        let pause: Button = mine_login_fm_builder
+            .get_object("mine_fm_pause_button")
+            .expect("无法获取 mine_fm_play_button .");
         let title: Label = mine_login_fm_builder
             .get_object("mine_fm_title")
             .expect("无法获取 mine_fm_title .");
@@ -57,6 +62,7 @@ impl FmView {
             like,
             dislike,
             play,
+            pause,
             title,
             singer,
             recommend,
@@ -69,9 +75,25 @@ impl FmView {
     }
 
     fn init(s: &Self) {
+        s.play.show();
+        s.pause.hide();
+
+        let pause_weak = s.pause.downgrade();
         let sender = s.sender.clone();
-        s.play.connect_clicked(move |_| {
+        s.play.connect_clicked(move |play| {
+            let pause = upgrade_weak!(pause_weak);
+            play.hide();
+            pause.show();
             sender.send(Action::PlayerFm).unwrap_or(());
+        });
+
+        let play_weak = s.play.downgrade();
+        let sender = s.sender.clone();
+        s.pause.connect_clicked(move |pause| {
+            let play = upgrade_weak!(play_weak);
+            pause.hide();
+            play.show();
+            sender.send(Action::PauseFm).unwrap_or(());
         });
 
         let sender = s.sender.clone();
@@ -170,5 +192,15 @@ impl FmView {
                 .send(Action::PlayerInit(si.to_owned(), PlayerTypes::Fm))
                 .unwrap_or(());
         });
+    }
+
+    pub(crate) fn switch_play(&self) {
+        self.pause.hide();
+        self.play.show();
+    }
+
+    pub(crate) fn switch_pause(&self) {
+        self.play.hide();
+        self.pause.show();
     }
 }
