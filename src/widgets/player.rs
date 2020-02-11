@@ -3,29 +3,21 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-use crate::app::Action;
-use crate::clone;
-use crate::data::MusicData;
-use crate::model::NCM_CACHE;
-use crate::musicapi::model::SongInfo;
-use crate::utils::*;
-use async_std::task;
+use crate::{app::Action, data::MusicData, model::NCM_CACHE, musicapi::model::SongInfo, utils::*};
+use async_std::{future::timeout, task};
 use chrono::NaiveTime;
 use crossbeam_channel::Sender;
 use fragile::Fragile;
-use gdk_pixbuf::InterpType;
-use gdk_pixbuf::Pixbuf;
-use glib::{SignalHandlerId, WeakRef};
+use futures::future;
+use gdk_pixbuf::{InterpType, Pixbuf};
+use glib::{clone, SignalHandlerId, WeakRef};
 use gst::ClockTime;
-use gtk::prelude::*;
-use gtk::{ActionBar, Builder, Button, Image, Label, MenuButton, RadioButton, Scale, TextView, VolumeButton};
+use gtk::{
+    prelude::*, ActionBar, Builder, Button, Image, Label, MenuButton, RadioButton, Scale, TextView, VolumeButton,
+};
 use mpris_player::{Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
-use std::ops::Deref;
-use std::path::Path;
-use std::rc::Rc;
-use std::sync::Arc;
+use std::{cell::RefCell, ops::Deref, path::Path, rc::Rc, sync::Arc, time};
 
 #[derive(Debug, Clone)]
 struct PlayerControls {
@@ -307,7 +299,7 @@ impl PlayerWidget {
         }
         *self.player_types.borrow_mut() = player_types;
         let sender = self.sender.clone();
-        task::spawn(async move {
+        task::block_on(async move {
             if let Ok(mut data) = MusicData::new().await {
                 // 下载歌词
                 if lyrics {
@@ -321,12 +313,17 @@ impl PlayerWidget {
                         if v.len() > 0 {
                             let mut song_info = song_info;
                             song_info.song_url = v[0].url.to_string();
-                            // 缓存音乐图片
-                            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
-                            download_img(&song_info.pic_url, &image_path, 140, 140).await.ok();
                             sender.send(Action::Player(song_info.clone())).unwrap();
-                            // 缓存音乐到本地
-                            download_music(&song_info.song_url, &path).await.ok();
+                            // 缓存音乐和图片
+                            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
+                            let _ = timeout(
+                                time::Duration::from_millis(1000),
+                                future::join(
+                                    download_img(&song_info.pic_url, &image_path, 140, 140),
+                                    download_music(&song_info.song_url, &path),
+                                ),
+                            )
+                            .await;
                         } else {
                             warn!(
                                 "未能获取 {}[id:{}] 的播放链接!(版权或VIP限制)",
@@ -347,20 +344,26 @@ impl PlayerWidget {
 
     pub(crate) fn ready_player(&self, song_info: SongInfo, lyrics: bool) {
         let sender = self.sender.clone();
-        task::spawn(async move {
+        task::block_on(async move {
             // 下载歌词
             if lyrics {
                 if let Ok(mut data) = MusicData::new().await {
                     download_lyrics(&mut data, &song_info.name, &song_info).await.ok();
                 }
             }
-            // 缓存音乐图片
-            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id);
-            download_img(&song_info.pic_url, &image_path, 140, 140).await.ok();
             sender.send(Action::Player(song_info.clone())).unwrap();
-            // 缓存音乐到本地
+            // 缓存音乐图片路径
+            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id);
+            // 缓存音乐路径
             let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
-            download_music(&song_info.song_url, &path).await.ok();
+            let _ = timeout(
+                time::Duration::from_millis(1300),
+                future::join(
+                    download_img(song_info.pic_url, image_path, 140, 140),
+                    download_music(song_info.song_url, path),
+                ),
+            )
+            .await;
         });
     }
 
@@ -442,7 +445,7 @@ impl PlayerWidget {
     pub(crate) fn forward(&self) {
         match *self.player_types.borrow() {
             PlayerTypes::Fm => {
-                if let Ok(si) = task::block_on(async { get_player_list_song(PD::FORWARD, false, false).await }) {
+                if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, false, false)) {
                     self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
                 } else {
                     self.sender.send(Action::RefreshMineFmPlayerList).unwrap();
@@ -454,10 +457,10 @@ impl PlayerWidget {
         let state = match *self.loops_state.borrow() {
             LoopsState::SHUFFLE => true,
             LoopsState::PLAYLIST => {
-                if let Ok(si) = task::block_on(async { get_player_list_song(PD::FORWARD, false, false).await }) {
+                if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, false, false)) {
                     self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
                 } else {
-                    if let Ok(si) = task::block_on(async { get_player_list_song(PD::FORWARD, false, true).await }) {
+                    if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, false, true)) {
                         self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
                     }
                 }
@@ -469,7 +472,7 @@ impl PlayerWidget {
             }
             LoopsState::CONSECUTIVE => false,
         };
-        if let Ok(si) = task::block_on(async { get_player_list_song(PD::FORWARD, state, false).await }) {
+        if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, state, false)) {
             self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
         }
     }
@@ -478,10 +481,10 @@ impl PlayerWidget {
         let state = match *self.loops_state.borrow() {
             LoopsState::SHUFFLE => true,
             LoopsState::PLAYLIST => {
-                if let Ok(si) = task::block_on(async { get_player_list_song(PD::BACKWARD, false, false).await }) {
+                if let Ok(si) = task::block_on(get_player_list_song(PD::BACKWARD, false, false)) {
                     self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
                 } else {
-                    if let Ok(si) = task::block_on(async { get_player_list_song(PD::BACKWARD, false, true).await }) {
+                    if let Ok(si) = task::block_on(get_player_list_song(PD::BACKWARD, false, true)) {
                         self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
                     }
                 }
@@ -494,7 +497,7 @@ impl PlayerWidget {
             }
             LoopsState::CONSECUTIVE => false,
         };
-        if let Ok(si) = task::block_on(async { get_player_list_song(PD::BACKWARD, state, false).await }) {
+        if let Ok(si) = task::block_on(get_player_list_song(PD::BACKWARD, state, false)) {
             self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
         }
     }
@@ -577,38 +580,45 @@ impl PlayerWrapper {
 
     /// Connect the `PlayerControls` buttons to the `PlayerExt` methods.
     fn connect_control_buttons(&self) {
-        let weak = Rc::downgrade(self);
+        let weak = Rc::clone(self);
 
         // Connect the play button to the gst Player.
-        self.controls.play.connect_clicked(clone!(weak => move |_| {
-             weak.upgrade().map(|p| p.play());
+        self.controls.play.connect_clicked(clone!(@weak weak => move |_| {
+            weak.play();
+             //weak.map(|p| p.play());
         }));
 
         // Connect the pause button to the gst Player.
-        self.controls.pause.connect_clicked(clone!(weak => move |_| {
-            weak.upgrade().map(|p| p.pause());
+        self.controls.pause.connect_clicked(clone!(@weak weak => move |_| {
+            weak.pause();
+            //weak.upgrade().map(|p| p.pause());
         }));
 
-        self.controls.forward.connect_clicked(clone!(weak => move |_| {
-            weak.upgrade().map(|p| p.forward());
+        self.controls.forward.connect_clicked(clone!(@weak weak => move |_| {
+            weak.forward();
+            //weak.upgrade().map(|p| p.forward());
         }));
 
-        self.controls.backward.connect_clicked(clone!(weak => move |_| {
-            weak.upgrade().map(|p| p.backward());
+        self.controls.backward.connect_clicked(clone!(@weak weak => move |_| {
+            weak.backward();
+            //weak.upgrade().map(|p| p.backward());
         }));
 
-        self.controls.like.connect_clicked(clone!(weak => move |_| {
-            weak.upgrade().map(|p| p.like());
+        self.controls.like.connect_clicked(clone!(@weak weak => move |_| {
+            weak.like();
+            //weak.upgrade().map(|p| p.like());
         }));
 
         self.controls
             .volume
-            .connect_value_changed(clone!(weak => move |_, value| {
-                weak.upgrade().map(|p| p.set_volume(value));
+            .connect_value_changed(clone!(@weak weak => move |_, value| {
+                weak.set_volume(value);
+                //weak.upgrade().map(|p| p.set_volume(value));
             }));
 
-        self.controls.lyrics.connect_clicked(clone!(weak => move |_| {
-            weak.upgrade().map(|p| p.get_lyrics_text());
+        self.controls.lyrics.connect_clicked(clone!(@weak weak => move |_| {
+            weak.get_lyrics_text();
+            //weak.upgrade().map(|p| p.get_lyrics_text());
         }));
     }
 
@@ -617,49 +627,45 @@ impl PlayerWrapper {
         // Log gst warnings.
         self.player.connect_warning(move |_, warn| warn!("gst warning: {}", warn));
 
+        let sender_clone = sender.clone();
         // Log gst errors.
-        self.player.connect_error(clone!(sender => move |_, error| {
-            sender
-                .send(Action::ShowNotice(format!("播放错误: {}", error)))
+        self.player.connect_error(move |_, _| {
+            sender_clone
+                .send(Action::ShowNotice(format!("播放格式错误!")))
                 .unwrap();
-            let sender = sender.clone();
+        let sender_clone = sender_clone.clone();
             // 刷新播放列表
             task::spawn(async move {
-            update_player_list(sender.clone()).await.ok();
+                update_player_list(sender_clone).await.ok();
             });
-        }));
+        });
 
         // The following callbacks require `Send` but are handled by the gtk main loop
-        let weak = Fragile::new(Rc::downgrade(self));
-
+        let weak = Fragile::new(Rc::clone(self));
         // Update the duration label and the slider
-        self.player.connect_duration_changed(clone!(weak => move |_, clock| {
-            weak.get()
-                .upgrade()
-                .map(|p| p.timer.on_duration_changed(Duration(clock)));
-        }));
+        self.player.connect_duration_changed(move |_, clock| {
+            weak.get().timer.on_duration_changed(Duration(clock));
+        });
 
+        let weak = Fragile::new(Rc::clone(self));
         // Update the position label and the slider
-        self.player.connect_position_updated(clone!(weak => move |_, clock| {
-            weak.get()
-                .upgrade()
-                .map(|p| p.timer.on_position_updated(Position(clock)));
-        }));
+        self.player.connect_position_updated(move |_, clock| {
+            weak.get().timer.on_position_updated(Position(clock));
+        });
 
+        let weak = Fragile::new(Rc::clone(self));
         // Reset the slider to 0 and show a play button
-        self.player.connect_end_of_stream(clone!(weak => move |_| {
-             weak.get()
-                 .upgrade()
-                 .map(|p| p.stop());
-        }));
+        self.player.connect_end_of_stream(move |_| {
+             weak.get().stop();
+        });
     }
 
     fn connect_loops_buttons(&self) {
-        let weak = Rc::downgrade(self);
+        let weak = Rc::clone(self);
 
-        self.loops.shuffle.connect_toggled(clone!(weak => move |_| {
-            weak.upgrade().map(|p| *p.loops_state.borrow_mut() = LoopsState::SHUFFLE);
-            weak.upgrade().map(|p| p.loops.image.set_from_icon_name(Some("media-playlist-shuffle-symbolic"),gtk::IconSize::Menu));
+        self.loops.shuffle.connect_toggled(clone!(@weak weak => move |_| {
+            *weak.loops_state.borrow_mut() = LoopsState::SHUFFLE;
+            weak.loops.image.set_from_icon_name(Some("media-playlist-shuffle-symbolic"),gtk::IconSize::Menu);
             task::spawn(async {
                 if let Ok(mut conf) = get_config().await {
                     conf.loops = LoopsState::SHUFFLE;
@@ -668,11 +674,9 @@ impl PlayerWrapper {
             });
         }));
 
-        self.loops
-            .playlist
-            .connect_toggled(clone!(weak => move |_| {
-            weak.upgrade().map(|p| *p.loops_state.borrow_mut() = LoopsState::PLAYLIST);
-            weak.upgrade().map(|p| p.loops.image.set_from_icon_name(Some("media-playlist-repeat-symbolic"),gtk::IconSize::Menu));
+        self.loops.playlist.connect_toggled(clone!(@weak weak => move |_| {
+            *weak.loops_state.borrow_mut() = LoopsState::PLAYLIST;
+            weak.loops.image.set_from_icon_name(Some("media-playlist-repeat-symbolic"),gtk::IconSize::Menu);
             task::spawn(async {
                 if let Ok(mut conf) = get_config().await {
                     conf.loops = LoopsState::PLAYLIST;
@@ -681,9 +685,9 @@ impl PlayerWrapper {
             });
         }));
 
-        self.loops.none.connect_toggled(clone!(weak => move |_| {
-            weak.upgrade().map(|p| *p.loops_state.borrow_mut() = LoopsState::NONE);
-            weak.upgrade().map(|p| p.loops.image.set_from_icon_name(Some("media-playlist-repeat-song-symbolic"),gtk::IconSize::Menu));
+        self.loops.none.connect_toggled(clone!(@weak weak => move |_| {
+            *weak.loops_state.borrow_mut() = LoopsState::NONE;
+            weak.loops.image.set_from_icon_name(Some("media-playlist-repeat-song-symbolic"),gtk::IconSize::Menu);
             task::spawn(async {
                 if let Ok(mut conf) = get_config().await {
                     conf.loops = LoopsState::NONE;
@@ -691,9 +695,9 @@ impl PlayerWrapper {
                 }
             });
         }));
-        self.loops.consecutive.connect_toggled(clone!(weak => move |_| {
-            weak.upgrade().map(|p| *p.loops_state.borrow_mut() = LoopsState::CONSECUTIVE);
-            weak.upgrade().map(|p| p.loops.image.set_from_icon_name(Some("media-playlist-consecutive-symbolic"),gtk::IconSize::Menu));
+        self.loops.consecutive.connect_toggled(clone!(@weak weak => move |_| {
+            *weak.loops_state.borrow_mut() = LoopsState::CONSECUTIVE;
+            weak.loops.image.set_from_icon_name(Some("media-playlist-consecutive-symbolic"),gtk::IconSize::Menu);
             task::spawn(async {
                 if let Ok(mut conf) = get_config().await {
                     conf.loops = LoopsState::CONSECUTIVE;
@@ -704,48 +708,34 @@ impl PlayerWrapper {
     }
 
     fn connect_mpris_buttons(&self) {
-        let weak = Rc::downgrade(self);
+        let weak = Rc::clone(self);
 
-        let mpris = self.info.mpris.clone();
-        self.info.mpris.connect_play_pause(clone!(weak => move || {
-            let player = match weak.upgrade() {
-                Some(s) => s,
-                None => return
-            };
+        self.info
+            .mpris
+            .connect_play_pause(clone!(@weak weak, @weak self.info.mpris as mpris => move || {
+                if let Ok(status) = mpris.get_playback_status() {
+                    match status.as_ref() {
+                        "Paused" => weak.play(),
+                        "Stopped" => weak.play(),
+                        _ => weak.pause(),
+                    };
+                }
+            }));
 
-            if let Ok(status) = mpris.get_playback_status() {
-                match status.as_ref() {
-                    "Paused" => player.play(),
-                    "Stopped" => player.play(),
-                    _ => player.pause(),
-                };
-            }
+        self.info.mpris.connect_play(clone!(@weak weak => move || {
+            weak.play();
         }));
 
-        self.info.mpris.connect_play(clone!(weak => move || {
-            let player = match weak.upgrade() {
-                Some(s) => s,
-                None => return
-            };
-
-            player.play();
+        self.info.mpris.connect_pause(clone!(@weak weak => move || {
+            weak.pause();
         }));
 
-        self.info.mpris.connect_pause(clone!(weak => move || {
-            let player = match weak.upgrade() {
-                Some(s) => s,
-                None => return
-            };
-
-            player.pause();
+        self.info.mpris.connect_next(clone!(@weak weak => move || {
+            weak.forward();
         }));
 
-        self.info.mpris.connect_next(clone!(weak => move || {
-        weak.upgrade().map(|p| p.forward());
-        }));
-
-        self.info.mpris.connect_previous(clone!(weak => move || {
-        weak.upgrade().map(|p| p.backward());
+        self.info.mpris.connect_previous(clone!(@weak weak => move || {
+            weak.backward();
         }));
     }
 }

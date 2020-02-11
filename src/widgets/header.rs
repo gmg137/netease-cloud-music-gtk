@@ -8,10 +8,10 @@ use super::preferences::Preferences;
 use crate::app::Action;
 use crate::musicapi::model::LoginInfo;
 use crate::utils::*;
-use crate::{clone, upgrade_weak};
 use crate::{data::MusicData, model::NCM_CACHE, APP_VERSION};
 use async_std::task;
 use crossbeam_channel::Sender;
+use glib::clone;
 use gtk::prelude::*;
 use gtk::{
     AboutDialog, Builder, Button, Dialog, Entry, Image, Label, MenuButton, ModelButton, Popover, SearchBar,
@@ -126,12 +126,11 @@ impl Header {
         sender.send(Action::RefreshHeaderUser).unwrap();
 
         // 登陆按钮
-        let dialog_weak = s.login_dialog.dialog.downgrade();
-        s.login.connect_clicked(clone!(dialog_weak=>move|_| {
-            let dialog = upgrade_weak!(dialog_weak);
-            dialog.run();
-            dialog.hide();
-        }));
+        s.login
+            .connect_clicked(clone!(@weak s.login_dialog.dialog as dialog => move |_| {
+                dialog.run();
+                dialog.hide();
+            }));
 
         // 退出按钮
         let sen = sender.clone();
@@ -140,27 +139,26 @@ impl Header {
         });
 
         // 登陆对话框
-        let dialog_weak = s.login_dialog.dialog.downgrade();
-        let name_weak = s.login_dialog.name.downgrade();
-        let pass_weak = s.login_dialog.pass.downgrade();
+        let dialog = &s.login_dialog.dialog;
+        let name = &s.login_dialog.name;
+        let pass = &s.login_dialog.pass;
         let sen = sender.clone();
         s.login_dialog
             .ok
-            .connect_clicked(clone!(dialog_weak,name_weak,pass_weak=>move|_| {
-            let dialog = upgrade_weak!(dialog_weak);
-            let name = upgrade_weak!(name_weak).get_text().unwrap().as_str().to_owned();
-            let pass = upgrade_weak!(pass_weak).get_text().unwrap().as_str().to_owned();
+            .connect_clicked(clone!(@weak dialog, @weak name,@weak pass => move |_| {
+            let name = name.get_text().unwrap().as_str().to_owned();
+            let pass = pass.get_text().unwrap().as_str().to_owned();
             if !name.is_empty() && !pass.is_empty(){
                 sen.send(Action::Login(name,pass)).unwrap();
                 dialog.hide();
             }}));
 
         // 取消登陆按钮
-        let dialog_weak = s.login_dialog.dialog.downgrade();
-        s.login_dialog.cancel.connect_clicked(clone!(dialog_weak=>move|_| {
-            let dialog = upgrade_weak!(dialog_weak);
-            dialog.hide();
-        }));
+        s.login_dialog
+            .cancel
+            .connect_clicked(clone!(@weak s.login_dialog.dialog as dialog => move |_| {
+                dialog.hide();
+            }));
 
         // 签到按钮
         let sen = sender.clone();
@@ -169,22 +167,20 @@ impl Header {
         });
 
         // 搜索按钮
-        let search_bar_weak = s.search_bar.downgrade();
-        let search_entry_weak = s.search_entry.downgrade();
+        let search_bar = &s.search_bar;
+        let search_entry = &s.search_entry;
         s.search
-            .connect_clicked(clone!(search_bar_weak ,search_entry_weak=> move |_| {
-                let search_bar = upgrade_weak!(search_bar_weak);
-                let search_entry = upgrade_weak!(search_entry_weak);
+            .connect_clicked(clone!(@weak search_bar, @weak search_entry=> move |_| {
                 search_entry.set_property_is_focus(true);
                 search_bar.set_search_mode(!search_bar.get_search_mode());
             }));
 
         // 搜索框
-        let search_entry_weak = s.search_entry.downgrade();
+        let search_entry = &s.search_entry;
         let sender_clone = sender.clone();
-        s.search_entry.connect_activate(clone!(search_entry_weak =>move|_| {
+        s.search_entry.connect_activate(clone!(@weak search_entry => move |_| {
             // 回车键直接搜索
-            if let Some(text) = search_entry_weak.upgrade().unwrap().get_text(){
+            if let Some(text) = search_entry.get_text(){
                 if !text.is_empty(){
                     sender_clone.send(Action::Search(text.to_owned())).unwrap_or(());
                 }
@@ -192,39 +188,34 @@ impl Header {
         }));
 
         // 返回按钮
-        let sen = sender.clone();
-        let title_weak = s.title.downgrade();
-        let switch_weak = s.switch.downgrade();
-        let back_weak = s.back.downgrade();
+        let send = sender.clone();
+        let title = &s.title;
+        let switch = &s.switch;
+        let back = &s.back;
         s.back
-            .connect_clicked(clone!(title_weak,switch_weak,back_weak => move |_| {
-                let title = upgrade_weak!(title_weak);
-                let switch = upgrade_weak!(switch_weak);
-                let back = upgrade_weak!(back_weak);
+            .connect_clicked(clone!(@weak title, @weak switch, @weak back=> move |_| {
                 title.hide();
                 switch.show();
                 back.hide();
-                sen.send(Action::SwitchStackMain).unwrap();
+                send.send(Action::SwitchStackMain).unwrap();
             }));
 
         // 设置关于窗口版本号
         s.about.set_version(Some(APP_VERSION));
 
         // 关于按钮
-        let about_weak = s.about.downgrade();
-        s.about_button.connect_clicked(clone!(about_weak => move |_| {
-            let about = upgrade_weak!(about_weak);
-            about.run();
-            about.hide();
-        }));
+        s.about_button
+            .connect_clicked(clone!(@weak s.about as about => move |_| {
+                about.run();
+                about.hide();
+            }));
 
         // 首选项
-        let dialog_weak = s.preferences.dialog.downgrade();
-        s.preferences_button.connect_clicked(clone!(dialog_weak => move |_| {
-            let dialog = upgrade_weak!(dialog_weak);
-            dialog.run();
-            dialog.hide();
-        }));
+        s.preferences_button
+            .connect_clicked(clone!(@weak s.preferences.dialog as dialog => move |_| {
+                dialog.run();
+                dialog.hide();
+            }));
 
         // 关闭按钮
         let sen = sender.clone();

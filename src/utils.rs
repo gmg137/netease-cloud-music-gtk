@@ -8,7 +8,7 @@ use crate::data::{clear_cache, MusicData};
 use crate::model::{Errors, NCMResult, DATE_DAY, DATE_MONTH, ISO_WEEK, LYRICS_PATH, NCM_CACHE, NCM_CONFIG, NCM_DATA};
 use crate::musicapi::model::SongInfo;
 use crate::widgets::player::LoopsState;
-use async_std::{fs, future};
+use async_std::fs;
 use cairo::{Context, ImageSurface};
 use crossbeam_channel::Sender;
 use gdk::pixbuf_get_from_surface;
@@ -17,12 +17,17 @@ use gdk_pixbuf::Pixbuf;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
-use std::{io, io::Error, time::Duration};
+use std::{io, io::Error};
 
 // 下载音乐
 // url: 网址
 // path: 本地保存路径(包含文件名)
-pub(crate) async fn download_music(url: &str, path: &str) -> Result<(), surf::Exception> {
+pub(crate) async fn download_music<I>(url: I, path: I) -> Result<(), surf::Exception>
+where
+    I: Into<String>,
+{
+    let url = url.into();
+    let path = path.into();
     if !std::path::Path::new(&path).exists() {
         if url.starts_with("http://") || url.starts_with("https://") {
             let music_url = url.replace("https:", "http:");
@@ -40,11 +45,16 @@ pub(crate) async fn download_music(url: &str, path: &str) -> Result<(), surf::Ex
 // path: 本地保存路径(包含文件名)
 // width: 宽度
 // high: 高度
-pub(crate) async fn download_img(url: &str, path: &str, width: u32, high: u32) -> Result<(), surf::Exception> {
+pub(crate) async fn download_img<I>(url: I, path: I, width: u32, high: u32) -> Result<(), surf::Exception>
+where
+    I: Into<String>,
+{
+    let url = url.into();
+    let path = path.into();
     if !std::path::Path::new(&path).exists() {
         if url.starts_with("http://") || url.starts_with("https://") {
             let image_url = format!("{}?param={}y{}", url, width, high).replace("https:", "http:");
-            if let Ok(buffer) = future::timeout(Duration::from_secs(3), surf::get(image_url).recv_bytes()).await? {
+            if let Ok(buffer) = surf::get(image_url).recv_bytes().await {
                 fs::write(path, buffer).await?;
             }
         }

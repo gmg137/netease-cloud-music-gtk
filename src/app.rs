@@ -14,7 +14,6 @@ use crate::{
 use async_std::task;
 use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
 use gio::{self, prelude::*};
-use glib;
 use gtk::prelude::*;
 use gtk::{ApplicationWindow, Builder, Overlay};
 use std::cell::RefCell;
@@ -30,6 +29,8 @@ pub(crate) enum Action {
     RefreshHeaderUserLogout,
     RefreshHome,
     RefreshHomeView(Vec<SongList>, Vec<SongList>),
+    RefreshHomeUpImage(i32, i32, SongList),
+    RefreshHomeLowImage(i32, i32, SongList),
     RefreshSubUpView(u32, String, String),
     RefreshSubLowView(Vec<SongInfo>),
     ShowSubLike(bool),
@@ -48,6 +49,7 @@ pub(crate) enum Action {
     RefreshMineFm(SongInfo),
     RefreshMineRecommendView(Vec<SongList>),
     RefreshMineSidebar(Vec<SongList>),
+    RefreshMineRecommendImage(i32, i32, SongList),
     PlayerFm,
     PauseFm,
     FmLike,
@@ -99,7 +101,7 @@ impl App {
         window.set_application(Some(application));
         window.set_title("网易云音乐");
 
-        let configs = task::block_on(async { get_config().await }).unwrap();
+        let configs = task::block_on(get_config()).unwrap();
         let view = View::new(&builder, &sender);
         let header = Header::new(&builder, &sender, &configs);
         let player = PlayerWrapper::new(&builder, &sender);
@@ -150,7 +152,8 @@ impl App {
 
     fn init(app: &Rc<Self>) {
         // Setup the Action channel
-        gtk::timeout_add(25, crate::clone!(app => move || app.setup_action_channel()));
+        let app = Rc::clone(app);
+        gtk::timeout_add(25, move || app.setup_action_channel());
     }
 
     fn setup_action_channel(&self) -> glib::Continue {
@@ -168,6 +171,8 @@ impl App {
             Action::RefreshHeaderUserLogout => self.header.update_user_logout(),
             Action::RefreshHome => self.view.update_home(),
             Action::RefreshHomeView(tsl, rr) => self.view.update_home_view(tsl, rr),
+            Action::RefreshHomeUpImage(left, top, sl) => self.view.set_home_up_image(left, top, sl),
+            Action::RefreshHomeLowImage(left, top, sl) => self.view.set_home_low_image(left, top, sl),
             Action::RefreshSubUpView(id, name, image_path) => self.view.update_sub_up_view(id, name, image_path),
             Action::RefreshSubLowView(song_list) => self.view.update_sub_low_view(song_list),
             Action::ShowSubLike(show) => self.view.show_sub_like_button(show),
@@ -190,6 +195,7 @@ impl App {
             Action::RefreshMineFm(si) => self.view.update_mine_fm(si),
             Action::RefreshMineSidebar(vsl) => self.view.update_mine_sidebar(vsl),
             Action::RefreshMineRecommendView(rr) => self.view.update_mine_recommend(rr),
+            Action::RefreshMineRecommendImage(l, t, s) => self.view.refresh_mine_recommend_image(l, t, s),
             Action::RefreshMineFmPlayerList => {
                 self.view.refresh_fm_player_list();
             }

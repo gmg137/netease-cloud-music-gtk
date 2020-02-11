@@ -16,6 +16,7 @@ use crate::utils::*;
 use async_std::{fs, task};
 use crossbeam_channel::Sender;
 use found::*;
+use futures::future::join_all;
 use gtk::{prelude::*, Builder, Stack};
 use home::*;
 use mine::*;
@@ -263,37 +264,52 @@ impl View {
                 if let Ok(tsl) = data.top_song_list("hot", 0, 8).await {
                     // 异步并行下载图片
                     let mut tasks = Vec::new();
+                    let mut l = 0;
                     for sl in tsl.clone().into_iter() {
                         if tasks.len() >= 8 {
                             break;
                         }
-                        tasks.push(task::spawn(async move {
-                            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
-                            crate::utils::download_img(&sl.cover_img_url, &image_path, 140, 140)
-                                .await
-                                .ok();
-                        }))
+                        let mut left = l;
+                        let mut top = 0;
+                        if l >= 4 {
+                            left = l % 4;
+                            top = l / 4;
+                        }
+                        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
+                        let sender_clone = sender.clone();
+                        let ssl = sl.to_owned();
+                        tasks.push(async move {
+                            download_img(sl.cover_img_url, image_path, 140, 140).await.ok();
+                            sender_clone.send(Action::RefreshHomeUpImage(left, top, ssl)).unwrap();
+                        });
+                        l += 1;
                     }
+                    task::spawn(join_all(tasks));
                     if let Ok(na) = data.new_albums(0, 4).await {
+                        let mut tasks = Vec::new();
+                        let mut l = 0;
                         // 异步并行下载图片
                         for sl in na.clone().into_iter() {
-                            tasks.push(task::spawn(async move {
-                                let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
-                                crate::utils::download_img(&sl.cover_img_url, &image_path, 140, 140)
-                                    .await
-                                    .ok();
-                            }))
+                            let mut left = l;
+                            let mut top = 0;
+                            if l >= 4 {
+                                left = l % 4;
+                                top = l / 4;
+                            }
+                            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
+                            let sender_clone = sender.clone();
+                            let ssl = sl.to_owned();
+                            tasks.push(async move {
+                                download_img(sl.cover_img_url, image_path, 140, 140).await.ok();
+                                sender_clone.send(Action::RefreshHomeLowImage(left, top, ssl)).unwrap();
+                            });
+                            l += 1;
                         }
-                        for t in tasks {
-                            t.await;
-                        }
+                        task::spawn(join_all(tasks));
                         sender
                             .send(Action::RefreshHomeView(tsl[0..8].to_owned(), na))
                             .unwrap_or(());
                         return;
-                    }
-                    for t in tasks {
-                        t.await;
                     }
                     sender
                         .send(Action::RefreshHomeView(tsl[0..8].to_owned(), vec![]))
@@ -305,6 +321,14 @@ impl View {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
             }
         });
+    }
+
+    pub(crate) fn set_home_up_image(&self, left: i32, top: i32, sl: SongList) {
+        self.home.borrow_mut().set_up_image(left, top, sl);
+    }
+
+    pub(crate) fn set_home_low_image(&self, left: i32, top: i32, sl: SongList) {
+        self.home.borrow_mut().set_low_image(left, top, sl);
     }
 
     pub(crate) fn play_subpages(&self) {
@@ -363,17 +387,25 @@ impl View {
                     if let Ok(rr) = data.recommend_resource().await {
                         // 异步并行下载图片
                         let mut tasks = Vec::with_capacity(rr.len());
+                        let mut l = 0;
                         for sl in rr.clone().into_iter() {
-                            tasks.push(task::spawn(async move {
-                                let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
-                                crate::utils::download_img(&sl.cover_img_url, &image_path, 140, 140)
-                                    .await
-                                    .ok();
-                            }))
+                            let mut left = l;
+                            let mut top = 0;
+                            if l >= 4 {
+                                left = l % 4;
+                                top = l / 4;
+                            }
+                            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
+                            let sender_clone = sender.clone();
+                            tasks.push(async move {
+                                download_img(&sl.cover_img_url, &image_path, 140, 140).await.ok();
+                                sender_clone
+                                    .send(Action::RefreshMineRecommendImage(left, top, sl))
+                                    .unwrap_or(());
+                            });
+                            l += 1;
                         }
-                        for t in tasks {
-                            t.await;
-                        }
+                        task::spawn(join_all(tasks));
                         sender.send(Action::RefreshMineRecommendView(rr)).unwrap_or(());
                         return;
                     }
@@ -382,6 +414,10 @@ impl View {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
             }
         });
+    }
+
+    pub(crate) fn refresh_mine_recommend_image(&self, left: i32, top: i32, sl: SongList) {
+        self.mine.borrow_mut().fmview.set_recommend_image(left, top, sl);
     }
 
     pub(crate) fn mine_switch_not_login(&self) {

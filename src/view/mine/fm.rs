@@ -7,11 +7,11 @@ use crate::{
     app::Action,
     model::NCM_CACHE,
     musicapi::model::{Parse, SongInfo, SongList},
-    upgrade_weak,
     utils::*,
 };
 use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
+use glib::clone;
 use gtk::prelude::*;
 use gtk::{Builder, Button, EventBox, Frame, Grid, Image, Label, ShadowType};
 use std::cell::RefCell;
@@ -78,23 +78,19 @@ impl FmView {
         s.play.show();
         s.pause.hide();
 
-        let pause_weak = s.pause.downgrade();
         let sender = s.sender.clone();
-        s.play.connect_clicked(move |play| {
-            let pause = upgrade_weak!(pause_weak);
+        s.play.connect_clicked(clone!(@weak s.pause as pause => move |play| {
             play.hide();
             pause.show();
             sender.send(Action::PlayerFm).unwrap_or(());
-        });
+        }));
 
-        let play_weak = s.play.downgrade();
         let sender = s.sender.clone();
-        s.pause.connect_clicked(move |pause| {
-            let play = upgrade_weak!(play_weak);
+        s.pause.connect_clicked(clone!(@weak s.play as play => move |pause| {
             pause.hide();
             play.show();
             sender.send(Action::PauseFm).unwrap_or(());
-        });
+        }));
 
         let sender = s.sender.clone();
         s.like.connect_clicked(move |_| {
@@ -126,9 +122,7 @@ impl FmView {
         self.recommend.hide();
         if !rr.is_empty() {
             let mut l = 0;
-            let mut t = 0;
             for sl in rr.iter() {
-                //if l < 4 {
                 let event_box = EventBox::new();
                 let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
                 let label = Label::new(Some(&sl.name[..]));
@@ -165,19 +159,63 @@ impl FmView {
                         .unwrap_or(());
                     Inhibit(false)
                 });
+                let mut left = l;
+                let mut top = 0;
+                if l >= 4 {
+                    left = l % 4;
+                    top = l / 4;
+                }
 
                 // 添加到容器
-                self.recommend.attach(&event_box, l, t, 1, 1);
-                //}
+                self.recommend.attach(&event_box, left, top, 1, 1);
                 l += 1;
-                if l >= 4 {
-                    l = 0;
-                    t = 1;
-                }
             }
             self.recommend.set_no_show_all(false);
             self.recommend.show_all();
         }
+    }
+
+    pub(crate) fn set_recommend_image(&self, left: i32, top: i32, song_list: SongList) {
+        if let Some(w) = self.recommend.get_child_at(left, top) {
+            self.recommend.remove(&w);
+        }
+        let event_box = EventBox::new();
+        let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let label = Label::new(Some(&song_list.name[..]));
+        let frame = Frame::new(None);
+        frame.set_shadow_type(ShadowType::EtchedOut);
+        label.set_lines(2);
+        label.set_max_width_chars(16);
+        label.set_ellipsize(pango::EllipsizeMode::End);
+        label.set_line_wrap(true);
+        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_list.id);
+        let image = if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+            let image = image.scale_simple(140, 140, InterpType::Bilinear);
+            Image::new_from_pixbuf(image.as_ref())
+        } else {
+            let image = Image::new_from_icon_name(Some("media-optical"), gtk::IconSize::Button);
+            image.set_pixel_size(140);
+            image
+        };
+        frame.add(&image);
+        boxs.add(&frame);
+        boxs.add(&label);
+        event_box.add(&boxs);
+        self.recommend.attach(&event_box, left, top, 1, 1);
+
+        let id = song_list.id;
+        let name = song_list.name.to_owned();
+        let sender = self.sender.clone();
+        event_box.connect_button_press_event(move |_, _| {
+            sender
+                .send(Action::SwitchStackSub(
+                    (id, name.to_owned(), image_path.to_owned()),
+                    Parse::USL,
+                ))
+                .unwrap_or(());
+            Inhibit(false)
+        });
+        self.recommend.show_all();
     }
 
     pub(crate) fn set_now_play(&self, si: SongInfo) {

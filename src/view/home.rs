@@ -161,4 +161,90 @@ impl Home {
             self.up_grid.show_all();
         }
     }
+
+    pub(crate) fn set_up_image(&self, left: i32, top: i32, song_list: SongList) {
+        if let Some(w) = self.up_grid.get_child_at(left, top) {
+            self.up_grid.remove(&w);
+        }
+        let event_box = EventBox::new();
+        let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let label = Label::new(Some(&song_list.name[..]));
+        let frame = Frame::new(None);
+        frame.set_shadow_type(ShadowType::EtchedOut);
+        label.set_lines(2);
+        label.set_max_width_chars(16);
+        label.set_ellipsize(pango::EllipsizeMode::End);
+        label.set_line_wrap(true);
+        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_list.id);
+        let image = if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+            let image = image.scale_simple(140, 140, InterpType::Bilinear);
+            Image::new_from_pixbuf(image.as_ref())
+        } else {
+            let image = Image::new_from_icon_name(Some("media-optical"), gtk::IconSize::Button);
+            image.set_pixel_size(140);
+            image
+        };
+        frame.add(&image);
+        boxs.add(&frame);
+        boxs.add(&label);
+        event_box.add(&boxs);
+        self.up_grid.attach(&event_box, left, top, 1, 1);
+
+        let id = song_list.id;
+        let name = song_list.name.to_owned();
+        let sender = self.sender.clone();
+        event_box.connect_button_press_event(move |_, _| {
+            sender
+                .send(Action::SwitchStackSub(
+                    (id, name.to_owned(), image_path.to_owned()),
+                    Parse::USL,
+                ))
+                .unwrap_or(());
+            Inhibit(false)
+        });
+        self.up_grid.show_all();
+    }
+
+    pub(crate) fn set_low_image(&self, left: i32, top: i32, song_list: SongList) {
+        if let Some(w) = self.low_grid.get_child_at(left, top) {
+            self.low_grid.remove(&w);
+        }
+        let event_box = EventBox::new();
+        let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let label = Label::new(Some(&song_list.name[..]));
+        let frame = Frame::new(None);
+        frame.set_shadow_type(ShadowType::EtchedOut);
+        label.set_lines(2);
+        label.set_max_width_chars(16);
+        label.set_ellipsize(pango::EllipsizeMode::End);
+        label.set_line_wrap(true);
+        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_list.id);
+        let image = if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+            let image = image.scale_simple(140, 140, InterpType::Bilinear);
+            Image::new_from_pixbuf(image.as_ref())
+        } else {
+            let image = Image::new_from_icon_name(Some("media-optical"), gtk::IconSize::Button);
+            image.set_pixel_size(140);
+            image
+        };
+        frame.add(&image);
+        boxs.add(&frame);
+        boxs.add(&label);
+        event_box.add(&boxs);
+        self.low_grid.attach(&event_box, left, top, 1, 1);
+
+        let id = song_list.id;
+        let name = song_list.name.to_owned();
+        let sender = self.sender.clone();
+        event_box.connect_button_press_event(move |_, _| {
+            sender
+                .send(Action::SwitchStackSub(
+                    (id, name.to_owned(), image_path.to_owned()),
+                    Parse::USL,
+                ))
+                .unwrap_or(());
+            Inhibit(false)
+        });
+        self.low_grid.show_all();
+    }
 }
