@@ -13,7 +13,6 @@ Source0: %{name}-%{version}.tar.gz
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
-BuildRequires: libopenssl-devel
 BuildRequires: gstreamer-devel
 BuildRequires: gstreamer-plugins-bad-devel
 BuildRequires: gstreamer-plugins-base-devel
