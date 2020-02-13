@@ -18,7 +18,7 @@
 - 热门排行榜
 - 歌曲搜索
 - 简易歌词
-- 桌面歌词(依赖于 ![OSDLyrics](https://github.com/osdlyrics/osdlyrics))
+- 桌面歌词(依赖于 [OSDLyrics](https://github.com/osdlyrics/osdlyrics))
 - 热门歌单
 - 新碟上架
 
@@ -26,7 +26,7 @@
 > openssl, curl, gstreamer, gstreamer-plugins-base, gstreamer-plugins-good, gstreamer-plugins-bad, gstreamer-plugins-ugly
 
 ## 安装
-- 直接到 ![Release](https://github.com/gmg137/netease-cloud-music-gtk/releases) 页面下载 RPM/DEB 包安装。
+- 直接到 [Release](https://github.com/gmg137/netease-cloud-music-gtk/releases) 页面下载 RPM/DEB 包安装。
 
 ## 从源码编译/打包
 ```
