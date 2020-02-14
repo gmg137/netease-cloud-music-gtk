@@ -322,7 +322,7 @@ impl PlayerWidget {
                             // 缓存音乐和图片
                             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
                             let _ = future::join(
-                                download_img(&song_info.pic_url, &image_path, 140, 140),
+                                download_img(&song_info.pic_url, &image_path, 140, 140, None),
                                 download_music(&song_info.song_url, &path, None),
                             )
                             .await;
@@ -359,7 +359,7 @@ impl PlayerWidget {
             // 缓存音乐路径
             let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
             let _ = future::join(
-                download_img(song_info.pic_url, image_path, 140, 140),
+                download_img(song_info.pic_url, image_path, 140, 140, 1300),
                 download_music(song_info.song_url, path, 1300),
             )
             .await;

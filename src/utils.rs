@@ -23,7 +23,6 @@ use std::{io, io::Error, time::Duration};
 // url: 网址
 // path: 本地保存路径(包含文件名)
 // timeout: 请求超时,单位毫秒(默认:1000)
-
 pub(crate) async fn download_music<I, U>(url: I, path: I, timeout: U) -> Result<(), surf::Exception>
 where
     I: Into<String>,
@@ -49,16 +48,27 @@ where
 // path: 本地保存路径(包含文件名)
 // width: 宽度
 // high: 高度
-pub(crate) async fn download_img<I>(url: I, path: I, width: u32, high: u32) -> Result<(), surf::Exception>
+// timeout: 请求超时,单位毫秒(默认:1000)
+pub(crate) async fn download_img<I, U>(
+    url: I,
+    path: I,
+    width: u32,
+    high: u32,
+    timeout: U,
+) -> Result<(), surf::Exception>
 where
     I: Into<String>,
+    U: Into<Option<u64>>,
 {
     let url = url.into();
     let path = path.into();
+    let timeout = timeout.into().unwrap_or(1000);
     if !std::path::Path::new(&path).exists() {
         if url.starts_with("http://") || url.starts_with("https://") {
             let image_url = format!("{}?param={}y{}", url, width, high).replace("https:", "http:");
-            if let Ok(buffer) = surf::get(image_url).recv_bytes().await {
+            if let Ok(buffer) =
+                future::timeout(Duration::from_millis(timeout), surf::get(image_url).recv_bytes()).await?
+            {
                 fs::write(path, buffer).await?;
             }
         }

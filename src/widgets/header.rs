@@ -269,7 +269,9 @@ impl Header {
                 if data.login {
                     if let Ok(login_info) = data.login_info().await {
                         let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &login_info.uid);
-                        download_img(&login_info.avatar_url, &image_path, 37, 37).await.ok();
+                        download_img(&login_info.avatar_url, &image_path, 37, 37, 5000)
+                            .await
+                            .ok();
                         sender
                             .send(Action::RefreshHeaderUserLogin(login_info.to_owned()))
                             .unwrap();

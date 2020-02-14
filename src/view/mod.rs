@@ -279,7 +279,7 @@ impl View {
                         let sender_clone = sender.clone();
                         let ssl = sl.to_owned();
                         tasks.push(async move {
-                            download_img(sl.cover_img_url, image_path, 140, 140).await.ok();
+                            download_img(sl.cover_img_url, image_path, 140, 140, 100000).await.ok();
                             sender_clone.send(Action::RefreshHomeUpImage(left, top, ssl)).unwrap();
                         });
                         l += 1;
@@ -300,7 +300,7 @@ impl View {
                             let sender_clone = sender.clone();
                             let ssl = sl.to_owned();
                             tasks.push(async move {
-                                download_img(sl.cover_img_url, image_path, 140, 140).await.ok();
+                                download_img(sl.cover_img_url, image_path, 140, 140, 100000).await.ok();
                                 sender_clone.send(Action::RefreshHomeLowImage(left, top, ssl)).unwrap();
                             });
                             l += 1;
@@ -398,7 +398,9 @@ impl View {
                             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
                             let sender_clone = sender.clone();
                             tasks.push(async move {
-                                download_img(&sl.cover_img_url, &image_path, 140, 140).await.ok();
+                                download_img(&sl.cover_img_url, &image_path, 140, 140, 100000)
+                                    .await
+                                    .ok();
                                 sender_clone
                                     .send(Action::RefreshMineRecommendImage(left, top, sl))
                                     .unwrap_or(());
@@ -449,7 +451,7 @@ impl View {
                             create_player_list(&si, sender.clone(), false).await.ok();
                             // 下载专辑图片
                             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
-                            download_img(&si[0].pic_url, &image_path, 140, 140).await.ok();
+                            download_img(&si[0].pic_url, &image_path, 140, 140, 100000).await.ok();
                             if sender.send(Action::RefreshMineFm(si[0].to_owned())).is_ok() {
                                 sender.send(Action::PlayerFm).unwrap_or(());
                             }
@@ -509,7 +511,7 @@ impl View {
                                     create_player_list(&si, sender.clone(), false).await.ok();
                                     // 下载专辑图片
                                     let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
-                                    download_img(&si[0].pic_url, &image_path, 140, 140).await.ok();
+                                    download_img(&si[0].pic_url, &image_path, 140, 140, 100000).await.ok();
                                     sender.send(Action::RefreshMineFm(si[0].to_owned())).unwrap_or(());
                                 }
                             }
