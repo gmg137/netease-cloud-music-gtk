@@ -4,7 +4,7 @@
 // Distributed under terms of the GPLv3 license.
 //
 use crate::{app::Action, data::MusicData, model::NCM_CACHE, musicapi::model::SongInfo, utils::*};
-use async_std::{future::timeout, task};
+use async_std::task;
 use chrono::NaiveTime;
 use crossbeam_channel::Sender;
 use fragile::Fragile;
@@ -17,7 +17,7 @@ use gtk::{
 };
 use mpris_player::{Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use serde::{Deserialize, Serialize};
-use std::{cell::RefCell, ops::Deref, path::Path, rc::Rc, sync::Arc, time};
+use std::{cell::RefCell, ops::Deref, path::Path, rc::Rc, sync::Arc};
 
 #[derive(Debug, Clone)]
 struct PlayerControls {
@@ -316,12 +316,9 @@ impl PlayerWidget {
                             sender.send(Action::Player(song_info.clone())).unwrap();
                             // 缓存音乐和图片
                             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
-                            let _ = timeout(
-                                time::Duration::from_millis(1000),
-                                future::join(
-                                    download_img(&song_info.pic_url, &image_path, 140, 140),
-                                    download_music(&song_info.song_url, &path),
-                                ),
+                            let _ = future::join(
+                                download_img(&song_info.pic_url, &image_path, 140, 140),
+                                download_music(&song_info.song_url, &path, None),
                             )
                             .await;
                         } else {
@@ -356,12 +353,9 @@ impl PlayerWidget {
             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id);
             // 缓存音乐路径
             let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
-            let _ = timeout(
-                time::Duration::from_millis(1300),
-                future::join(
-                    download_img(song_info.pic_url, image_path, 140, 140),
-                    download_music(song_info.song_url, path),
-                ),
+            let _ = future::join(
+                download_img(song_info.pic_url, image_path, 140, 140),
+                download_music(song_info.song_url, path, 1300),
             )
             .await;
         });
