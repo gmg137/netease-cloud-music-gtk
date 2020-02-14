@@ -64,6 +64,7 @@ pub(crate) enum Action {
     ReadyPlayer(SongInfo),
     RefreshLyricsText(String),
     Player(SongInfo),
+    PlayerForward,
     PlayerSubpages,
     PlayerFound,
     PlayerMine,
@@ -224,6 +225,7 @@ impl App {
                 old.map(|i| i.destroy());
                 self.notice.borrow().as_ref().map(|i| i.show(&self.overlay));
             }
+            Action::PlayerForward => self.player.forward(),
             Action::PlayerSubpages => self.view.play_subpages(),
             Action::PlayerFound => self.view.play_found(),
             Action::PlayerMine => self.view.play_mine(),

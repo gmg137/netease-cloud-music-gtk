@@ -69,14 +69,12 @@ where
 // 播放列表数据
 #[derive(Debug, Deserialize, Serialize)]
 struct PlayerListData {
-    // 播放列表
-    player_list: Vec<SongInfo>,
-    // 当前播放歌曲的索引
-    index: u32,
+    // 播放列表: (歌曲信息,是否播放)
+    player_list: Vec<(SongInfo, bool)>,
     // 混淆后的播放列表索引
-    shuffle_list: Vec<u32>,
-    // 播放标志
-    play_flag: Vec<bool>,
+    shuffle_list: Vec<i32>,
+    // 当前播放歌曲的索引
+    index: i32,
 }
 
 // 创建播放列表
@@ -89,14 +87,17 @@ pub(crate) async fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Acti
     // 批量搜索歌曲 URL
     if let Ok(v) = api.songs_url(&song_id_list, 320).await {
         // 初始化播放列表
-        let mut player_list: Vec<SongInfo> = Vec::new();
+        let mut player_list: Vec<(SongInfo, bool)> = Vec::new();
         // 匹配歌曲 URL, 生成播放列表
         list.iter().for_each(|si| {
             if let Some(song_url) = v.iter().find(|su| su.id.eq(&si.id)) {
-                player_list.push(SongInfo {
-                    song_url: song_url.url.to_owned(),
-                    ..si.to_owned()
-                });
+                player_list.push((
+                    SongInfo {
+                        song_url: song_url.url.to_owned(),
+                        ..si.to_owned()
+                    },
+                    false,
+                ));
             }
         });
         // 如果需要播放
@@ -104,20 +105,19 @@ pub(crate) async fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Acti
             // 播放列表长度
             let len = player_list.len();
             // 创建随机播放 id 列表
-            let mut shuffle_list: Vec<u32> = (0..).take(len).collect();
+            let mut shuffle_list: Vec<i32> = (0..).take(len).collect();
             shuffle_list.shuffle(&mut thread_rng());
             // 将播放列表写入数据库
             if let Ok(buffer) = bincode::serialize(&PlayerListData {
                 player_list: player_list.to_owned(),
-                index: 0,
                 shuffle_list: shuffle_list.clone(),
-                play_flag: vec![false; len],
+                index: -1,
             }) {
                 let path = format!("{}player_list.db", NCM_DATA.to_string_lossy());
                 if fs::write(path, buffer).await.is_ok() {
                     if play {
-                        // 播放第一首歌曲
-                        sender.send(Action::ReadyPlayer(player_list[0].to_owned())).ok();
+                        // 播放歌单
+                        sender.send(Action::PlayerForward).ok();
                         return Ok(());
                     }
                 }
@@ -131,55 +131,61 @@ pub(crate) async fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Acti
 // 查询播放列表
 // pd: 上一曲/下一曲
 // shuffle: 是否为随机查找
-// update: 是否从头循环
+// loops: 是否从头循环
 #[allow(unused)]
-pub(crate) async fn get_player_list_song(pd: PD, shuffle: bool, update: bool) -> NCMResult<SongInfo> {
+pub(crate) async fn get_player_list_song(pd: PD, shuffle: bool, loops: bool) -> NCMResult<SongInfo> {
     // 查询播放列表
     let path = format!("{}player_list.db", NCM_DATA.to_string_lossy());
     let buffer = fs::read(&path).await?;
     // 反序列化播放列表
     let PlayerListData {
-        player_list,
+        mut player_list,
         index,
         shuffle_list,
-        play_flag,
     } = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
-    let mut index_old = index;
+    // 记录播放进度
     let mut index_new = index;
-    let mut play_flag = play_flag;
-    let len = play_flag.len();
+    // 要播放的歌曲索引
+    let mut player_index = index;
+    // 是否继续播放
+    let mut proceed = true;
     // 如果播放列表不为空
     if !player_list.is_empty() {
         match pd {
             // 下一曲
             PD::FORWARD => {
+                index_new += 1;
+                player_index += 1;
                 // 标记上一歌曲为已播放
-                play_flag[index as usize] = true;
+                if let Some((_, p)) = player_list.get_mut(index as usize) {
+                    *p = true;
+                }
                 // 从头开始播放
-                if update {
-                    index_new = 0;
-                    play_flag = vec![false; len];
+                if loops {
+                    if index + 1 >= player_list.len() as i32 {
+                        index_new = 0;
+                        player_index = 0;
+                        player_list.iter_mut().for_each(|(_, p)| *p = false);
+                    }
                 } else {
-                    // 查找下一曲索引
-                    loop {
-                        // 下一曲索引
-                        let index_now = if shuffle {
-                            // 混淆模式的歌曲索引
-                            *shuffle_list.get(index_old as usize + 1).unwrap_or(&0)
-                        } else {
-                            index_old + 1
-                        };
-                        // 判断该索引对应歌曲是否播放过
-                        if let Some(flag) = play_flag.get(index_now as usize) {
-                            if *flag {
-                                index_old += 1;
-                            } else {
-                                index_old += 1;
-                                index_new = index_now;
-                                break;
+                    if index + 1 >= player_list.len() as i32 {
+                        index_new -= 1;
+                        proceed = false;
+                    } else {
+                        if shuffle {
+                            loop {
+                                player_index = if let Some(pi) = shuffle_list.get(index_new as usize) {
+                                    *pi
+                                } else {
+                                    index_new = index;
+                                    proceed = false;
+                                    break;
+                                };
+                                if !player_list[player_index as usize].1 {
+                                    break;
+                                }
+                                index_new += 1;
                             }
-                        } else {
-                            return Err(Errors::NoneError);
                         }
                     }
                 }
@@ -187,44 +193,53 @@ pub(crate) async fn get_player_list_song(pd: PD, shuffle: bool, update: bool) ->
                     &path,
                     bincode::serialize(&PlayerListData {
                         player_list: player_list.to_owned(),
-                        index: index_old,
+                        index: index_new,
                         shuffle_list,
-                        play_flag,
                     })
                     .map_err(|_| Errors::NoneError)?,
                 )
                 .await?;
-                if let Some(si) = player_list.get(index_new as usize) {
-                    return Ok(si.to_owned());
+                if proceed {
+                    if let Some((si, _)) = player_list.get(player_index as usize) {
+                        return Ok(si.to_owned());
+                    }
                 }
             }
             // 上一曲
             PD::BACKWARD => {
-                // 查找上一曲索引
-                index_new = if shuffle {
-                    // 混淆模式的歌曲索引
-                    *shuffle_list.get(index_old as usize - 1).unwrap_or(&0)
-                } else {
-                    if index_old == 0 {
-                        0
+                index_new -= 1;
+                player_index -= 1;
+                // 循环播放
+                if index_new < 0 {
+                    if loops {
+                        index_new = player_list.len() as i32 - 1;
+                        player_index = index_new;
                     } else {
-                        index_old - 1
+                        index_new += 1;
+                        proceed = false;
                     }
-                };
+                } else {
+                    // 查找上一曲索引
+                    if shuffle {
+                        // 混淆模式的歌曲索引
+                        player_index = *shuffle_list.get(index_new as usize).unwrap_or(&0);
+                    }
+                }
                 // 标记当前歌曲为未播放
-                play_flag[index_old as usize] = false;
+                if let Some((_, p)) = player_list.get_mut(index as usize) {
+                    *p = false;
+                }
                 fs::write(
                     path,
                     bincode::serialize(&PlayerListData {
                         player_list: player_list.to_owned(),
-                        index: if index_old == 0 { 0 } else { index_old - 1 },
+                        index: index_new,
                         shuffle_list,
-                        play_flag,
                     })
                     .map_err(|_| Errors::NoneError)?,
                 )
                 .await?;
-                if let Some(si) = player_list.get(index_new as usize) {
+                if let Some((si, _)) = player_list.get(player_index as usize) {
                     return Ok(si.to_owned());
                 }
             }
@@ -243,22 +258,24 @@ pub(crate) async fn update_player_list(sender: Sender<Action>) -> NCMResult<()> 
         player_list,
         index,
         shuffle_list,
-        play_flag,
     } = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
     // 提取歌曲 id 列表
-    let song_id_list = player_list.iter().map(|si| si.id).collect::<Vec<u32>>();
+    let song_id_list = player_list.iter().map(|(si, _)| si.id).collect::<Vec<u32>>();
     let mut api = MusicData::new().await?;
     // 批量搜索歌曲 URL
     if let Ok(v) = api.songs_url(&song_id_list, 320).await {
         // 初始化播放列表
-        let mut new_player_list: Vec<SongInfo> = Vec::new();
+        let mut new_player_list: Vec<(SongInfo, bool)> = Vec::new();
         // 匹配歌曲 URL, 生成播放列表
-        player_list.iter().for_each(|si| {
+        player_list.iter().for_each(|(si, p)| {
             if let Some(song_url) = v.iter().find(|su| su.id.eq(&si.id)) {
-                new_player_list.push(SongInfo {
-                    song_url: song_url.url.to_owned(),
-                    ..si.to_owned()
-                });
+                new_player_list.push((
+                    SongInfo {
+                        song_url: song_url.url.to_owned(),
+                        ..si.to_owned()
+                    },
+                    *p,
+                ));
             }
         });
         // 如果播放列表为空则退出
@@ -267,12 +284,12 @@ pub(crate) async fn update_player_list(sender: Sender<Action>) -> NCMResult<()> 
             let mp3_path = format!(
                 "{}{}.mp3",
                 NCM_CACHE.to_string_lossy(),
-                new_player_list[index as usize].id
+                new_player_list[index as usize].0.id
             );
             fs::remove_file(&mp3_path).await.ok();
             // 继续播放歌曲
             sender
-                .send(Action::ReadyPlayer(new_player_list[index as usize].to_owned()))
+                .send(Action::ReadyPlayer(new_player_list[index as usize].0.to_owned()))
                 .ok();
             // 将播放列表写入数据库
             fs::write(
@@ -281,7 +298,6 @@ pub(crate) async fn update_player_list(sender: Sender<Action>) -> NCMResult<()> 
                     player_list: new_player_list,
                     index,
                     shuffle_list,
-                    play_flag,
                 })
                 .map_err(|_| Errors::NoneError)?,
             )

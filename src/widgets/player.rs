@@ -132,11 +132,16 @@ struct PlayerLoops {
     image: Image,
 }
 
+// 播放列表循环模式
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) enum LoopsState {
+    // 随机
     SHUFFLE,
+    // 列表循环
     PLAYLIST,
+    // 单曲循环
     NONE,
+    // 不循环
     CONSECUTIVE,
 }
 
@@ -448,25 +453,16 @@ impl PlayerWidget {
             }
             _ => (),
         }
-        let state = match *self.loops_state.borrow() {
-            LoopsState::SHUFFLE => true,
-            LoopsState::PLAYLIST => {
-                if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, false, false)) {
-                    self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
-                } else {
-                    if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, false, true)) {
-                        self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
-                    }
-                }
-                return;
-            }
+        let (shuffle, loops) = match *self.loops_state.borrow() {
+            LoopsState::SHUFFLE => (true, false),
+            LoopsState::PLAYLIST => (false, true),
+            LoopsState::CONSECUTIVE => (false, false),
             LoopsState::NONE => {
                 self.play();
                 return;
             }
-            LoopsState::CONSECUTIVE => false,
         };
-        if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, state, false)) {
+        if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, shuffle, loops)) {
             self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
         }
     }
@@ -627,7 +623,7 @@ impl PlayerWrapper {
             sender_clone
                 .send(Action::ShowNotice(format!("播放格式错误!")))
                 .unwrap();
-        let sender_clone = sender_clone.clone();
+            let sender_clone = sender_clone.clone();
             // 刷新播放列表
             task::spawn(async move {
                 update_player_list(sender_clone).await.ok();
