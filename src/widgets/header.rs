@@ -5,16 +5,17 @@
 //
 
 use super::preferences::Preferences;
-use crate::app::Action;
-use crate::musicapi::model::LoginInfo;
-use crate::utils::*;
-use crate::{data::MusicData, model::NCM_CACHE, APP_VERSION};
+use crate::{
+    app::Action,
+    musicapi::model::LoginInfo,
+    utils::*,
+    {data::MusicData, model::NCM_CACHE, APP_VERSION},
+};
 use async_std::task;
 use crossbeam_channel::Sender;
 use glib::clone;
-use gtk::prelude::*;
 use gtk::{
-    AboutDialog, Builder, Button, Dialog, Entry, Image, Label, MenuButton, ModelButton, Popover, SearchBar,
+    prelude::*, AboutDialog, Builder, Button, Dialog, Entry, Image, Label, MenuButton, ModelButton, Popover, SearchBar,
     SearchEntry, StackSwitcher, ToggleButton,
 };
 use std::rc::Rc;

@@ -8,6 +8,7 @@ mod app;
 mod data;
 mod model;
 mod musicapi;
+mod task;
 mod utils;
 mod view;
 mod widgets;

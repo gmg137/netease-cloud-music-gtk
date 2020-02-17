@@ -4,13 +4,10 @@
 // Distributed under terms of the GPLv3 license.
 //
 
-use crate::app::Action;
-use crate::model::NCM_CACHE;
-use crate::musicapi::model::*;
+use crate::{app::Action, model::NCM_CACHE, musicapi::model::*};
 use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
-use gtk::prelude::*;
-use gtk::{Builder, EventBox, Frame, Grid, Image, Label, ShadowType};
+use gtk::{prelude::*, Builder, EventBox, Frame, Grid, Image, Label, ShadowType};
 
 #[derive(Clone)]
 pub(crate) struct Home {

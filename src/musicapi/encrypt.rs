@@ -11,8 +11,7 @@ use openssl::{
     hash::{hash, MessageDigest},
     symm::{encrypt, Cipher},
 };
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde::Serialize;
 use serde_urlencoded;
 
@@ -38,10 +37,9 @@ impl Encrypt {
             .replace("+", "-"))
     }
 
-    pub(crate) fn encrypt_login(text: impl Serialize + std::fmt::Debug) -> NCMResult<String> {
+    pub(crate) fn encrypt_request(text: impl Serialize + std::fmt::Debug) -> NCMResult<String> {
         let data = serde_json::to_string(&text)?;
         let secret = Self.create_key(16);
-        let secret = "e0e80547fa3ecd5a".to_owned();
         let params = Self.aes(Self.aes(data, NONCE)?, &secret)?;
         #[allow(non_snake_case)]
         let encSecKey = Self.rsa(secret)?;

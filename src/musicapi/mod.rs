@@ -3,17 +3,15 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-use curl::easy::{Easy, List};
-use std::collections::HashMap;
-use std::io::Read;
 mod encrypt;
-pub mod model;
+pub(crate) mod model;
 use crate::model::{Errors, NCMResult, NCM_CONFIG};
 use chrono::prelude::*;
+use curl::easy::{Easy, List};
 use encrypt::Encrypt;
 use model::*;
 use openssl::hash::{hash, MessageDigest};
-use std::fs;
+use std::{collections::HashMap, fs, io::Read};
 
 static BASE_URL: &str = "https://music.163.com";
 
@@ -85,7 +83,7 @@ impl MusicApi {
                 let make_cookie = format!("version=0;{}={};JSESSIONID-WYYY=%2FKSy%2B4xG6fYVld42G9E%2BxAj9OyjC0BYXENKxOIRH%5CR72cpy9aBjkohZ24BNkpjnBxlB6lzAG4D%5C%2FMNUZ7VUeRUeVPJKYu%2BKBnZJjEmqgpOx%2BU6VYmypKB%5CXb%2F3W7%2BDjOElCb8KlhDS2cRkxkTb9PBDXro41Oq7aBB6M6OStEK8E%2Flyc8%3A{}; _iuqxldmzr_=32; _ntes_nnid={},{}; _ntes_nuid={}", name, value,times,hextoken,hextoken,times+50);
                 self.curl.cookie(&make_cookie)?;
                 params.insert("csrf_token".to_owned(), csrf_token);
-                let params = Encrypt::encrypt_login(params)?;
+                let params = Encrypt::encrypt_request(params)?;
                 self.curl.post(true)?;
                 self.curl.post_field_size(params.len() as u64)?;
                 let mut transfer = self.curl.transfer();

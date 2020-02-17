@@ -12,10 +12,8 @@ use crate::{
 use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
 use glib::clone;
-use gtk::prelude::*;
-use gtk::{Builder, Button, EventBox, Frame, Grid, Image, Label, ShadowType};
-use std::cell::RefCell;
-use std::rc::Rc;
+use gtk::{prelude::*, Builder, Button, EventBox, Frame, Grid, Image, Label, ShadowType};
+use std::{cell::RefCell, rc::Rc};
 
 #[derive(Clone)]
 pub struct FmView {

@@ -3,12 +3,12 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-use crate::{app::Action, data::MusicData, model::NCM_CACHE, musicapi::model::SongInfo, utils::*};
+use crate::{app::Action, data::MusicData, model::NCM_CACHE, musicapi::model::SongInfo, task::Task, utils::*};
 use async_std::task;
 use chrono::NaiveTime;
 use crossbeam_channel::Sender;
 use fragile::Fragile;
-use futures::future;
+use futures::{channel::mpsc, sink::SinkExt};
 use gdk_pixbuf::{InterpType, Pixbuf};
 use glib::{clone, SignalHandlerId, WeakRef};
 use gst::ClockTime;
@@ -156,10 +156,11 @@ pub(crate) struct PlayerWidget {
     loops_state: Rc<RefCell<LoopsState>>,
     player_types: Rc<RefCell<PlayerTypes>>,
     sender: Sender<Action>,
+    sender_task: mpsc::Sender<Task>,
 }
 
 impl PlayerWidget {
-    fn new(builder: &Builder, sender: Sender<Action>) -> Self {
+    fn new(builder: &Builder, sender: Sender<Action>, sender_task: mpsc::Sender<Task>) -> Self {
         let dispatcher = gst_player::PlayerGMainContextSignalDispatcher::new(None);
         let player = gst_player::Player::new(
             None,
@@ -189,7 +190,9 @@ impl PlayerWidget {
         let backward: Button = builder.get_object("backward_button").unwrap();
         let like: Button = builder.get_object("like_button").unwrap();
         let volume: VolumeButton = builder.get_object("volume_button").unwrap();
-        volume.set_value(player.get_volume());
+        let volume_value = mpris.get_volume().unwrap_or(0.0);
+        volume.set_value(volume_value);
+        player.set_volume(volume_value);
         let lyrics: MenuButton = builder.get_object("lyrics_button").unwrap();
         let lyrics_text: TextView = builder.get_object("lyrics_text_view").unwrap();
 
@@ -285,6 +288,7 @@ impl PlayerWidget {
             loops_state: Rc::new(RefCell::new(loop_state)),
             player_types: Rc::new(RefCell::new(PlayerTypes::Song)),
             sender,
+            sender_task,
         }
     }
 
@@ -304,7 +308,8 @@ impl PlayerWidget {
         }
         *self.player_types.borrow_mut() = player_types;
         let sender = self.sender.clone();
-        task::block_on(async move {
+        let mut sender_task = self.sender_task.clone();
+        task::spawn(async move {
             if let Ok(mut data) = MusicData::new().await {
                 // 下载歌词
                 if lyrics {
@@ -321,11 +326,24 @@ impl PlayerWidget {
                             sender.send(Action::Player(song_info.clone())).unwrap();
                             // 缓存音乐和图片
                             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
-                            let _ = future::join(
-                                download_img(&song_info.pic_url, &image_path, 140, 140, None),
-                                download_music(&song_info.song_url, &path, None),
-                            )
-                            .await;
+                            sender_task
+                                .send(Task::DownloadPlayerImg {
+                                    url: song_info.pic_url.to_owned(),
+                                    path: image_path.to_owned(),
+                                    width: 140,
+                                    high: 140,
+                                    timeout: 1000,
+                                })
+                                .await
+                                .ok();
+                            sender_task
+                                .send(Task::DownloadMusic {
+                                    url: song_info.song_url.to_owned(),
+                                    path: path.to_owned(),
+                                    timeout: 3000,
+                                })
+                                .await
+                                .ok();
                         } else {
                             warn!(
                                 "未能获取 {}[id:{}] 的播放链接!(版权或VIP限制)",
@@ -346,7 +364,8 @@ impl PlayerWidget {
 
     pub(crate) fn ready_player(&self, song_info: SongInfo, lyrics: bool) {
         let sender = self.sender.clone();
-        task::block_on(async move {
+        let mut sender_task = self.sender_task.clone();
+        task::spawn(async move {
             // 下载歌词
             if lyrics {
                 if let Ok(mut data) = MusicData::new().await {
@@ -358,11 +377,24 @@ impl PlayerWidget {
             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id);
             // 缓存音乐路径
             let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
-            let _ = future::join(
-                download_img(song_info.pic_url, image_path, 140, 140, 1300),
-                download_music(song_info.song_url, path, 1300),
-            )
-            .await;
+            sender_task
+                .send(Task::DownloadPlayerImg {
+                    url: song_info.pic_url.to_owned(),
+                    path: image_path.to_owned(),
+                    width: 140,
+                    high: 140,
+                    timeout: 1000,
+                })
+                .await
+                .ok();
+            sender_task
+                .send(Task::DownloadMusic {
+                    url: song_info.song_url.to_owned(),
+                    path: path.to_owned(),
+                    timeout: 3000,
+                })
+                .await
+                .ok();
         });
     }
 
@@ -514,6 +546,7 @@ impl PlayerWidget {
     }
 
     fn set_volume(&self, value: f64) {
+        self.info.mpris.set_volume(value).ok();
         self.player.set_volume(value);
     }
 
@@ -542,6 +575,13 @@ impl PlayerWidget {
     pub(crate) fn set_player_typers(&self, player_types: PlayerTypes) {
         *self.player_types.borrow_mut() = player_types;
     }
+
+    pub(crate) fn set_cover_image(&self, image_path: String) {
+        if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+            let image = image.scale_simple(38, 38, InterpType::Bilinear);
+            self.info.cover.set_from_pixbuf(image.as_ref());
+        };
+    }
 }
 
 #[derive(Clone)]
@@ -555,8 +595,8 @@ impl Deref for PlayerWrapper {
 }
 
 impl PlayerWrapper {
-    pub(crate) fn new(builder: &Builder, sender: &Sender<Action>) -> Self {
-        let w = PlayerWrapper(Rc::new(PlayerWidget::new(builder, sender.clone())));
+    pub(crate) fn new(builder: &Builder, sender: &Sender<Action>, sender_task: &mpsc::Sender<Task>) -> Self {
+        let w = PlayerWrapper(Rc::new(PlayerWidget::new(builder, sender.clone(), sender_task.clone())));
         w.init(sender);
         w
     }
@@ -575,40 +615,33 @@ impl PlayerWrapper {
         // Connect the play button to the gst Player.
         self.controls.play.connect_clicked(clone!(@weak weak => move |_| {
             weak.play();
-             //weak.map(|p| p.play());
         }));
 
         // Connect the pause button to the gst Player.
         self.controls.pause.connect_clicked(clone!(@weak weak => move |_| {
             weak.pause();
-            //weak.upgrade().map(|p| p.pause());
         }));
 
         self.controls.forward.connect_clicked(clone!(@weak weak => move |_| {
             weak.forward();
-            //weak.upgrade().map(|p| p.forward());
         }));
 
         self.controls.backward.connect_clicked(clone!(@weak weak => move |_| {
             weak.backward();
-            //weak.upgrade().map(|p| p.backward());
         }));
 
         self.controls.like.connect_clicked(clone!(@weak weak => move |_| {
             weak.like();
-            //weak.upgrade().map(|p| p.like());
         }));
 
         self.controls
             .volume
             .connect_value_changed(clone!(@weak weak => move |_, value| {
                 weak.set_volume(value);
-                //weak.upgrade().map(|p| p.set_volume(value));
             }));
 
         self.controls.lyrics.connect_clicked(clone!(@weak weak => move |_| {
             weak.get_lyrics_text();
-            //weak.upgrade().map(|p| p.get_lyrics_text());
         }));
     }
 

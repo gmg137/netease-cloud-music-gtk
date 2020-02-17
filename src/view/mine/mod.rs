@@ -9,8 +9,7 @@ use crate::{
     utils::*,
 };
 use crossbeam_channel::Sender;
-use gtk::prelude::*;
-use gtk::{Builder, Label, ListBox, ListBoxRow};
+use gtk::{prelude::*, Builder, Label, ListBox, ListBoxRow};
 mod fm;
 mod list;
 

@@ -8,8 +8,7 @@ use crate::{
     utils::{ClearCached, Configs},
 };
 use crossbeam_channel::Sender;
-use gtk::prelude::*;
-use gtk::{Builder, ComboBoxText, Dialog, Switch};
+use gtk::{prelude::*, Builder, ComboBoxText, Dialog, Switch};
 
 #[derive(Clone)]
 pub(crate) struct Preferences {

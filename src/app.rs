@@ -7,17 +7,17 @@
 use crate::{
     model::{DATE_DAY, DATE_MONTH, ISO_WEEK},
     musicapi::model::{LoginInfo, Parse, SongInfo, SongList},
+    task::{actuator_loop, Task},
     utils::*,
     view::*,
     widgets::{header::*, mark_all_notif, notice::*, player::*},
 };
 use async_std::task;
 use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
+use futures::channel::mpsc;
 use gio::{self, prelude::*};
-use gtk::prelude::*;
-use gtk::{ApplicationWindow, Builder, Overlay};
-use std::cell::RefCell;
-use std::rc::Rc;
+use gtk::{prelude::*, ApplicationWindow, Builder, Overlay};
+use std::{cell::RefCell, rc::Rc};
 
 #[derive(Debug, Clone)]
 pub(crate) enum Action {
@@ -65,6 +65,7 @@ pub(crate) enum Action {
     RefreshLyricsText(String),
     Player(SongInfo),
     PlayerForward,
+    RefreshPlayerImage(String),
     PlayerSubpages,
     PlayerFound,
     PlayerMine,
@@ -103,9 +104,13 @@ impl App {
         window.set_title("网易云音乐");
 
         let configs = task::block_on(get_config()).unwrap();
-        let view = View::new(&builder, &sender);
+
+        let (sender_task, receiver_task) = mpsc::channel::<Task>(10);
+        task::spawn(actuator_loop(receiver_task, sender.clone()));
+
+        let view = View::new(&builder, &sender, &sender_task);
         let header = Header::new(&builder, &sender, &configs);
-        let player = PlayerWrapper::new(&builder, &sender);
+        let player = PlayerWrapper::new(&builder, &sender, &sender_task);
 
         window.show_all();
 
@@ -226,6 +231,7 @@ impl App {
                 self.notice.borrow().as_ref().map(|i| i.show(&self.overlay));
             }
             Action::PlayerForward => self.player.forward(),
+            Action::RefreshPlayerImage(path) => self.player.set_cover_image(path),
             Action::PlayerSubpages => self.view.play_subpages(),
             Action::PlayerFound => self.view.play_found(),
             Action::PlayerMine => self.view.play_mine(),

@@ -3,19 +3,19 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-use crate::app::Action;
-use crate::data::{clear_cache, MusicData};
-use crate::model::{Errors, NCMResult, DATE_DAY, DATE_MONTH, ISO_WEEK, LYRICS_PATH, NCM_CACHE, NCM_CONFIG, NCM_DATA};
-use crate::musicapi::model::SongInfo;
-use crate::widgets::player::LoopsState;
+use crate::{
+    app::Action,
+    data::{clear_cache, MusicData},
+    model::{Errors, NCMResult, DATE_DAY, DATE_MONTH, ISO_WEEK, LYRICS_PATH, NCM_CACHE, NCM_CONFIG, NCM_DATA},
+    musicapi::model::SongInfo,
+    widgets::player::LoopsState,
+};
 use async_std::{fs, future};
 use cairo::{Context, ImageSurface};
 use crossbeam_channel::Sender;
-use gdk::pixbuf_get_from_surface;
-use gdk::prelude::GdkContextExt;
+use gdk::{pixbuf_get_from_surface, prelude::GdkContextExt};
 use gdk_pixbuf::Pixbuf;
-use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
 use std::{io, io::Error, time::Duration};
 

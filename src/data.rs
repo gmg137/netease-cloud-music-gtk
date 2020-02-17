@@ -4,8 +4,10 @@
 // Distributed under terms of the GPLv3 license.
 //
 
-use crate::model::{Errors, NCMResult, DATE_DAY, NCM_CONFIG, NCM_DATA};
-use crate::musicapi::{model::*, MusicApi};
+use crate::{
+    model::{Errors, NCMResult, DATE_DAY, NCM_CONFIG, NCM_DATA},
+    musicapi::{model::*, MusicApi},
+};
 use async_std::{fs, prelude::*};
 use openssl::hash::{hash, MessageDigest};
 use serde::{Deserialize, Serialize};

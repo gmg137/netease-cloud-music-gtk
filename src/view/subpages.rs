@@ -3,14 +3,15 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the MIT license.
 //
-use crate::app::Action;
-use crate::musicapi::model::SongInfo;
-use crate::utils::{create_player_list, PlayerTypes};
+use crate::{
+    app::Action,
+    musicapi::model::SongInfo,
+    utils::{create_player_list, PlayerTypes},
+};
 use async_std::task;
 use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
-use gtk::prelude::*;
-use gtk::{Builder, Button, CellRendererText, Grid, Image, Label, ListStore, TreeView, TreeViewColumn};
+use gtk::{prelude::*, Builder, Button, CellRendererText, Grid, Image, Label, ListStore, TreeView, TreeViewColumn};
 
 #[derive(Clone)]
 pub(crate) struct Subpages {

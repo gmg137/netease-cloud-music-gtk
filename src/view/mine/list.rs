@@ -6,8 +6,7 @@
 use crate::{app::Action, musicapi::model::SongInfo, utils::*};
 use async_std::task;
 use crossbeam_channel::Sender;
-use gtk::prelude::*;
-use gtk::{Builder, Button, CellRendererText, Label, ListStore, Menu, MenuItem, TreeView, TreeViewColumn};
+use gtk::{prelude::*, Builder, Button, CellRendererText, Label, ListStore, Menu, MenuItem, TreeView, TreeViewColumn};
 
 #[derive(Clone)]
 struct UpView {

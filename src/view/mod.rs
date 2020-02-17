@@ -8,20 +8,22 @@ mod found;
 mod home;
 mod mine;
 mod subpages;
-use crate::app::Action;
-use crate::data::MusicData;
-use crate::model::{NCM_CACHE, NCM_DATA, TOP_ID, TOP_NAME};
-use crate::musicapi::model::*;
-use crate::utils::*;
+use crate::{
+    app::Action,
+    data::MusicData,
+    model::{NCM_CACHE, NCM_DATA, TOP_ID, TOP_NAME},
+    musicapi::model::*,
+    task::Task,
+    utils::*,
+};
 use async_std::{fs, task};
 use crossbeam_channel::Sender;
 use found::*;
-use futures::future::join_all;
+use futures::{channel::mpsc, sink::SinkExt};
 use gtk::{prelude::*, Builder, Stack};
 use home::*;
 use mine::*;
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 use subpages::*;
 
 #[derive(Clone)]
@@ -36,10 +38,11 @@ pub(crate) struct View {
     mine: Rc<RefCell<Mine>>,
     subpages: Rc<RefCell<Subpages>>,
     sender: Sender<Action>,
+    sender_task: mpsc::Sender<Task>,
 }
 
 impl View {
-    pub(crate) fn new(builder: &Builder, sender: &Sender<Action>) -> Rc<Self> {
+    pub(crate) fn new(builder: &Builder, sender: &Sender<Action>, sender_task: &mpsc::Sender<Task>) -> Rc<Self> {
         let stack: Stack = builder.get_object("stack").expect("无法获取 stack.");
         let main_stack: Stack = builder
             .get_object("main_pages_stack")
@@ -123,6 +126,7 @@ impl View {
             mine,
             subpages,
             sender: sender.clone(),
+            sender_task: sender_task.clone(),
         })
     }
 
@@ -259,53 +263,13 @@ impl View {
 
     pub(crate) fn update_home(&self) {
         let sender = self.sender.clone();
+        let mut sender_task = self.sender_task.clone();
         task::spawn(async move {
             if let Ok(mut data) = MusicData::new().await {
                 if let Ok(tsl) = data.top_song_list("hot", 0, 8).await {
-                    // 异步并行下载图片
-                    let mut tasks = Vec::new();
-                    let mut l = 0;
-                    for sl in tsl.clone().into_iter() {
-                        if tasks.len() >= 8 {
-                            break;
-                        }
-                        let mut left = l;
-                        let mut top = 0;
-                        if l >= 4 {
-                            left = l % 4;
-                            top = l / 4;
-                        }
-                        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
-                        let sender_clone = sender.clone();
-                        let ssl = sl.to_owned();
-                        tasks.push(async move {
-                            download_img(sl.cover_img_url, image_path, 140, 140, 100000).await.ok();
-                            sender_clone.send(Action::RefreshHomeUpImage(left, top, ssl)).unwrap();
-                        });
-                        l += 1;
-                    }
-                    task::spawn(join_all(tasks));
+                    sender_task.send(Task::DownloadHomeUpImage(tsl.clone())).await.ok();
                     if let Ok(na) = data.new_albums(0, 4).await {
-                        let mut tasks = Vec::new();
-                        let mut l = 0;
-                        // 异步并行下载图片
-                        for sl in na.clone().into_iter() {
-                            let mut left = l;
-                            let mut top = 0;
-                            if l >= 4 {
-                                left = l % 4;
-                                top = l / 4;
-                            }
-                            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
-                            let sender_clone = sender.clone();
-                            let ssl = sl.to_owned();
-                            tasks.push(async move {
-                                download_img(sl.cover_img_url, image_path, 140, 140, 100000).await.ok();
-                                sender_clone.send(Action::RefreshHomeLowImage(left, top, ssl)).unwrap();
-                            });
-                            l += 1;
-                        }
-                        task::spawn(join_all(tasks));
+                        sender_task.send(Task::DownloadHomeLowImage(na.clone())).await.ok();
                         sender
                             .send(Action::RefreshHomeView(tsl[0..8].to_owned(), na))
                             .unwrap_or(());
@@ -375,6 +339,7 @@ impl View {
     pub(crate) fn mine_init(&self) {
         self.sender.send(Action::MineShowNotLogin).unwrap_or(());
         let sender = self.sender.clone();
+        let mut sender_task = self.sender_task.clone();
         task::spawn(async move {
             if let Ok(mut data) = MusicData::new().await {
                 // 判断是否已经登陆
@@ -385,29 +350,10 @@ impl View {
                         sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
                     }
                     if let Ok(rr) = data.recommend_resource().await {
-                        // 异步并行下载图片
-                        let mut tasks = Vec::with_capacity(rr.len());
-                        let mut l = 0;
-                        for sl in rr.clone().into_iter() {
-                            let mut left = l;
-                            let mut top = 0;
-                            if l >= 4 {
-                                left = l % 4;
-                                top = l / 4;
-                            }
-                            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
-                            let sender_clone = sender.clone();
-                            tasks.push(async move {
-                                download_img(&sl.cover_img_url, &image_path, 140, 140, 100000)
-                                    .await
-                                    .ok();
-                                sender_clone
-                                    .send(Action::RefreshMineRecommendImage(left, top, sl))
-                                    .unwrap_or(());
-                            });
-                            l += 1;
-                        }
-                        task::spawn(join_all(tasks));
+                        sender_task
+                            .send(Task::DownloadMineRecommendImage(rr.clone()))
+                            .await
+                            .ok();
                         sender.send(Action::RefreshMineRecommendView(rr)).unwrap_or(());
                         return;
                     }
