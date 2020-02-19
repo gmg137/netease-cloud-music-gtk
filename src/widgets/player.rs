@@ -330,8 +330,8 @@ impl PlayerWidget {
                                 .send(Task::DownloadPlayerImg {
                                     url: song_info.pic_url.to_owned(),
                                     path: image_path.to_owned(),
-                                    width: 140,
-                                    high: 140,
+                                    width: 34,
+                                    high: 34,
                                     timeout: 1000,
                                 })
                                 .await
@@ -381,8 +381,8 @@ impl PlayerWidget {
                 .send(Task::DownloadPlayerImg {
                     url: song_info.pic_url.to_owned(),
                     path: image_path.to_owned(),
-                    width: 140,
-                    high: 140,
+                    width: 34,
+                    high: 34,
                     timeout: 1000,
                 })
                 .await

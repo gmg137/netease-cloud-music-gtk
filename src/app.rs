@@ -108,8 +108,8 @@ impl App {
         let (sender_task, receiver_task) = mpsc::channel::<Task>(10);
         task::spawn(actuator_loop(receiver_task, sender.clone()));
 
-        let view = View::new(&builder, &sender, &sender_task);
         let header = Header::new(&builder, &sender, &configs);
+        let view = View::new(&builder, &sender, &sender_task);
         let player = PlayerWrapper::new(&builder, &sender, &sender_task);
 
         window.show_all();

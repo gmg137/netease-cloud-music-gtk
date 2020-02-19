@@ -397,7 +397,7 @@ impl View {
                             create_player_list(&si, sender.clone(), false).await.ok();
                             // 下载专辑图片
                             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
-                            download_img(&si[0].pic_url, &image_path, 140, 140, 100000).await.ok();
+                            download_img(&si[0].pic_url, &image_path, 130, 130, 100000).await.ok();
                             if sender.send(Action::RefreshMineFm(si[0].to_owned())).is_ok() {
                                 sender.send(Action::PlayerFm).unwrap_or(());
                             }
@@ -457,7 +457,7 @@ impl View {
                                     create_player_list(&si, sender.clone(), false).await.ok();
                                     // 下载专辑图片
                                     let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
-                                    download_img(&si[0].pic_url, &image_path, 140, 140, 100000).await.ok();
+                                    download_img(&si[0].pic_url, &image_path, 130, 130, 100000).await.ok();
                                     sender.send(Action::RefreshMineFm(si[0].to_owned())).unwrap_or(());
                                 }
                             }

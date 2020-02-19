@@ -118,7 +118,7 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                         let sender_clone = sender.clone();
                         let ssl = sl.to_owned();
                         tasks.push(async move {
-                            download_img(sl.cover_img_url, image_path, 140, 140, 100000).await.ok();
+                            download_img(sl.cover_img_url, image_path, 130, 130, 100000).await.ok();
                             sender_clone.send(Action::RefreshHomeLowImage(left, top, ssl)).unwrap();
                         });
                         l += 1;
