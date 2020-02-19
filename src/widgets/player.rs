@@ -645,17 +645,15 @@ impl PlayerWrapper {
         }));
     }
 
-    #[cfg_attr(rustfmt, rustfmt_skip)]
     fn connect_gst_signals(&self, sender: &Sender<Action>) {
         // Log gst warnings.
-        self.player.connect_warning(move |_, warn| warn!("gst warning: {}", warn));
+        self.player
+            .connect_warning(move |_, warn| warn!("gst warning: {}", warn));
 
         let sender_clone = sender.clone();
         // Log gst errors.
         self.player.connect_error(move |_, _| {
-            sender_clone
-                .send(Action::ShowNotice(format!("播放格式错误!")))
-                .unwrap();
+            sender_clone.send(Action::ShowNotice(format!("播放格式错误!"))).unwrap();
             let sender_clone = sender_clone.clone();
             // 刷新播放列表
             task::spawn(async move {
@@ -679,7 +677,13 @@ impl PlayerWrapper {
         let weak = Fragile::new(Rc::clone(self));
         // Reset the slider to 0 and show a play button
         self.player.connect_end_of_stream(move |_| {
-             weak.get().stop();
+            weak.get().stop();
+        });
+
+        let weak = Fragile::new(Rc::clone(self));
+        // 连接音量变化
+        self.player.connect_volume_changed(move |p| {
+            weak.get().controls.volume.set_value(p.get_volume());
         });
     }
 
