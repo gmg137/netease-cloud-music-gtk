@@ -37,7 +37,7 @@ struct PlayerInfo {
     singer: Label,
     cover: Image,
     mpris: Arc<MprisPlayer>,
-    song_id: RefCell<Option<u32>>,
+    song_id: RefCell<Option<u64>>,
 }
 
 impl PlayerInfo {

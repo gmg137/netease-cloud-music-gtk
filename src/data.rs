@@ -199,7 +199,7 @@ impl MusicData {
     // offset: 列表起点号
     // limit: 列表长度
     #[allow(unused)]
-    pub(crate) async fn user_song_list(&mut self, uid: u32, offset: u8, limit: u8) -> NCMResult<Vec<SongList>> {
+    pub(crate) async fn user_song_list(&mut self, uid: u64, offset: u8, limit: u8) -> NCMResult<Vec<SongList>> {
         if self.login {
             let path = format!("{}user_song_list.db", NCM_DATA.to_string_lossy());
             // 查询缓存
@@ -221,7 +221,7 @@ impl MusicData {
     // 歌单详情
     // songlist_id: 歌单 id
     #[allow(unused)]
-    pub(crate) async fn song_list_detail(&mut self, songlist_id: u32, refresh: bool) -> NCMResult<Vec<SongInfo>> {
+    pub(crate) async fn song_list_detail(&mut self, songlist_id: u64, refresh: bool) -> NCMResult<Vec<SongInfo>> {
         let path = format!("{}song_list_{}.db", NCM_DATA.to_string_lossy(), songlist_id);
         if !refresh {
             if let Ok(buffer) = fs::read(&path).await {
@@ -241,7 +241,7 @@ impl MusicData {
     // 歌曲详情
     // ids: 歌曲 id 列表
     #[allow(unused)]
-    pub(crate) async fn songs_detail(&mut self, ids: &[u32]) -> NCMResult<Vec<SongInfo>> {
+    pub(crate) async fn songs_detail(&mut self, ids: &[u64]) -> NCMResult<Vec<SongInfo>> {
         self.musicapi.songs_detail(ids)
     }
 
@@ -251,7 +251,7 @@ impl MusicData {
     //       192: 192k
     //       128: 128k
     #[allow(unused)]
-    pub(crate) async fn songs_url(&mut self, ids: &[u32], rate: u32) -> NCMResult<Vec<SongUrl>> {
+    pub(crate) async fn songs_url(&mut self, ids: &[u64], rate: u32) -> NCMResult<Vec<SongUrl>> {
         self.musicapi.songs_url(ids, rate)
     }
 
@@ -327,7 +327,7 @@ impl MusicData {
     // songid: 歌曲id
     // like: true 收藏，false 取消
     #[allow(unused)]
-    pub(crate) async fn like(&mut self, like: bool, songid: u32) -> bool {
+    pub(crate) async fn like(&mut self, like: bool, songid: u64) -> bool {
         if self.musicapi.like(like, songid) {
             if let Ok(login_info) = self.login_info().await {
                 if let Ok(usl) = &self.user_song_list(login_info.uid, 0, 50).await {
@@ -343,7 +343,7 @@ impl MusicData {
     // FM 不喜欢
     // songid: 歌曲id
     #[allow(unused)]
-    pub(crate) async fn fm_trash(&mut self, songid: u32) -> bool {
+    pub(crate) async fn fm_trash(&mut self, songid: u64) -> bool {
         self.musicapi.fm_trash(songid)
     }
 
@@ -386,7 +386,7 @@ impl MusicData {
     // 专辑
     // album_id: 专辑 id
     #[allow(unused)]
-    pub(crate) async fn album(&mut self, album_id: u32) -> NCMResult<Vec<SongInfo>> {
+    pub(crate) async fn album(&mut self, album_id: u64) -> NCMResult<Vec<SongInfo>> {
         let path = format!("{}album_{}.db", NCM_DATA.to_string_lossy(), album_id);
         if let Ok(buffer) = fs::read(&path).await {
             if let Ok(album) = bincode::deserialize::<Vec<SongInfo>>(&buffer) {
@@ -447,14 +447,14 @@ impl MusicData {
     // 香港电台中文歌曲龙虎榜: 10169002
     // 华语金曲榜: 4395559
     #[allow(unused)]
-    pub(crate) async fn top_songs(&mut self, list_id: u32) -> NCMResult<Vec<SongInfo>> {
+    pub(crate) async fn top_songs(&mut self, list_id: u64) -> NCMResult<Vec<SongInfo>> {
         self.song_list_detail(list_id, true).await
     }
 
     // 查询歌词
     // music_id: 歌曲id
     #[allow(unused)]
-    pub(crate) async fn song_lyric(&mut self, music_id: u32) -> NCMResult<Vec<String>> {
+    pub(crate) async fn song_lyric(&mut self, music_id: u64) -> NCMResult<Vec<String>> {
         let path = format!("{}song_lyric_{}.db", NCM_DATA.to_string_lossy(), music_id);
         if let Ok(buffer) = fs::read(&path).await {
             if let Ok(song_lyric) = bincode::deserialize::<Vec<String>>(&buffer) {
@@ -474,7 +474,7 @@ impl MusicData {
     // like: true 收藏，false 取消
     // id: 歌单 id
     #[allow(unused)]
-    pub(crate) async fn song_list_like(&mut self, like: bool, id: u32) -> bool {
+    pub(crate) async fn song_list_like(&mut self, like: bool, id: u64) -> bool {
         self.musicapi.song_list_like(like, id)
     }
 }

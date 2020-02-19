@@ -92,7 +92,7 @@ struct PlayerListData {
 #[allow(unused)]
 pub(crate) async fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Action>, play: bool) -> NCMResult<()> {
     // 提取歌曲 id 列表
-    let song_id_list = list.iter().map(|si| si.id).collect::<Vec<u32>>();
+    let song_id_list = list.iter().map(|si| si.id).collect::<Vec<u64>>();
     let mut api = MusicData::new().await?;
     // 批量搜索歌曲 URL
     if let Ok(v) = api.songs_url(&song_id_list, 320).await {
@@ -270,7 +270,7 @@ pub(crate) async fn update_player_list(sender: Sender<Action>) -> NCMResult<()> 
         shuffle_list,
     } = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
     // 提取歌曲 id 列表
-    let song_id_list = player_list.iter().map(|(si, _)| si.id).collect::<Vec<u32>>();
+    let song_id_list = player_list.iter().map(|(si, _)| si.id).collect::<Vec<u64>>();
     let mut api = MusicData::new().await?;
     // 批量搜索歌曲 URL
     if let Ok(v) = api.songs_url(&song_id_list, 320).await {
@@ -462,7 +462,7 @@ pub(crate) async fn download_lyrics(data: &mut MusicData, file: &str, song_info:
 }
 
 // 获取歌词
-pub(crate) async fn get_lyrics(data: &mut MusicData, song_id: u32) -> NCMResult<String> {
+pub(crate) async fn get_lyrics(data: &mut MusicData, song_id: u64) -> NCMResult<String> {
     let path = format!("{}{}.lrc", NCM_CACHE.to_string_lossy(), song_id);
     if !std::path::Path::new(&path).exists() {
         let vec = data.song_lyric(song_id).await?;

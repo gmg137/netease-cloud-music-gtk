@@ -40,7 +40,7 @@ impl Found {
             .get_object("found_tree_view")
             .expect("无法获取 found_tree_view .");
         let store: ListStore = ListStore::new(&[
-            glib::Type::U32,
+            glib::Type::U64,
             String::static_type(),
             String::static_type(),
             String::static_type(),
@@ -70,7 +70,7 @@ impl Found {
         s.treeview.connect_button_press_event(move |tree, event| {
             if event.get_event_type() == gdk::EventType::DoubleButtonPress {
                 if let Some((model, iter)) = tree.get_selection().get_selected() {
-                    let id = model.get_value(&iter, 0).get_some::<u32>().unwrap_or(0);
+                    let id = model.get_value(&iter, 0).get_some::<u64>().unwrap_or(0);
                     let name = model
                         .get_value(&iter, 1)
                         .get::<String>()

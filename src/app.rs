@@ -22,7 +22,7 @@ use std::{cell::RefCell, rc::Rc};
 #[derive(Debug, Clone)]
 pub(crate) enum Action {
     SwitchStackMain,
-    SwitchStackSub((u32, String, String), Parse),
+    SwitchStackSub((u64, String, String), Parse),
     SwitchHeaderBar(String),
     RefreshHeaderUser,
     RefreshHeaderUserLogin(LoginInfo),
@@ -31,7 +31,7 @@ pub(crate) enum Action {
     RefreshHomeView(Vec<SongList>, Vec<SongList>),
     RefreshHomeUpImage(i32, i32, SongList),
     RefreshHomeLowImage(i32, i32, SongList),
-    RefreshSubUpView(u32, String, String),
+    RefreshSubUpView(u64, String, String),
     RefreshSubLowView(Vec<SongInfo>),
     ShowSubLike(bool),
     LikeSongList,

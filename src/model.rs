@@ -62,7 +62,7 @@ lazy_static! {
     };
 
     // 排行榜 id
-    pub(crate) static ref TOP_ID: HashMap<u8,u32>= {
+    pub(crate) static ref TOP_ID: HashMap<u8,u64>= {
         let mut m = HashMap::new();
         m.insert(0, 19723756);
         m.insert(1, 3779629);

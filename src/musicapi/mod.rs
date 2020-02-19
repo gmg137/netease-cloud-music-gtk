@@ -120,7 +120,7 @@ impl MusicApi {
     pub fn login(&mut self, username: String, password: String) -> NCMResult<LoginInfo> {
         let mut params = HashMap::new();
         let path;
-        if username.len().eq(&11) && username.parse::<u32>().is_ok() {
+        if username.len().eq(&11) && username.parse::<u64>().is_ok() {
             path = "/weapi/login/cellphone";
             params.insert("phone".to_owned(), username);
             params.insert("password".to_owned(), password);
@@ -145,7 +145,7 @@ impl MusicApi {
             r#"userId:(?P<id>\d+),nickname:"(?P<nickname>\w+)",avatarUrl.+?(?P<avatar_url>http.+?jpg)""#,
         )?;
         let cap = re.captures(&result).ok_or(Errors::NoneError)?;
-        let uid = cap.name("id").ok_or(Errors::NoneError)?.as_str().parse::<u32>()?;
+        let uid = cap.name("id").ok_or(Errors::NoneError)?.as_str().parse::<u64>()?;
         let nickname = cap.name("nickname").ok_or(Errors::NoneError)?.as_str().to_owned();
         let avatar_url = cap.name("avatar_url").ok_or(Errors::NoneError)?.as_str().to_owned();
         Ok(LoginInfo {
@@ -179,7 +179,7 @@ impl MusicApi {
     // offset: 列表起点号
     // limit: 列表长度
     #[allow(unused)]
-    pub fn user_song_list(&mut self, uid: u32, offset: u8, limit: u8) -> NCMResult<Vec<SongList>> {
+    pub fn user_song_list(&mut self, uid: u64, offset: u8, limit: u8) -> NCMResult<Vec<SongList>> {
         let path = "/weapi/user/playlist";
         let mut params = HashMap::new();
         params.insert("uid".to_owned(), uid.to_string());
@@ -205,7 +205,7 @@ impl MusicApi {
     // 歌单详情
     // songlist_id: 歌单 id
     #[allow(unused)]
-    pub fn song_list_detail(&mut self, songlist_id: u32) -> NCMResult<Vec<SongInfo>> {
+    pub fn song_list_detail(&mut self, songlist_id: u64) -> NCMResult<Vec<SongInfo>> {
         let path = "/weapi/v3/playlist/detail";
         let mut params = HashMap::new();
         params.insert("id".to_owned(), songlist_id.to_string());
@@ -220,7 +220,7 @@ impl MusicApi {
     // 歌曲详情
     // ids: 歌曲 id 列表
     #[allow(unused)]
-    pub fn songs_detail(&mut self, ids: &[u32]) -> NCMResult<Vec<SongInfo>> {
+    pub fn songs_detail(&mut self, ids: &[u64]) -> NCMResult<Vec<SongInfo>> {
         let path = "/weapi/v3/song/detail";
         let mut params = HashMap::new();
         let mut json = String::from("[");
@@ -242,7 +242,7 @@ impl MusicApi {
     //       192: 192k
     //       128: 128k
     #[allow(unused)]
-    pub fn songs_url(&mut self, ids: &[u32], rate: u32) -> NCMResult<Vec<SongUrl>> {
+    pub fn songs_url(&mut self, ids: &[u64], rate: u32) -> NCMResult<Vec<SongUrl>> {
         let path = "/weapi/song/enhance/player/url";
         let mut params = HashMap::new();
         params.insert("ids".to_owned(), serde_json::to_string(ids)?);
@@ -281,7 +281,7 @@ impl MusicApi {
     // songid: 歌曲id
     // like: true 收藏，false 取消
     #[allow(unused)]
-    pub fn like(&mut self, like: bool, songid: u32) -> bool {
+    pub fn like(&mut self, like: bool, songid: u64) -> bool {
         let path = "/weapi/radio/like";
         let mut params = HashMap::new();
         params.insert("alg".to_owned(), "itembased".to_owned());
@@ -303,7 +303,7 @@ impl MusicApi {
     // FM 不喜欢
     // songid: 歌曲id
     #[allow(unused)]
-    pub fn fm_trash(&mut self, songid: u32) -> bool {
+    pub fn fm_trash(&mut self, songid: u64) -> bool {
         let path = "/weapi/radio/trash/add";
         let mut params = HashMap::new();
         params.insert("alg".to_owned(), "RT".to_owned());
@@ -361,7 +361,7 @@ impl MusicApi {
     // 专辑
     // album_id: 专辑 id
     #[allow(unused)]
-    pub fn album(&mut self, album_id: u32) -> NCMResult<Vec<SongInfo>> {
+    pub fn album(&mut self, album_id: u64) -> NCMResult<Vec<SongInfo>> {
         let path = format!("/weapi/v1/album/{}", album_id);
         let result = self.request(Method::POST, &path, &mut HashMap::new(), false)?;
         to_song_info(result, Parse::ALBUM)
@@ -408,14 +408,14 @@ impl MusicApi {
     // 香港电台中文歌曲龙虎榜: 10169002
     // 华语金曲榜: 4395559
     #[allow(unused)]
-    pub fn top_songs(&mut self, list_id: u32) -> NCMResult<Vec<SongInfo>> {
+    pub fn top_songs(&mut self, list_id: u64) -> NCMResult<Vec<SongInfo>> {
         self.song_list_detail(list_id)
     }
 
     // 查询歌词
     // music_id: 歌曲id
     #[allow(unused)]
-    pub fn song_lyric(&mut self, music_id: u32) -> NCMResult<Vec<String>> {
+    pub fn song_lyric(&mut self, music_id: u64) -> NCMResult<Vec<String>> {
         let path = "/weapi/song/lyric";
         let mut params = HashMap::new();
         params.insert("os".to_owned(), "osx".to_owned());
@@ -431,7 +431,7 @@ impl MusicApi {
     // like: true 收藏，false 取消
     // id: 歌单 id
     #[allow(unused)]
-    pub fn song_list_like(&mut self, like: bool, id: u32) -> bool {
+    pub fn song_list_like(&mut self, like: bool, id: u64) -> bool {
         let mut path = "/weapi/playlist/unsubscribe";
         if like {
             path = "/weapi/playlist/subscribe";

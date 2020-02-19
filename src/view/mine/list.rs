@@ -67,7 +67,7 @@ impl ListView {
             .get_object("mine_tree_view")
             .expect("无法获取 mine_tree_view .");
         let store: ListStore = ListStore::new(&[
-            glib::Type::U32,
+            glib::Type::U64,
             String::static_type(),
             String::static_type(),
             String::static_type(),
@@ -118,9 +118,9 @@ impl ListView {
         });
     }
 
-    pub(crate) fn get_song_id(&self) -> Option<u32> {
+    pub(crate) fn get_song_id(&self) -> Option<u64> {
         if let Some((model, iter)) = self.lowview.tree.get_selection().get_selected() {
-            return model.get_value(&iter, 0).get_some::<u32>().ok();
+            return model.get_value(&iter, 0).get_some::<u64>().ok();
         }
         None
     }

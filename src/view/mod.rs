@@ -134,7 +134,7 @@ impl View {
         self.stack.set_visible_child(&self.main_stack);
     }
 
-    pub(crate) fn switch_stack_sub(&self, id: u32, name: String, image_path: String, parse: Parse) {
+    pub(crate) fn switch_stack_sub(&self, id: u64, name: String, image_path: String, parse: Parse) {
         let sender = self.sender.clone();
         let name_clone = name.to_owned();
         task::spawn(async move {
@@ -207,7 +207,7 @@ impl View {
         self.home.borrow_mut().update(tsl, rr);
     }
 
-    pub(crate) fn update_sub_up_view(&self, id: u32, name: String, image_path: String) {
+    pub(crate) fn update_sub_up_view(&self, id: u64, name: String, image_path: String) {
         self.subpages.borrow_mut().update_up_view(id, name, image_path);
         let sender = self.sender.clone();
         task::spawn(async move {
@@ -390,7 +390,7 @@ impl View {
             if let Ok(mut data) = MusicData::new().await {
                 if let Ok(vsi) = data.personal_fm().await {
                     // 提取歌曲 id 列表
-                    let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u32>>();
+                    let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u64>>();
                     if let Ok(si) = data.songs_detail(&song_id_list).await {
                         if !vsi.is_empty() {
                             // 创建播放列表
@@ -450,7 +450,7 @@ impl View {
                     if let Ok(mut data) = MusicData::new().await {
                         if let Ok(vsi) = data.personal_fm().await {
                             // 提取歌曲 id 列表
-                            let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u32>>();
+                            let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u64>>();
                             if let Ok(si) = data.songs_detail(&song_id_list).await {
                                 if !vsi.is_empty() {
                                     // 创建播放列表

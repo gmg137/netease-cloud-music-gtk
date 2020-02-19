@@ -61,7 +61,7 @@ impl Mine {
             }
             if event.get_event_type() == gdk::EventType::DoubleButtonPress {
                 if let Some((model, iter)) = tree.get_selection().get_selected() {
-                    let id = model.get_value(&iter, 0).get_some::<u32>().unwrap_or(0);
+                    let id = model.get_value(&iter, 0).get_some::<u64>().unwrap_or(0);
                     let name = model
                         .get_value(&iter, 1)
                         .get::<String>()

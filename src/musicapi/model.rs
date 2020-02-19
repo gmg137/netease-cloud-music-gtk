@@ -36,7 +36,7 @@ pub fn to_lyric(json: String) -> NCMResult<Vec<String>> {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SingerInfo {
     // 歌手 id
-    pub id: u32,
+    pub id: u64,
     // 歌手姓名
     pub name: String,
     // 歌手照片
@@ -61,7 +61,7 @@ pub fn to_singer_info(json: String) -> NCMResult<Vec<SingerInfo>> {
                     .get("id")
                     .ok_or(Errors::NoneError)?
                     .as_u64()
-                    .ok_or(Errors::NoneError)? as u32,
+                    .ok_or(Errors::NoneError)? as u64,
                 name: v
                     .get("name")
                     .ok_or(Errors::NoneError)?
@@ -80,7 +80,7 @@ pub fn to_singer_info(json: String) -> NCMResult<Vec<SingerInfo>> {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SongUrl {
     // 歌曲 id
-    pub id: u32,
+    pub id: u64,
     // 歌曲 URL
     pub url: String,
     // 码率
@@ -105,7 +105,7 @@ pub fn to_song_url(json: String) -> NCMResult<Vec<SongUrl>> {
                         .get("id")
                         .ok_or(Errors::NoneError)?
                         .as_u64()
-                        .ok_or(Errors::NoneError)? as u32,
+                        .ok_or(Errors::NoneError)? as u64,
                     url,
                     rate: v
                         .get("br")
@@ -124,7 +124,7 @@ pub fn to_song_url(json: String) -> NCMResult<Vec<SongUrl>> {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SongInfo {
     // 歌曲 id
-    pub id: u32,
+    pub id: u64,
     // 歌名
     pub name: String,
     // 歌手
@@ -162,59 +162,18 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                         .as_array()
                         .ok_or(Errors::NoneError)?;
                 }
-                let mut a = 0;
                 for v in array.iter() {
                     let duration = v
                         .get("dt")
                         .ok_or(Errors::NoneError)?
                         .as_u64()
                         .ok_or(Errors::NoneError)? as u32;
-                    a += 1;
-                    if a == 88 {
-                        let id = v
-                            .get("id")
-                            .ok_or(Errors::NoneError)?
-                            .as_u64()
-                            .ok_or(Errors::NoneError)? as u32;
-                        let name = v
-                            .get("name")
-                            .ok_or(Errors::NoneError)?
-                            .as_str()
-                            .ok_or(Errors::NoneError)?
-                            .to_owned();
-                        let singer = v
-                            .get("ar")
-                            .ok_or(Errors::NoneError)?
-                            .get(0)
-                            .ok_or(Errors::NoneError)?
-                            .get("name")
-                            .ok_or(Errors::NoneError)?
-                            .as_str()
-                            .ok_or(Errors::NoneError)?
-                            .to_owned();
-                        let album = v
-                            .get("al")
-                            .ok_or(Errors::NoneError)?
-                            .get("name")
-                            .ok_or(Errors::NoneError)?
-                            .as_str()
-                            .ok_or(Errors::NoneError)?
-                            .to_owned();
-                        let pic_url = v
-                            .get("al")
-                            .ok_or(Errors::NoneError)?
-                            .get("picUrl")
-                            .unwrap_or(&json!(""))
-                            .as_str()
-                            .unwrap_or("")
-                            .to_owned();
-                    }
                     vec.push(SongInfo {
                         id: v
                             .get("id")
                             .ok_or(Errors::NoneError)?
                             .as_u64()
-                            .ok_or(Errors::NoneError)? as u32,
+                            .ok_or(Errors::NoneError)? as u64,
                         name: v
                             .get("name")
                             .ok_or(Errors::NoneError)?
@@ -258,7 +217,6 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                     .ok_or(Errors::NoneError)?
                     .as_array()
                     .ok_or(Errors::NoneError)?;
-                let mut a = 0;
                 for v in array.iter() {
                     let duration = v
                         .get("simpleSong")
@@ -267,13 +225,12 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                         .ok_or(Errors::NoneError)?
                         .as_u64()
                         .ok_or(Errors::NoneError)? as u32;
-                    a += 1;
                     vec.push(SongInfo {
                         id: v
                             .get("songId")
                             .ok_or(Errors::NoneError)?
                             .as_u64()
-                            .ok_or(Errors::NoneError)? as u32,
+                            .ok_or(Errors::NoneError)? as u64,
                         name: v
                             .get("songName")
                             .ok_or(Errors::NoneError)?
@@ -315,7 +272,7 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get("id")
                             .ok_or(Errors::NoneError)?
                             .as_u64()
-                            .ok_or(Errors::NoneError)? as u32,
+                            .ok_or(Errors::NoneError)? as u64,
                         name: v
                             .get("name")
                             .ok_or(Errors::NoneError)?
@@ -374,7 +331,7 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get("id")
                             .ok_or(Errors::NoneError)?
                             .as_u64()
-                            .ok_or(Errors::NoneError)? as u32,
+                            .ok_or(Errors::NoneError)? as u64,
                         name: v
                             .get("name")
                             .ok_or(Errors::NoneError)?
@@ -433,7 +390,7 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get("id")
                             .ok_or(Errors::NoneError)?
                             .as_u64()
-                            .ok_or(Errors::NoneError)? as u32,
+                            .ok_or(Errors::NoneError)? as u64,
                         name: v
                             .get("name")
                             .ok_or(Errors::NoneError)?
@@ -488,7 +445,7 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get("id")
                             .ok_or(Errors::NoneError)?
                             .as_u64()
-                            .ok_or(Errors::NoneError)? as u32,
+                            .ok_or(Errors::NoneError)? as u64,
                         name: v
                             .get("name")
                             .ok_or(Errors::NoneError)?
@@ -537,7 +494,7 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SongList {
     // 歌单 id
-    pub id: u32,
+    pub id: u64,
     // 歌单名
     pub name: String,
     // 歌单封面
@@ -563,7 +520,7 @@ pub fn to_song_list(json: String, parse: Parse) -> NCMResult<Vec<SongList>> {
                             .get("id")
                             .ok_or(Errors::NoneError)?
                             .as_u64()
-                            .ok_or(Errors::NoneError)? as u32,
+                            .ok_or(Errors::NoneError)? as u64,
                         name: v
                             .get("name")
                             .ok_or(Errors::NoneError)?
@@ -591,7 +548,7 @@ pub fn to_song_list(json: String, parse: Parse) -> NCMResult<Vec<SongList>> {
                             .get("id")
                             .ok_or(Errors::NoneError)?
                             .as_u64()
-                            .ok_or(Errors::NoneError)? as u32,
+                            .ok_or(Errors::NoneError)? as u64,
                         name: v
                             .get("name")
                             .ok_or(Errors::NoneError)?
@@ -614,7 +571,7 @@ pub fn to_song_list(json: String, parse: Parse) -> NCMResult<Vec<SongList>> {
                             .get("id")
                             .ok_or(Errors::NoneError)?
                             .as_u64()
-                            .ok_or(Errors::NoneError)? as u32,
+                            .ok_or(Errors::NoneError)? as u64,
                         name: v
                             .get("name")
                             .ok_or(Errors::NoneError)?
@@ -637,7 +594,7 @@ pub fn to_song_list(json: String, parse: Parse) -> NCMResult<Vec<SongList>> {
                             .get("id")
                             .ok_or(Errors::NoneError)?
                             .as_u64()
-                            .ok_or(Errors::NoneError)? as u32,
+                            .ok_or(Errors::NoneError)? as u64,
                         name: v
                             .get("name")
                             .ok_or(Errors::NoneError)?
@@ -696,7 +653,7 @@ pub struct LoginInfo {
     // 登陆状态码
     pub code: i32,
     // 用户 id
-    pub uid: u32,
+    pub uid: u64,
     // 用户昵称
     pub nickname: String,
     // 用户头像
@@ -725,7 +682,7 @@ pub fn to_login_info(json: String) -> NCMResult<LoginInfo> {
                 .get("userId")
                 .ok_or(Errors::NoneError)?
                 .as_u64()
-                .ok_or(Errors::NoneError)? as u32,
+                .ok_or(Errors::NoneError)? as u64,
             nickname: profile
                 .get("nickname")
                 .ok_or(Errors::NoneError)?
