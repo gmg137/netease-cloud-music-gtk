@@ -238,7 +238,7 @@ impl Home {
             sender
                 .send(Action::SwitchStackSub(
                     (id, name.to_owned(), image_path.to_owned()),
-                    Parse::USL,
+                    Parse::ALBUM,
                 ))
                 .unwrap_or(());
             Inhibit(false)
