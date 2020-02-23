@@ -5,6 +5,7 @@
 //
 
 use crate::{app::Action, model::NCM_CACHE, musicapi::model::*};
+use async_std::sync::Arc;
 use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
 use gtk::{prelude::*, Builder, EventBox, Frame, Grid, Image, Label, ShadowType};
@@ -47,7 +48,7 @@ impl Home {
         sender.send(Action::RefreshHome).unwrap_or(());
     }
 
-    pub(crate) fn update(&mut self, tsl: Vec<SongList>, na: Vec<SongList>) {
+    pub(crate) fn update(&mut self, tsl: Arc<Vec<SongList>>, na: Arc<Vec<SongList>>) {
         self.up_grid.foreach(|w| {
             self.up_grid.remove(w);
         });

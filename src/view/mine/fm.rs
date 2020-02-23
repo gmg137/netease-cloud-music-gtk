@@ -9,6 +9,7 @@ use crate::{
     musicapi::model::{Parse, SongInfo, SongList},
     utils::*,
 };
+use async_std::sync::Arc;
 use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
 use glib::clone;
@@ -112,7 +113,7 @@ impl FmView {
         self.singer.set_text(&song_info.singer);
     }
 
-    pub(crate) fn update_recommend_view(&self, rr: Vec<SongList>) {
+    pub(crate) fn update_recommend_view(&self, rr: Arc<Vec<SongList>>) {
         // 更新个性推荐
         self.recommend.foreach(|w| {
             self.recommend.remove(w);

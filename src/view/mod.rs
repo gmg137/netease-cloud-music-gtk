@@ -16,7 +16,7 @@ use crate::{
     task::Task,
     utils::*,
 };
-use async_std::{fs, task};
+use async_std::{fs, sync::Arc, task};
 use crossbeam_channel::Sender;
 use found::*;
 use futures::{channel::mpsc, sink::SinkExt};
@@ -203,7 +203,7 @@ impl View {
         self.stack.set_visible_child(&self.subpages_stack);
     }
 
-    pub(crate) fn update_home_view(&self, tsl: Vec<SongList>, rr: Vec<SongList>) {
+    pub(crate) fn update_home_view(&self, tsl: Arc<Vec<SongList>>, rr: Arc<Vec<SongList>>) {
         self.home.borrow_mut().update(tsl, rr);
     }
 
@@ -267,16 +267,16 @@ impl View {
         task::spawn(async move {
             if let Ok(mut data) = MusicData::new().await {
                 if let Ok(tsl) = data.top_song_list("hot", 0, 8).await {
-                    sender_task.send(Task::DownloadHomeUpImage(tsl.clone())).await.ok();
+                    let tsl = Arc::new(tsl);
+                    sender_task.send(Task::DownloadHomeUpImage(Arc::clone(&tsl))).await.ok();
                     if let Ok(na) = data.new_albums(0, 4).await {
-                        sender_task.send(Task::DownloadHomeLowImage(na.clone())).await.ok();
-                        sender
-                            .send(Action::RefreshHomeView(tsl[0..8].to_owned(), na))
-                            .unwrap_or(());
+                        let na = Arc::new(na);
+                        sender_task.send(Task::DownloadHomeLowImage(Arc::clone(&na))).await.ok();
+                        sender.send(Action::RefreshHomeView(tsl, na)).unwrap_or(());
                         return;
                     }
                     sender
-                        .send(Action::RefreshHomeView(tsl[0..8].to_owned(), vec![]))
+                        .send(Action::RefreshHomeView(tsl, Arc::new(vec![])))
                         .unwrap_or(());
                 } else {
                     sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
@@ -350,8 +350,9 @@ impl View {
                         sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
                     }
                     if let Ok(rr) = data.recommend_resource().await {
+                        let rr = Arc::new(rr);
                         sender_task
-                            .send(Task::DownloadMineRecommendImage(rr.clone()))
+                            .send(Task::DownloadMineRecommendImage(Arc::clone(&rr)))
                             .await
                             .ok();
                         sender.send(Action::RefreshMineRecommendView(rr)).unwrap_or(());
@@ -421,7 +422,7 @@ impl View {
         self.mine.borrow_mut().fmview.set_now_play(song_info);
     }
 
-    pub(crate) fn update_mine_recommend(&self, rr: Vec<SongList>) {
+    pub(crate) fn update_mine_recommend(&self, rr: Arc<Vec<SongList>>) {
         self.mine.borrow_mut().fmview.update_recommend_view(rr);
     }
 

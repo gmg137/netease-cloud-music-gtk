@@ -12,7 +12,7 @@ use crate::{
     view::*,
     widgets::{header::*, mark_all_notif, notice::*, player::*},
 };
-use async_std::task;
+use async_std::{sync::Arc, task};
 use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
 use futures::channel::mpsc;
 use gio::{self, prelude::*};
@@ -28,7 +28,7 @@ pub(crate) enum Action {
     RefreshHeaderUserLogin(LoginInfo),
     RefreshHeaderUserLogout,
     RefreshHome,
-    RefreshHomeView(Vec<SongList>, Vec<SongList>),
+    RefreshHomeView(Arc<Vec<SongList>>, Arc<Vec<SongList>>),
     RefreshHomeUpImage(i32, i32, SongList),
     RefreshHomeLowImage(i32, i32, SongList),
     RefreshSubUpView(u64, String, String),
@@ -47,7 +47,7 @@ pub(crate) enum Action {
     RefreshMineLikeList(),
     RefreshMineView(Vec<SongInfo>, String),
     RefreshMineFm(SongInfo),
-    RefreshMineRecommendView(Vec<SongList>),
+    RefreshMineRecommendView(Arc<Vec<SongList>>),
     RefreshMineSidebar(Vec<SongList>),
     RefreshMineRecommendImage(i32, i32, SongList),
     PlayerFm,

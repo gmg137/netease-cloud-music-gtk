@@ -4,7 +4,7 @@
 // Distributed under terms of the MIT license.
 //
 use crate::{app::Action, model::*, musicapi::model::*, utils::*};
-use async_std::task;
+use async_std::{sync::Arc, task};
 use crossbeam_channel::Sender;
 use futures::{channel::mpsc::Receiver, future::join_all, stream::StreamExt};
 
@@ -23,9 +23,9 @@ pub(crate) enum Task {
         path: String,
         timeout: u64,
     },
-    DownloadMineRecommendImage(Vec<SongList>),
-    DownloadHomeUpImage(Vec<SongList>),
-    DownloadHomeLowImage(Vec<SongList>),
+    DownloadMineRecommendImage(Arc<Vec<SongList>>),
+    DownloadHomeUpImage(Arc<Vec<SongList>>),
+    DownloadHomeLowImage(Arc<Vec<SongList>>),
 }
 
 pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Action>) -> AsyncResult<()> {
@@ -51,7 +51,7 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                     // 异步并行下载图片
                     let mut tasks = Vec::with_capacity(rr.len());
                     let mut l = 0;
-                    for sl in rr.clone().into_iter() {
+                    for sl in rr.iter() {
                         let mut left = l;
                         let mut top = 0;
                         if l >= 4 {
@@ -65,7 +65,7 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                                 .await
                                 .ok();
                             sender_clone
-                                .send(Action::RefreshMineRecommendImage(left, top, sl))
+                                .send(Action::RefreshMineRecommendImage(left, top, sl.to_owned()))
                                 .unwrap_or(());
                         });
                         l += 1;
@@ -79,7 +79,7 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                     // 异步并行下载图片
                     let mut tasks = Vec::new();
                     let mut l = 0;
-                    for sl in tsl.clone().into_iter() {
+                    for sl in tsl.iter() {
                         if tasks.len() >= 8 {
                             break;
                         }
@@ -93,7 +93,9 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                         let sender_clone = sender.clone();
                         let ssl = sl.to_owned();
                         tasks.push(async move {
-                            download_img(sl.cover_img_url, image_path, 140, 140, 100000).await.ok();
+                            download_img(&sl.cover_img_url, &image_path, 140, 140, 100000)
+                                .await
+                                .ok();
                             sender_clone.send(Action::RefreshHomeUpImage(left, top, ssl)).unwrap();
                         });
                         l += 1;
@@ -107,7 +109,7 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                     let mut tasks = Vec::new();
                     let mut l = 0;
                     // 异步并行下载图片
-                    for sl in na.clone().into_iter() {
+                    for sl in na.iter() {
                         let mut left = l;
                         let mut top = 0;
                         if l >= 4 {
@@ -118,7 +120,9 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                         let sender_clone = sender.clone();
                         let ssl = sl.to_owned();
                         tasks.push(async move {
-                            download_img(sl.cover_img_url, image_path, 130, 130, 100000).await.ok();
+                            download_img(&sl.cover_img_url, &image_path, 130, 130, 100000)
+                                .await
+                                .ok();
                             sender_clone.send(Action::RefreshHomeLowImage(left, top, ssl)).unwrap();
                         });
                         l += 1;
