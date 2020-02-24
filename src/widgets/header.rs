@@ -234,7 +234,6 @@ impl Header {
                 if let Ok(login_info) = data.login(name, pass).await {
                     if login_info.code == 200 {
                         sender.send(Action::RefreshHeaderUser).unwrap();
-                        sender.send(Action::RefreshMine).unwrap();
                         return;
                     } else {
                         sender.send(Action::ShowNotice(login_info.msg)).unwrap();
@@ -255,7 +254,6 @@ impl Header {
             if let Ok(mut data) = MusicData::new().await {
                 data.logout().await.ok();
                 sender.send(Action::RefreshHeaderUser).unwrap();
-                sender.send(Action::RefreshMine).unwrap();
             } else {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
             }
@@ -276,10 +274,12 @@ impl Header {
                         sender
                             .send(Action::RefreshHeaderUserLogin(login_info.to_owned()))
                             .unwrap();
+                        sender.send(Action::RefreshMine).unwrap_or(());
                         return;
                     }
                 }
                 sender.send(Action::RefreshHeaderUserLogout).unwrap();
+                sender.send(Action::RefreshMine).unwrap_or(());
                 return;
             } else {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();

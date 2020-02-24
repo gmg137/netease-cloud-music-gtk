@@ -516,12 +516,12 @@ impl View {
         });
     }
 
-    pub fn update_mine_current_view_data(&self) {
+    pub(crate) fn update_mine_current_view_data(&self) {
         let row_id = self.mine.borrow().get_selected_row_id();
         self.update_mine_view_data(row_id, true);
     }
 
-    pub fn update_like_song_list(&self) {
+    pub(crate) fn update_like_song_list(&self) {
         if self.mine.borrow().get_selected_row_id() == 2 {
             self.update_mine_view_data(2, false);
         }

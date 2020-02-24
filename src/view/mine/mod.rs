@@ -46,9 +46,6 @@ impl Mine {
 
     fn init(s: &Self) {
         let sender = s.sender.clone();
-        sender.send(Action::RefreshMine).unwrap_or(());
-
-        let sender = s.sender.clone();
         let listbox = s.sidebar.downgrade();
         let popmenu = s.listview.lowview.popmenu.downgrade();
         s.listview.lowview.tree.connect_button_press_event(move |tree, event| {
