@@ -64,24 +64,24 @@ lazy_static! {
     // 排行榜 id
     pub(crate) static ref TOP_ID: HashMap<u8,u64>= {
         let mut m = HashMap::new();
-        m.insert(0, 19723756);
-        m.insert(1, 3779629);
-        m.insert(2, 2884035);
-        m.insert(3, 3778678);
-        m.insert(4, 71384707);
-        m.insert(5, 71385702);
-        m.insert(6, 745956260);
-        m.insert(7, 10520166);
-        m.insert(8, 991319590);
-        m.insert(9, 2250011882);
-        m.insert(10, 180106);
+        m.insert(0, 19_723_756);
+        m.insert(1, 3_779_629);
+        m.insert(2, 2_884_035);
+        m.insert(3, 3_778_678);
+        m.insert(4, 71_384_707);
+        m.insert(5, 71_385_702);
+        m.insert(6, 745_956_260);
+        m.insert(7, 10_520_166);
+        m.insert(8, 991_319_590);
+        m.insert(9, 2_250_011_882);
+        m.insert(10, 180_106);
         m.insert(11, 60198);
-        m.insert(12, 21845217);
-        m.insert(13, 11641012);
-        m.insert(14, 120001);
+        m.insert(12, 21_845_217);
+        m.insert(13, 11_641_012);
+        m.insert(14, 120_001);
         m.insert(15, 60131);
-        m.insert(16, 112463);
-        m.insert(17, 4395559);
+        m.insert(16, 112_463);
+        m.insert(17, 4_395_559);
         m
     };
 

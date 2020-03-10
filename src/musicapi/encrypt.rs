@@ -3,8 +3,6 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-#[allow(unused)]
-use super::model::*;
 use crate::model::{Errors, NCMResult};
 use num::bigint::BigUint;
 use openssl::{
@@ -70,6 +68,6 @@ impl Encrypt {
     }
 
     fn create_key(&self, len: usize) -> String {
-        return hex::encode(thread_rng().sample_iter(&Alphanumeric).take(len).collect::<String>())[..16].to_string();
+        hex::encode(thread_rng().sample_iter(&Alphanumeric).take(len).collect::<String>())[..16].to_string()
     }
 }

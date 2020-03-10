@@ -297,14 +297,11 @@ impl PlayerWidget {
     }
 
     pub(crate) fn initialize_player(&self, song_info: SongInfo, player_types: PlayerTypes, lyrics: bool) {
-        match player_types {
-            PlayerTypes::Fm => {
-                if song_info.id == self.info.song_id.borrow().unwrap_or(0) {
-                    self.play();
-                    return;
-                }
+        if let PlayerTypes::Fm = player_types {
+            if song_info.id == self.info.song_id.borrow().unwrap_or(0) {
+                self.play();
+                return;
             }
-            _ => (),
         }
         *self.player_types.borrow_mut() = player_types;
         let sender = self.sender.clone();
@@ -318,43 +315,41 @@ impl PlayerWidget {
                 let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
                 if std::path::Path::new(&path).exists() {
                     sender.send(Action::Player(song_info)).unwrap();
-                } else {
-                    if let Ok(v) = data.songs_url(&[song_info.id], 320).await {
-                        if v.len() > 0 {
-                            let mut song_info = song_info;
-                            song_info.song_url = v[0].url.to_string();
-                            sender.send(Action::Player(song_info.clone())).unwrap();
-                            // 缓存音乐和图片
-                            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
-                            sender_task
-                                .send(Task::DownloadPlayerImg {
-                                    url: song_info.pic_url.to_owned(),
-                                    path: image_path.to_owned(),
-                                    width: 34,
-                                    high: 34,
-                                    timeout: 1000,
-                                })
-                                .await
-                                .ok();
-                            sender_task
-                                .send(Task::DownloadMusic {
-                                    url: song_info.song_url.to_owned(),
-                                    path: path.to_owned(),
-                                    timeout: 3000,
-                                })
-                                .await
-                                .ok();
-                        } else {
-                            warn!(
-                                "未能获取 {}[id:{}] 的播放链接!(版权或VIP限制)",
-                                song_info.name, song_info.id
-                            );
-                            sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
-                        }
+                } else if let Ok(v) = data.songs_url(&[song_info.id], 320).await {
+                    if !v.is_empty() {
+                        let mut song_info = song_info;
+                        song_info.song_url = v[0].url.to_string();
+                        sender.send(Action::Player(song_info.clone())).unwrap();
+                        // 缓存音乐和图片
+                        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
+                        sender_task
+                            .send(Task::DownloadPlayerImg {
+                                url: song_info.pic_url.to_owned(),
+                                path: image_path.to_owned(),
+                                width: 34,
+                                high: 34,
+                                timeout: 1000,
+                            })
+                            .await
+                            .ok();
+                        sender_task
+                            .send(Task::DownloadMusic {
+                                url: song_info.song_url.to_owned(),
+                                path: path.to_owned(),
+                                timeout: 3000,
+                            })
+                            .await
+                            .ok();
                     } else {
-                        warn!("解析 {}[id:{}] 的播放链接失败!", song_info.name, song_info.id);
+                        warn!(
+                            "未能获取 {}[id:{}] 的播放链接!(版权或VIP限制)",
+                            song_info.name, song_info.id
+                        );
                         sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
                     }
+                } else {
+                    warn!("解析 {}[id:{}] 的播放链接失败!", song_info.name, song_info.id);
+                    sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
                 }
             } else {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
@@ -400,11 +395,8 @@ impl PlayerWidget {
 
     pub(crate) fn player(&self, song_info: SongInfo) {
         info!("准备播放音乐: {:?}", song_info);
-        match *self.player_types.borrow() {
-            PlayerTypes::Fm => {
-                self.sender.send(Action::RefreshMineFm(song_info.to_owned())).unwrap();
-            }
-            _ => (),
+        if let PlayerTypes::Fm = *self.player_types.borrow() {
+            self.sender.send(Action::RefreshMineFm(song_info.to_owned())).unwrap();
         }
         self.sender.send(Action::ShowNotice(song_info.name.to_owned())).unwrap();
         self.info.init(&song_info);
@@ -451,11 +443,8 @@ impl PlayerWidget {
 
     pub(crate) fn pause(&self) {
         // 更新 FM 播放按钮
-        match *self.player_types.borrow() {
-            PlayerTypes::Fm => {
-                self.sender.send(Action::RefreshMineFmPlay).unwrap();
-            }
-            _ => (),
+        if let PlayerTypes::Fm = *self.player_types.borrow() {
+            self.sender.send(Action::RefreshMineFmPlay).unwrap();
         }
         self.controls.pause.hide();
         self.controls.play.show();
@@ -474,16 +463,13 @@ impl PlayerWidget {
     }
 
     pub(crate) fn forward(&self) {
-        match *self.player_types.borrow() {
-            PlayerTypes::Fm => {
-                if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, false, false)) {
-                    self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
-                } else {
-                    self.sender.send(Action::RefreshMineFmPlayerList).unwrap();
-                }
-                return;
+        if let PlayerTypes::Fm = *self.player_types.borrow() {
+            if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, false, false)) {
+                self.sender.send(Action::ReadyPlayer(si)).unwrap();
+            } else {
+                self.sender.send(Action::RefreshMineFmPlayerList).unwrap();
             }
-            _ => (),
+            return;
         }
         let (shuffle, loops) = match *self.loops_state.borrow() {
             LoopsState::SHUFFLE => (true, false),
@@ -495,7 +481,7 @@ impl PlayerWidget {
             }
         };
         if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, shuffle, loops)) {
-            self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
+            self.sender.send(Action::ReadyPlayer(si)).unwrap();
         }
     }
 
@@ -504,11 +490,9 @@ impl PlayerWidget {
             LoopsState::SHUFFLE => true,
             LoopsState::PLAYLIST => {
                 if let Ok(si) = task::block_on(get_player_list_song(PD::BACKWARD, false, false)) {
-                    self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
-                } else {
-                    if let Ok(si) = task::block_on(get_player_list_song(PD::BACKWARD, false, true)) {
-                        self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
-                    }
+                    self.sender.send(Action::ReadyPlayer(si)).unwrap();
+                } else if let Ok(si) = task::block_on(get_player_list_song(PD::BACKWARD, false, true)) {
+                    self.sender.send(Action::ReadyPlayer(si)).unwrap();
                 }
                 return;
             }
@@ -520,7 +504,7 @@ impl PlayerWidget {
             LoopsState::CONSECUTIVE => false,
         };
         if let Ok(si) = task::block_on(get_player_list_song(PD::BACKWARD, state, false)) {
-            self.sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
+            self.sender.send(Action::ReadyPlayer(si)).unwrap();
         }
     }
 
@@ -556,7 +540,9 @@ impl PlayerWidget {
         task::spawn(async move {
             if let Ok(mut data) = MusicData::new().await {
                 if let Some(id) = song_id {
-                    let lrc = get_lyrics(&mut data, id).await.unwrap_or("没有找到歌词!".to_owned());
+                    let lrc = get_lyrics(&mut data, id)
+                        .await
+                        .unwrap_or_else(|_| "没有找到歌词!".to_owned());
                     sender.send(Action::RefreshLyricsText(lrc)).unwrap();
                 }
             } else {
@@ -653,7 +639,9 @@ impl PlayerWrapper {
         let sender_clone = sender.clone();
         // Log gst errors.
         self.player.connect_error(move |_, _| {
-            sender_clone.send(Action::ShowNotice(format!("播放格式错误!"))).unwrap();
+            sender_clone
+                .send(Action::ShowNotice("播放格式错误!".to_owned()))
+                .unwrap();
             let sender_clone = sender_clone.clone();
             // 刷新播放列表
             task::spawn(async move {

@@ -21,10 +21,10 @@ pub fn to_lyric(json: String) -> NCMResult<Vec<String>> {
             .ok_or(Errors::NoneError)?
             .to_owned();
         vec = lyric
-            .split("\n")
+            .split('\n')
             .collect::<Vec<&str>>()
             .iter()
-            .map(|s| s.to_string())
+            .map(|s| (*s).to_string())
             .filter(|s| !s.is_empty())
             .collect::<Vec<String>>();
         return Ok(vec);

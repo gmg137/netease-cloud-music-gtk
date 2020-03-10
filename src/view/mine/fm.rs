@@ -66,7 +66,7 @@ impl FmView {
             singer,
             recommend,
             nowplay: Rc::new(RefCell::new(None)),
-            sender: sender.clone(),
+            sender,
         };
 
         Self::init(&fmview);
@@ -159,11 +159,12 @@ impl FmView {
                     Inhibit(false)
                 });
                 let mut left = l;
-                let mut top = 0;
-                if l >= 4 {
+                let top = if l >= 4 {
                     left = l % 4;
-                    top = l / 4;
-                }
+                    l / 4
+                } else {
+                    0
+                };
 
                 // 添加到容器
                 self.recommend.attach(&event_box, left, top, 1, 1);
@@ -203,7 +204,7 @@ impl FmView {
         self.recommend.attach(&event_box, left, top, 1, 1);
 
         let id = song_list.id;
-        let name = song_list.name.to_owned();
+        let name = song_list.name;
         let sender = self.sender.clone();
         event_box.connect_button_press_event(move |_, _| {
             sender
@@ -227,11 +228,9 @@ impl FmView {
 
     pub(crate) fn play_fm(&self) {
         let sender = self.sender.clone();
-        self.nowplay.borrow().clone().map(|si| {
-            sender
-                .send(Action::PlayerInit(si.to_owned(), PlayerTypes::Fm))
-                .unwrap_or(());
-        });
+        if let Some(si) = self.nowplay.borrow().clone() {
+            sender.send(Action::PlayerInit(si, PlayerTypes::Fm)).unwrap_or(());
+        };
     }
 
     pub(crate) fn switch_play(&self) {

@@ -86,7 +86,7 @@ impl ListView {
             upview,
             lowview,
             song_list: vec![],
-            sender: sender.clone(),
+            sender,
         };
         Self::init(&s);
         s

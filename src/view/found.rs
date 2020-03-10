@@ -56,7 +56,7 @@ impl Found {
             treeview,
             store,
             song_list: vec![],
-            sender: sender.clone(),
+            sender,
         };
         Self::init(&s);
         s
@@ -75,27 +75,27 @@ impl Found {
                         .get_value(&iter, 1)
                         .get::<String>()
                         .unwrap_or(None)
-                        .unwrap_or("".to_owned());
+                        .unwrap_or_else(|| "".to_owned());
                     let duration = model
                         .get_value(&iter, 2)
                         .get::<String>()
                         .unwrap_or(None)
-                        .unwrap_or("".to_owned());
+                        .unwrap_or_else(|| "".to_owned());
                     let singer = model
                         .get_value(&iter, 3)
                         .get::<String>()
                         .unwrap_or(None)
-                        .unwrap_or("".to_owned());
+                        .unwrap_or_else(|| "".to_owned());
                     let album = model
                         .get_value(&iter, 4)
                         .get::<String>()
                         .unwrap_or(None)
-                        .unwrap_or("".to_owned());
+                        .unwrap_or_else(|| "".to_owned());
                     let pic_url = model
                         .get_value(&iter, 5)
                         .get::<String>()
                         .unwrap_or(None)
-                        .unwrap_or("".to_owned());
+                        .unwrap_or_else(|| "".to_owned());
                     sender
                         .send(Action::PlayerInit(
                             SongInfo {

@@ -40,7 +40,7 @@ impl Home {
             low_title,
             sender: sender.clone(),
         };
-        home.init(sender.clone());
+        home.init(sender);
         home
     }
 
@@ -189,7 +189,7 @@ impl Home {
         self.up_grid.attach(&event_box, left, top, 1, 1);
 
         let id = song_list.id;
-        let name = song_list.name.to_owned();
+        let name = song_list.name;
         let sender = self.sender.clone();
         event_box.connect_button_press_event(move |_, _| {
             sender
@@ -232,7 +232,7 @@ impl Home {
         self.low_grid.attach(&event_box, left, top, 1, 1);
 
         let id = song_list.id;
-        let name = song_list.name.to_owned();
+        let name = song_list.name;
         let sender = self.sender.clone();
         event_box.connect_button_press_event(move |_, _| {
             sender

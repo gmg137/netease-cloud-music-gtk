@@ -105,7 +105,7 @@ impl MusicApi {
             }
         }
         if let Ok(cookies) = self.curl.cookies() {
-            if !cookies.iter().collect::<Vec<&[u8]>>().is_empty() {
+            if cookies.iter().next().is_some() {
                 let cookie_path = format!("{}cookie", NCM_CONFIG.to_string_lossy());
                 self.curl.cookie_jar(cookie_path)?;
             }
@@ -228,10 +228,13 @@ impl MusicApi {
             let s = format!(r#"{{"id":{}}},"#, id);
             json.push_str(&s);
         }
-        let mut json = json.trim_end_matches(",").to_owned();
+        let mut json = json.trim_end_matches(',').to_owned();
         json.push_str("]");
         params.insert("c".to_owned(), json);
-        params.insert("ids".to_owned(), serde_json::to_string(ids).unwrap_or("[]".to_owned()));
+        params.insert(
+            "ids".to_owned(),
+            serde_json::to_string(ids).unwrap_or_else(|_| "[]".to_owned()),
+        );
         let result = self.request(Method::POST, path, &mut params, false)?;
         to_song_info(result, Parse::USL)
     }
@@ -432,10 +435,11 @@ impl MusicApi {
     // id: 歌单 id
     #[allow(unused)]
     pub fn song_list_like(&mut self, like: bool, id: u64) -> bool {
-        let mut path = "/weapi/playlist/unsubscribe";
-        if like {
-            path = "/weapi/playlist/subscribe";
-        }
+        let path = if like {
+            "/weapi/playlist/subscribe"
+        } else {
+            "/weapi/playlist/unsubscribe"
+        };
         let mut params = HashMap::new();
         params.insert("id".to_owned(), id.to_string());
         if let Ok(result) = self.request(Method::POST, path, &mut params, false) {

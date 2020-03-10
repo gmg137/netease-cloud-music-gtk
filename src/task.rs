@@ -10,6 +10,7 @@ use futures::{channel::mpsc::Receiver, future::join_all, stream::StreamExt};
 
 type AsyncResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
+#[allow(clippy::enum_variant_names)]
 pub(crate) enum Task {
     DownloadPlayerImg {
         url: String,
@@ -53,15 +54,16 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                     let mut l = 0;
                     for sl in rr.iter() {
                         let mut left = l;
-                        let mut top = 0;
-                        if l >= 4 {
+                        let top = if l >= 4 {
                             left = l % 4;
-                            top = l / 4;
-                        }
+                            l / 4
+                        } else {
+                            0
+                        };
                         let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
                         let sender_clone = sender.clone();
                         tasks.push(async move {
-                            download_img(&sl.cover_img_url, &image_path, 140, 140, 100000)
+                            download_img(&sl.cover_img_url, &image_path, 140, 140, 100_000)
                                 .await
                                 .ok();
                             sender_clone
@@ -84,16 +86,17 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                             break;
                         }
                         let mut left = l;
-                        let mut top = 0;
-                        if l >= 4 {
+                        let top = if l >= 4 {
                             left = l % 4;
-                            top = l / 4;
-                        }
+                            l / 4
+                        } else {
+                            0
+                        };
                         let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
                         let sender_clone = sender.clone();
                         let ssl = sl.to_owned();
                         tasks.push(async move {
-                            download_img(&sl.cover_img_url, &image_path, 140, 140, 100000)
+                            download_img(&sl.cover_img_url, &image_path, 140, 140, 100_000)
                                 .await
                                 .ok();
                             sender_clone.send(Action::RefreshHomeUpImage(left, top, ssl)).unwrap();
@@ -111,16 +114,17 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                     // 异步并行下载图片
                     for sl in na.iter() {
                         let mut left = l;
-                        let mut top = 0;
-                        if l >= 4 {
+                        let top = if l >= 4 {
                             left = l % 4;
-                            top = l / 4;
-                        }
+                            l / 4
+                        } else {
+                            0
+                        };
                         let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
                         let sender_clone = sender.clone();
                         let ssl = sl.to_owned();
                         tasks.push(async move {
-                            download_img(&sl.cover_img_url, &image_path, 130, 130, 100000)
+                            download_img(&sl.cover_img_url, &image_path, 130, 130, 100_000)
                                 .await
                                 .ok();
                             sender_clone.send(Action::RefreshHomeLowImage(left, top, ssl)).unwrap();

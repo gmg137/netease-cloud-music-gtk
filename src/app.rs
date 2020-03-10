@@ -132,10 +132,10 @@ impl App {
 
                 info!("Application is exiting");
                 app.quit();
-                return Inhibit(false);
+                Inhibit(false)
             } else {
                 w.hide_on_delete();
-                return Inhibit(true);
+                Inhibit(true)
             }
         });
 
@@ -228,8 +228,12 @@ impl App {
             Action::ShowNotice(text) => {
                 let notif = mark_all_notif(text);
                 let old = self.notice.replace(Some(notif));
-                old.map(|i| i.destroy());
-                self.notice.borrow().as_ref().map(|i| i.show(&self.overlay));
+                if let Some(i) = old {
+                    i.destroy()
+                }
+                if let Some(i) = self.notice.borrow().as_ref() {
+                    i.show(&self.overlay)
+                }
             }
             Action::PlayerForward => self.player.forward(),
             Action::RefreshPlayerImage(path) => self.player.set_cover_image(path),
@@ -294,7 +298,7 @@ impl App {
 
         let weak_app = application.downgrade();
         application.connect_startup(move |_| {
-            weak_app.upgrade().map(|application| {
+            if let Some(application) = weak_app.upgrade() {
                 let app = Self::new(&application);
                 Self::init(&app);
 
@@ -307,7 +311,7 @@ impl App {
                         debug_assert!(false, "I hate computers");
                     }
                 });
-            });
+            };
         });
 
         glib::set_application_name("netease-cloud-music-gtk");

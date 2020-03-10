@@ -31,13 +31,11 @@ where
     let url = url.into();
     let path = path.into();
     let timeout = timeout.into().unwrap_or(1000);
-    if !std::path::Path::new(&path).exists() {
-        if url.starts_with("http://") || url.starts_with("https://") {
-            let music_url = url.replace("https:", "http:");
-            let buffer = future::timeout(Duration::from_millis(timeout), surf::get(music_url).recv_bytes()).await??;
-            if !buffer.is_empty() {
-                fs::write(path, buffer).await?;
-            }
+    if !std::path::Path::new(&path).exists() && url.starts_with("http://") || url.starts_with("https://") {
+        let music_url = url.replace("https:", "http:");
+        let buffer = future::timeout(Duration::from_millis(timeout), surf::get(music_url).recv_bytes()).await??;
+        if !buffer.is_empty() {
+            fs::write(path, buffer).await?;
         }
     }
     Ok(())
@@ -63,14 +61,10 @@ where
     let url = url.into();
     let path = path.into();
     let timeout = timeout.into().unwrap_or(1000);
-    if !std::path::Path::new(&path).exists() {
-        if url.starts_with("http://") || url.starts_with("https://") {
-            let image_url = format!("{}?param={}y{}", url, width, high).replace("https:", "http:");
-            if let Ok(buffer) =
-                future::timeout(Duration::from_millis(timeout), surf::get(image_url).recv_bytes()).await?
-            {
-                fs::write(path, buffer).await?;
-            }
+    if !std::path::Path::new(&path).exists() && url.starts_with("http://") || url.starts_with("https://") {
+        let image_url = format!("{}?param={}y{}", url, width, high).replace("https:", "http:");
+        if let Ok(buffer) = future::timeout(Duration::from_millis(timeout), surf::get(image_url).recv_bytes()).await? {
+            fs::write(path, buffer).await?;
         }
     }
     Ok(())
@@ -90,7 +84,7 @@ struct PlayerListData {
 // 创建播放列表
 // play: 是否立即播放
 #[allow(unused)]
-pub(crate) async fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Action>, play: bool) -> NCMResult<()> {
+pub(crate) async fn create_player_list(list: &[SongInfo], sender: Sender<Action>, play: bool) -> NCMResult<()> {
     // 提取歌曲 id 列表
     let song_id_list = list.iter().map(|si| si.id).collect::<Vec<u64>>();
     let mut api = MusicData::new().await?;
@@ -124,12 +118,10 @@ pub(crate) async fn create_player_list(list: &Vec<SongInfo>, sender: Sender<Acti
                 index: -1,
             }) {
                 let path = format!("{}player_list.db", NCM_DATA.to_string_lossy());
-                if fs::write(path, buffer).await.is_ok() {
-                    if play {
-                        // 播放歌单
-                        sender.send(Action::PlayerForward).ok();
-                        return Ok(());
-                    }
+                if fs::write(path, buffer).await.is_ok() && play {
+                    // 播放歌单
+                    sender.send(Action::PlayerForward).ok();
+                    return Ok(());
                 }
             }
             sender.send(Action::ShowNotice("播放失败!".to_owned())).ok();
@@ -177,26 +169,22 @@ pub(crate) async fn get_player_list_song(pd: PD, shuffle: bool, loops: bool) -> 
                         player_index = 0;
                         player_list.iter_mut().for_each(|(_, p)| *p = false);
                     }
-                } else {
-                    if index + 1 >= player_list.len() as i32 {
-                        index_new -= 1;
-                        proceed = false;
-                    } else {
-                        if shuffle {
-                            loop {
-                                player_index = if let Some(pi) = shuffle_list.get(index_new as usize) {
-                                    *pi
-                                } else {
-                                    index_new = index;
-                                    proceed = false;
-                                    break;
-                                };
-                                if !player_list[player_index as usize].1 {
-                                    break;
-                                }
-                                index_new += 1;
-                            }
+                } else if index + 1 >= player_list.len() as i32 {
+                    index_new -= 1;
+                    proceed = false;
+                } else if shuffle {
+                    loop {
+                        player_index = if let Some(pi) = shuffle_list.get(index_new as usize) {
+                            *pi
+                        } else {
+                            index_new = index;
+                            proceed = false;
+                            break;
+                        };
+                        if !player_list[player_index as usize].1 {
+                            break;
                         }
+                        index_new += 1;
                     }
                 }
                 fs::write(
@@ -353,7 +341,7 @@ pub(crate) fn create_round_avatar(src: &str) -> io::Result<Pixbuf> {
     context.set_source_pixbuf(&image, 0.0, 0.0);
     context.paint();
 
-    let pixbuf = pixbuf_get_from_surface(&surface, 0, 0, w, h).ok_or(Error::last_os_error())?;
+    let pixbuf = pixbuf_get_from_surface(&surface, 0, 0, w, h).ok_or_else(Error::last_os_error)?;
 
     Ok(pixbuf)
 }

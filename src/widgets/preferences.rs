@@ -59,10 +59,9 @@ impl Preferences {
             Inhibit(false)
         });
 
-        let sender_clone = sender.clone();
         clear.connect_changed(move |s| {
             if let Some(id) = s.get_active_id() {
-                sender_clone
+                sender
                     .send(Action::ConfigsSetClear(id.parse::<u8>().unwrap_or(0)))
                     .unwrap_or(());
             }
