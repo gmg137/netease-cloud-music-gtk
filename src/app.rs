@@ -77,6 +77,7 @@ pub(crate) enum Action {
     ConfigsSetTray(bool),
     ConfigsSetLyrics(bool),
     ConfigsSetClear(u8),
+    ActivateApp,
 }
 
 #[derive(Clone)]
@@ -274,6 +275,10 @@ impl App {
                         save_config(&conf).await.ok();
                     }
                 });
+            }
+            Action::ActivateApp => {
+                self.window.show_now();
+                self.window.present();
             }
         }
 

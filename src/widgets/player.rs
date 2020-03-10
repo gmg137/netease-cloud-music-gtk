@@ -764,5 +764,9 @@ impl PlayerWrapper {
         self.info.mpris.connect_previous(clone!(@weak weak => move || {
             weak.backward();
         }));
+
+        self.info.mpris.connect_raise(clone!(@weak weak => move || {
+            weak.sender.send(Action::ActivateApp).unwrap();
+        }));
     }
 }
