@@ -81,8 +81,14 @@ struct PlayerListData {
 
 // 创建播放列表
 // play: 是否立即播放
+// fm: 创建 FM 播放列表
 #[allow(unused)]
-pub(crate) async fn create_player_list(list: &[SongInfo], sender: Sender<Action>, play: bool) -> NCMResult<()> {
+pub(crate) async fn create_player_list(
+    list: &[SongInfo],
+    sender: Sender<Action>,
+    play: bool,
+    fm: bool,
+) -> NCMResult<()> {
     // 提取歌曲 id 列表
     let song_id_list = list.iter().map(|si| si.id).collect::<Vec<u64>>();
     let mut api = MusicData::new().await?;
@@ -102,27 +108,24 @@ pub(crate) async fn create_player_list(list: &[SongInfo], sender: Sender<Action>
                 ));
             }
         });
+        // 播放列表长度
+        let len = player_list.len();
+        // 创建随机播放 id 列表
+        let mut shuffle_list: Vec<i32> = (0..).take(len).collect();
+        shuffle_list.shuffle(&mut thread_rng());
+        // 将播放列表写入数据库
+        if let Ok(buffer) = bincode::serialize(&PlayerListData {
+            player_list: player_list.to_owned(),
+            shuffle_list: shuffle_list.clone(),
+            index: if fm { 0 } else { -1 },
+        }) {
+            let path = format!("{}player_list.db", NCM_DATA.to_string_lossy());
+            fs::write(path, buffer).await?;
+        }
         // 如果需要播放
         if !player_list.is_empty() && play {
-            // 播放列表长度
-            let len = player_list.len();
-            // 创建随机播放 id 列表
-            let mut shuffle_list: Vec<i32> = (0..).take(len).collect();
-            shuffle_list.shuffle(&mut thread_rng());
-            // 将播放列表写入数据库
-            if let Ok(buffer) = bincode::serialize(&PlayerListData {
-                player_list: player_list.to_owned(),
-                shuffle_list: shuffle_list.clone(),
-                index: -1,
-            }) {
-                let path = format!("{}player_list.db", NCM_DATA.to_string_lossy());
-                if fs::write(path, buffer).await.is_ok() && play {
-                    // 播放歌单
-                    sender.send(Action::PlayerForward).ok();
-                    return Ok(());
-                }
-            }
-            sender.send(Action::ShowNotice("播放失败!".to_owned())).ok();
+            // 播放歌单
+            sender.send(Action::PlayerForward).ok();
         }
     }
     Ok(())

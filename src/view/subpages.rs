@@ -232,7 +232,7 @@ impl Subpages {
         let song_list = self.song_list.clone();
         let sender = self.sender.clone();
         sender.send(Action::PlayerTypes(PlayerTypes::Song)).unwrap_or(());
-        task::spawn(async move { create_player_list(&song_list, sender, true).await.ok() });
+        task::spawn(async move { create_player_list(&song_list, sender, true, false).await.ok() });
     }
 
     // 显示收藏按钮

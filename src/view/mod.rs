@@ -395,7 +395,7 @@ impl View {
                     if let Ok(si) = data.songs_detail(&song_id_list).await {
                         if !vsi.is_empty() {
                             // 创建播放列表
-                            create_player_list(&si, sender.clone(), false).await.ok();
+                            create_player_list(&si, sender.clone(), false, true).await.ok();
                             // 下载专辑图片
                             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
                             download_img(&si[0].pic_url, &image_path, 130, 130, 100_000).await.ok();
@@ -455,7 +455,7 @@ impl View {
                             if let Ok(si) = data.songs_detail(&song_id_list).await {
                                 if !vsi.is_empty() {
                                     // 创建播放列表
-                                    create_player_list(&si, sender.clone(), false).await.ok();
+                                    create_player_list(&si, sender.clone(), false, true).await.ok();
                                     // 下载专辑图片
                                     let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
                                     download_img(&si[0].pic_url, &image_path, 130, 130, 100_000).await.ok();
