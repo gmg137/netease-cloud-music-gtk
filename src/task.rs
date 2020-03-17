@@ -5,8 +5,8 @@
 //
 use crate::{app::Action, model::*, musicapi::model::*, utils::*};
 use async_std::{sync::Arc, task};
-use crossbeam_channel::Sender;
 use futures::{channel::mpsc::Receiver, future::join_all, stream::StreamExt};
+use glib::Sender;
 
 type AsyncResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 

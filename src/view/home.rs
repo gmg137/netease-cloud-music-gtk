@@ -6,8 +6,8 @@
 
 use crate::{app::Action, model::NCM_CACHE, musicapi::model::*};
 use async_std::sync::Arc;
-use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
+use glib::Sender;
 use gtk::{prelude::*, Builder, EventBox, Frame, Grid, Image, Label, ShadowType};
 
 #[derive(Clone)]

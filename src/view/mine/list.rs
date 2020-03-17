@@ -5,7 +5,7 @@
 //
 use crate::{app::Action, musicapi::model::SongInfo, utils::*};
 use async_std::task;
-use crossbeam_channel::Sender;
+use glib::Sender;
 use gtk::{prelude::*, Builder, Button, CellRendererText, Label, ListStore, Menu, MenuItem, TreeView, TreeViewColumn};
 
 #[derive(Clone)]

@@ -10,9 +10,9 @@ use crate::{
     utils::*,
 };
 use async_std::sync::Arc;
-use crossbeam_channel::Sender;
 use gdk_pixbuf::{InterpType, Pixbuf};
 use glib::clone;
+use glib::Sender;
 use gtk::{prelude::*, Builder, Button, EventBox, Frame, Grid, Image, Label, ShadowType};
 use std::{cell::RefCell, rc::Rc};
 

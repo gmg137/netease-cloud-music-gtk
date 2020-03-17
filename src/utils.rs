@@ -10,11 +10,12 @@ use crate::{
     musicapi::model::SongInfo,
     widgets::player::LoopsState,
 };
-use async_std::{fs, future};
+use async_std::fs;
 use cairo::{Context, ImageSurface};
-use crossbeam_channel::Sender;
 use gdk::{pixbuf_get_from_surface, prelude::GdkContextExt};
 use gdk_pixbuf::Pixbuf;
+use glib::Sender;
+use isahc::{prelude::*, ResponseExt};
 use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
 use std::{io, io::Error, time::Duration};
@@ -23,7 +24,7 @@ use std::{io, io::Error, time::Duration};
 // url: 网址
 // path: 本地保存路径(包含文件名)
 // timeout: 请求超时,单位毫秒(默认:1000)
-pub(crate) async fn download_music<I, U>(url: I, path: I, timeout: U) -> Result<(), surf::Exception>
+pub(crate) async fn download_music<I, U>(url: I, path: I, timeout: U) -> Result<(), isahc::Error>
 where
     I: Into<String>,
     U: Into<Option<u64>>,
@@ -33,9 +34,10 @@ where
     let timeout = timeout.into().unwrap_or(1000);
     if !std::path::Path::new(&path).exists() && url.starts_with("http://") || url.starts_with("https://") {
         let music_url = url.replace("https:", "http:");
-        let buffer = future::timeout(Duration::from_millis(timeout), surf::get(music_url).recv_bytes()).await??;
-        if !buffer.is_empty() {
-            fs::write(path, buffer).await?;
+        let client = HttpClient::builder().timeout(Duration::from_millis(timeout)).build()?;
+        let mut response = client.get_async(music_url).await?;
+        if response.status().is_success() {
+            response.copy_to_file(path)?;
         }
     }
     Ok(())
@@ -47,13 +49,7 @@ where
 // width: 宽度
 // high: 高度
 // timeout: 请求超时,单位毫秒(默认:1000)
-pub(crate) async fn download_img<I, U>(
-    url: I,
-    path: I,
-    width: u32,
-    high: u32,
-    timeout: U,
-) -> Result<(), surf::Exception>
+pub(crate) async fn download_img<I, U>(url: I, path: I, width: u32, high: u32, timeout: U) -> Result<(), isahc::Error>
 where
     I: Into<String>,
     U: Into<Option<u64>>,
@@ -63,8 +59,10 @@ where
     let timeout = timeout.into().unwrap_or(1000);
     if !std::path::Path::new(&path).exists() && url.starts_with("http://") || url.starts_with("https://") {
         let image_url = format!("{}?param={}y{}", url, width, high).replace("https:", "http:");
-        if let Ok(buffer) = future::timeout(Duration::from_millis(timeout), surf::get(image_url).recv_bytes()).await? {
-            fs::write(path, buffer).await?;
+        let client = HttpClient::builder().timeout(Duration::from_millis(timeout)).build()?;
+        let mut response = client.get_async(image_url).await?;
+        if response.status().is_success() {
+            response.copy_to_file(path)?;
         }
     }
     Ok(())

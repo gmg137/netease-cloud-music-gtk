@@ -8,7 +8,7 @@ use crate::{
     musicapi::model::{SongInfo, SongList},
     utils::*,
 };
-use crossbeam_channel::Sender;
+use glib::Sender;
 use gtk::{prelude::*, Builder, Label, ListBox, ListBoxRow};
 mod fm;
 mod list;

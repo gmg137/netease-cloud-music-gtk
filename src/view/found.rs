@@ -9,7 +9,7 @@ use crate::{
     utils::{create_player_list, PlayerTypes},
 };
 use async_std::task;
-use crossbeam_channel::Sender;
+use glib::Sender;
 use gtk::{prelude::*, Builder, Button, CellRendererText, Label, ListBox, ListStore, TreeView, TreeViewColumn};
 
 #[derive(Clone)]

@@ -6,11 +6,10 @@
 use crate::{app::Action, data::MusicData, model::NCM_CACHE, musicapi::model::SongInfo, task::Task, utils::*};
 use async_std::task;
 use chrono::NaiveTime;
-use crossbeam_channel::Sender;
 use fragile::Fragile;
 use futures::{channel::mpsc, sink::SinkExt};
 use gdk_pixbuf::{InterpType, Pixbuf};
-use glib::{clone, SignalHandlerId, WeakRef};
+use glib::{clone, Sender, SignalHandlerId, WeakRef};
 use gst::ClockTime;
 use gtk::{
     prelude::*, ActionBar, Builder, Button, Image, Label, MenuButton, RadioButton, Scale, TextView, VolumeButton,

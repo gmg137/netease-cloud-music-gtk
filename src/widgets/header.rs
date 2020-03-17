@@ -12,8 +12,7 @@ use crate::{
     {data::MusicData, model::NCM_CACHE, APP_VERSION},
 };
 use async_std::task;
-use crossbeam_channel::Sender;
-use glib::clone;
+use glib::{clone, Sender};
 use gtk::{
     prelude::*, AboutDialog, Builder, Button, Dialog, Entry, Image, Label, MenuButton, ModelButton, Popover, SearchBar,
     SearchEntry, StackSwitcher, ToggleButton,

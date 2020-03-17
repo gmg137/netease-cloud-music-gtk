@@ -7,7 +7,7 @@ use crate::{
     app::Action,
     utils::{ClearCached, Configs},
 };
-use crossbeam_channel::Sender;
+use glib::Sender;
 use gtk::{prelude::*, Builder, ComboBoxText, Dialog, Switch};
 
 #[derive(Clone)]

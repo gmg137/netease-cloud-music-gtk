@@ -13,13 +13,12 @@ use crate::{
     widgets::{header::*, mark_all_notif, notice::*, player::*},
 };
 use async_std::{sync::Arc, task};
-use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
 use futures::channel::mpsc;
 use gio::{self, prelude::*};
+use glib::Receiver;
 use gtk::{prelude::*, ApplicationWindow, Builder, Overlay};
 use std::{cell::RefCell, rc::Rc};
 
-#[derive(Debug, Clone)]
 pub(crate) enum Action {
     SwitchStackMain,
     SwitchStackSub((u64, String, String), Parse),
@@ -80,7 +79,6 @@ pub(crate) enum Action {
     ActivateApp,
 }
 
-#[derive(Clone)]
 pub(crate) struct App {
     window: gtk::ApplicationWindow,
     view: Rc<View>,
@@ -89,13 +87,13 @@ pub(crate) struct App {
     notice: RefCell<Option<InAppNotification>>,
     overlay: Overlay,
     configs: Rc<RefCell<Configs>>,
-    sender: Sender<Action>,
-    receiver: Receiver<Action>,
+    receiver: RefCell<Option<Receiver<Action>>>,
 }
 
 impl App {
     pub(crate) fn new(application: &gtk::Application) -> Rc<Self> {
-        let (sender, receiver) = unbounded();
+        let (sender, r) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+        let receiver = RefCell::new(Some(r));
 
         let glade_src = include_str!("../ui/window.ui");
         let builder = Builder::new_from_string(glade_src);
@@ -107,7 +105,10 @@ impl App {
         let configs = task::block_on(get_config()).unwrap();
 
         let (sender_task, receiver_task) = mpsc::channel::<Task>(10);
-        task::spawn(actuator_loop(receiver_task, sender.clone()));
+        let sender_clone = sender.clone();
+        task::spawn(async move {
+            actuator_loop(receiver_task, sender_clone).await.ok();
+        });
 
         let header = Header::new(&builder, &sender, &configs);
         let view = View::new(&builder, &sender, &sender_task);
@@ -151,26 +152,18 @@ impl App {
             notice,
             overlay,
             configs: Rc::new(RefCell::new(configs)),
-            sender,
             receiver,
         };
         Rc::new(app)
     }
 
     fn init(app: &Rc<Self>) {
-        // Setup the Action channel
         let app = Rc::clone(app);
-        gtk::timeout_add(25, move || app.setup_action_channel());
+        let receiver = app.receiver.borrow_mut().take().unwrap();
+        receiver.attach(None, move |action| app.do_action(action));
     }
 
-    fn setup_action_channel(&self) -> glib::Continue {
-        let action = match self.receiver.try_recv() {
-            Ok(a) => a,
-            Err(TryRecvError::Empty) => return glib::Continue(true),
-            Err(TryRecvError::Disconnected) => unreachable!("How the hell was the action channel dropped."),
-        };
-
-        trace!("Incoming channel action: {:?}", action);
+    fn do_action(&self, action: Action) -> glib::Continue {
         match action {
             Action::SwitchHeaderBar(title) => self.header.switch_header(title),
             Action::RefreshHeaderUser => self.header.update_user_button(),
@@ -290,11 +283,8 @@ impl App {
     }
 
     pub(crate) fn run() {
-        let application = gtk::Application::new(
-            Some("com.github.gmg137.netease-cloud-music-gtk"),
-            gio::ApplicationFlags::empty(),
-        )
-        .expect("Application initialization failed...");
+        let application = gtk::Application::new(Some("com.github.gmg137.netease-cloud-music-gtk"), Default::default())
+            .expect("Application initialization failed...");
 
         let weak_app = application.downgrade();
         application.connect_startup(move |_| {

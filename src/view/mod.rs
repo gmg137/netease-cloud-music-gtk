@@ -17,9 +17,9 @@ use crate::{
     utils::*,
 };
 use async_std::{fs, sync::Arc, task};
-use crossbeam_channel::Sender;
 use found::*;
 use futures::{channel::mpsc, sink::SinkExt};
+use glib::Sender;
 use gtk::{prelude::*, Builder, Stack};
 use home::*;
 use mine::*;
