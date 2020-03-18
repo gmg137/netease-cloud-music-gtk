@@ -11,7 +11,7 @@ use curl::easy::{Easy, List};
 use encrypt::Encrypt;
 use model::*;
 use openssl::hash::{hash, MessageDigest};
-use std::{collections::HashMap, fs, io::Read};
+use std::{collections::HashMap, fs, io::Read, time::Duration};
 
 static BASE_URL: &str = "https://music.163.com";
 
@@ -73,7 +73,7 @@ impl MusicApi {
             value = "pc"
         }
         self.curl.url(&endpoint)?;
-        self.curl.timeout(std::time::Duration::from_secs(10))?;
+        self.curl.timeout(Duration::from_secs(20))?;
         let mut contents = Vec::new();
         let local: DateTime<Local> = Local::now();
         let times = local.timestamp();
