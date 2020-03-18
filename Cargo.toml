@@ -17,7 +17,6 @@ gdk-pixbuf ="^0.8"
 gstreamer = "^0.15"
 gstreamer-player = "^0.15"
 cairo-rs = { version = "^0.8", features = ["png"] }
-dbus = "*"
 mpris-player = "*"
 
 curl = "*"
@@ -35,7 +34,6 @@ serde_urlencoded = "*"
 lazy_static = "*"
 chrono = "*"
 fragile = "*"
-image = "*"
 xdg = "*"
 futures = "^0.3"
 async-std = "*"
@@ -44,7 +42,6 @@ custom_error = "*"
 
 log = "*"
 loggerv = "*"
-cargo-rpm = "*"
 
 [features]
 default = ["gtk_3_24"]
