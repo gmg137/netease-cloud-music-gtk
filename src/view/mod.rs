@@ -16,7 +16,11 @@ use crate::{
     task::Task,
     utils::*,
 };
-use async_std::{fs, sync::Arc, task};
+use async_std::{
+    fs,
+    sync::{Arc, Mutex},
+    task,
+};
 use found::*;
 use futures::{channel::mpsc, sink::SinkExt};
 use glib::Sender;
@@ -39,10 +43,16 @@ pub(crate) struct View {
     subpages: Rc<RefCell<Subpages>>,
     sender: Sender<Action>,
     sender_task: mpsc::Sender<Task>,
+    music_data: Arc<Mutex<MusicData>>,
 }
 
 impl View {
-    pub(crate) fn new(builder: &Builder, sender: &Sender<Action>, sender_task: &mpsc::Sender<Task>) -> Rc<Self> {
+    pub(crate) fn new(
+        builder: &Builder,
+        sender: &Sender<Action>,
+        sender_task: &mpsc::Sender<Task>,
+        music_data: Arc<Mutex<MusicData>>,
+    ) -> Rc<Self> {
         let stack: Stack = builder.get_object("stack").expect("无法获取 stack.");
         let main_stack: Stack = builder
             .get_object("main_pages_stack")
@@ -127,6 +137,7 @@ impl View {
             subpages,
             sender: sender.clone(),
             sender_task: sender_task.clone(),
+            music_data,
         })
     }
 
@@ -137,39 +148,37 @@ impl View {
     pub(crate) fn switch_stack_sub(&self, id: u64, name: String, image_path: String, parse: Parse) {
         let sender = self.sender.clone();
         let name_clone = name.to_owned();
+        let data = self.music_data.clone();
         task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                match parse {
-                    Parse::USL => {
-                        if let Ok(song_list) = data.song_list_detail(id, false).await {
-                            // 发送更新子页概览
-                            if sender
-                                .send(Action::RefreshSubUpView(id, name_clone, image_path))
-                                .is_ok()
-                            {
-                                sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
-                            }
-                        } else {
-                            sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
+            let mut data = data.lock().await;
+            match parse {
+                Parse::USL => {
+                    if let Ok(song_list) = data.song_list_detail(id, false).await {
+                        // 发送更新子页概览
+                        if sender
+                            .send(Action::RefreshSubUpView(id, name_clone, image_path))
+                            .is_ok()
+                        {
+                            sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
                         }
+                    } else {
+                        sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                     }
-                    Parse::ALBUM => {
-                        if let Ok(song_list) = data.album(id).await {
-                            // 发送更新子页概览
-                            if sender
-                                .send(Action::RefreshSubUpView(id, name_clone, image_path))
-                                .is_ok()
-                            {
-                                sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
-                            }
-                        } else {
-                            sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
-                        }
-                    }
-                    _ => {}
                 }
-            } else {
-                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+                Parse::ALBUM => {
+                    if let Ok(song_list) = data.album(id).await {
+                        // 发送更新子页概览
+                        if sender
+                            .send(Action::RefreshSubUpView(id, name_clone, image_path))
+                            .is_ok()
+                        {
+                            sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
+                        }
+                    } else {
+                        sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
+                    }
+                }
+                _ => {}
             }
         });
         self.sender.send(Action::SwitchHeaderBar(name)).unwrap_or(());
@@ -180,23 +189,20 @@ impl View {
         let sender = self.sender.clone();
         let text_clone = text.clone();
         task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                if let Ok(json) = data.search(text_clone, 1, 0, 50).await {
-                    if let Ok(song_list) = serde_json::from_str::<Vec<SongInfo>>(&json) {
-                        // 发送更新子页概览, 用以清除原始歌曲列表
-                        if sender
-                            .send(Action::RefreshSubUpView(0, String::new(), String::new()))
-                            .is_ok()
-                        {
-                            // 刷新搜索结果
-                            sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
-                        }
+            let mut data = MusicData::new();
+            if let Ok(json) = data.search(text_clone, 1, 0, 50).await {
+                if let Ok(song_list) = serde_json::from_str::<Vec<SongInfo>>(&json) {
+                    // 发送更新子页概览, 用以清除原始歌曲列表
+                    if sender
+                        .send(Action::RefreshSubUpView(0, String::new(), String::new()))
+                        .is_ok()
+                    {
+                        // 刷新搜索结果
+                        sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
                     }
-                } else {
-                    sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                 }
             } else {
-                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+                sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
             }
         });
         self.sender.send(Action::SwitchHeaderBar(text)).unwrap_or(());
@@ -211,14 +217,11 @@ impl View {
         self.subpages.borrow_mut().update_up_view(id, name, image_path);
         let sender = self.sender.clone();
         task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                if data.login_info().await.is_ok() {
-                    sender.send(Action::ShowSubLike(true)).unwrap_or(());
-                } else {
-                    sender.send(Action::ShowSubLike(false)).unwrap_or(());
-                }
+            let mut data = MusicData::new();
+            if data.login_info().await.is_ok() {
+                sender.send(Action::ShowSubLike(true)).unwrap_or(());
             } else {
-                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+                sender.send(Action::ShowSubLike(false)).unwrap_or(());
             }
         });
     }
@@ -230,28 +233,24 @@ impl View {
     pub(crate) fn sub_like_song_list(&self) {
         let sender = self.sender.clone();
         let id = self.subpages.borrow_mut().get_song_list_id();
+        let data = self.music_data.clone();
         task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                if data.song_list_like(true, id).await {
-                    fs::remove_file(format!("{}user_song_list.db", NCM_DATA.to_string_lossy()))
-                        .await
-                        .ok();
-                    sender
-                        .send(Action::ShowNotice("收藏歌单成功!".to_owned()))
-                        .unwrap_or(());
-                    if let Ok(login_info) = data.login_info().await {
-                        if let Ok(vsl) = data.user_song_list(login_info.uid, 0, 50).await {
-                            sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
-                        }
+            let mut data = data.lock().await;
+            if data.song_list_like(true, id).await {
+                fs::remove_file(format!("{}user_song_list.db", NCM_DATA.to_string_lossy()))
+                    .await
+                    .ok();
+                sender
+                    .send(Action::ShowNotice("收藏歌单成功!".to_owned()))
+                    .unwrap_or(());
+                if let Ok(login_info) = data.login_info().await {
+                    if let Ok(vsl) = data.user_song_list(login_info.uid, 0, 50).await {
+                        sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
                     }
-                } else {
-                    sender
-                        .send(Action::ShowNotice("收藏歌单失败!".to_owned()))
-                        .unwrap_or(());
                 }
             } else {
                 sender
-                    .send(Action::ShowNotice("接口请求异常!".to_owned()))
+                    .send(Action::ShowNotice("收藏歌单失败!".to_owned()))
                     .unwrap_or(());
             }
         });
@@ -265,24 +264,21 @@ impl View {
         let sender = self.sender.clone();
         let mut sender_task = self.sender_task.clone();
         task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                if let Ok(tsl) = data.top_song_list("hot", 0, 8).await {
-                    let tsl = Arc::new(tsl);
-                    sender_task.send(Task::DownloadHomeUpImage(Arc::clone(&tsl))).await.ok();
-                    if let Ok(na) = data.new_albums(0, 4).await {
-                        let na = Arc::new(na);
-                        sender_task.send(Task::DownloadHomeLowImage(Arc::clone(&na))).await.ok();
-                        sender.send(Action::RefreshHomeView(tsl, na)).unwrap_or(());
-                        return;
-                    }
-                    sender
-                        .send(Action::RefreshHomeView(tsl, Arc::new(vec![])))
-                        .unwrap_or(());
-                } else {
-                    sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
+            let mut data = MusicData::new();
+            if let Ok(tsl) = data.top_song_list("hot", 0, 8).await {
+                let tsl = Arc::new(tsl);
+                sender_task.send(Task::DownloadHomeUpImage(Arc::clone(&tsl))).await.ok();
+                if let Ok(na) = data.new_albums(0, 4).await {
+                    let na = Arc::new(na);
+                    sender_task.send(Task::DownloadHomeLowImage(Arc::clone(&na))).await.ok();
+                    sender.send(Action::RefreshHomeView(tsl, na)).unwrap_or(());
+                    return;
                 }
+                sender
+                    .send(Action::RefreshHomeView(tsl, Arc::new(vec![])))
+                    .unwrap_or(());
             } else {
-                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+                sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
             }
         });
     }
@@ -317,16 +313,13 @@ impl View {
         let lid = TOP_ID.get(&row_id).unwrap();
         let title = TOP_NAME.get(&row_id).unwrap();
         task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                if let Ok(song_list) = data.song_list_detail(*lid, false).await {
-                    sender
-                        .send(Action::RefreshFoundView(song_list, (*title).to_string()))
-                        .unwrap_or(());
-                } else {
-                    sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
-                }
+            let mut data = MusicData::new();
+            if let Ok(song_list) = data.song_list_detail(*lid, false).await {
+                sender
+                    .send(Action::RefreshFoundView(song_list, (*title).to_string()))
+                    .unwrap_or(());
             } else {
-                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+                sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
             }
         });
     }
@@ -340,27 +333,25 @@ impl View {
         self.sender.send(Action::MineShowNotLogin).unwrap_or(());
         let sender = self.sender.clone();
         let mut sender_task = self.sender_task.clone();
+        let data = self.music_data.clone();
         task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                // 判断是否已经登陆
-                if let Ok(login_info) = data.login_info().await {
-                    sender.send(Action::MineShowLogin).unwrap_or(());
-                    sender.send(Action::MineShowFm).unwrap_or(());
-                    if let Ok(vsl) = data.user_song_list(login_info.uid, 0, 50).await {
-                        sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
-                    }
-                    if let Ok(rr) = data.recommend_resource().await {
-                        let rr = Arc::new(rr);
-                        sender_task
-                            .send(Task::DownloadMineRecommendImage(Arc::clone(&rr)))
-                            .await
-                            .ok();
-                        sender.send(Action::RefreshMineRecommendView(rr)).unwrap_or(());
-                        return;
-                    }
+            let mut data = data.lock().await;
+            // 判断是否已经登陆
+            if let Ok(login_info) = data.login_info().await {
+                sender.send(Action::MineShowLogin).unwrap_or(());
+                sender.send(Action::MineShowFm).unwrap_or(());
+                if let Ok(vsl) = data.user_song_list(login_info.uid, 0, 50).await {
+                    sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
                 }
-            } else {
-                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+                if let Ok(rr) = data.recommend_resource().await {
+                    let rr = Arc::new(rr);
+                    sender_task
+                        .send(Task::DownloadMineRecommendImage(Arc::clone(&rr)))
+                        .await
+                        .ok();
+                    sender.send(Action::RefreshMineRecommendView(rr)).unwrap_or(());
+                    return;
+                }
             }
         });
     }
@@ -387,28 +378,26 @@ impl View {
 
     pub(crate) fn refresh_fm_player_list(&self) {
         let sender = self.sender.clone();
+        let data = self.music_data.clone();
         task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                if let Ok(vsi) = data.personal_fm().await {
-                    // 提取歌曲 id 列表
-                    let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u64>>();
-                    if let Ok(si) = data.songs_detail(&song_id_list).await {
-                        if !vsi.is_empty() {
-                            // 创建播放列表
-                            create_player_list(&si, sender.clone(), false, true).await.ok();
-                            // 下载专辑图片
-                            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
-                            download_img(&si[0].pic_url, &image_path, 130, 130, 100_000).await.ok();
-                            if sender.send(Action::RefreshMineFm(si[0].to_owned())).is_ok() {
-                                sender.send(Action::PlayerFm).unwrap_or(());
-                            }
+            let mut data = data.lock().await;
+            if let Ok(vsi) = data.personal_fm().await {
+                // 提取歌曲 id 列表
+                let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u64>>();
+                if let Ok(si) = data.songs_detail(&song_id_list).await {
+                    if !vsi.is_empty() {
+                        // 创建播放列表
+                        create_player_list(&si, sender.clone(), false, true).await.ok();
+                        // 下载专辑图片
+                        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
+                        download_img(&si[0].pic_url, &image_path, 130, 130, 100_000).await.ok();
+                        if sender.send(Action::RefreshMineFm(si[0].to_owned())).is_ok() {
+                            sender.send(Action::PlayerFm).unwrap_or(());
                         }
                     }
-                } else {
-                    sender.send(Action::ShowNotice("获取 FM 歌单失败!".to_owned())).unwrap();
                 }
             } else {
-                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+                sender.send(Action::ShowNotice("获取 FM 歌单失败!".to_owned())).unwrap();
             }
         });
     }
@@ -447,26 +436,24 @@ impl View {
             self.mine_login_switch_fm();
             if self.mine.borrow().fmview.get_now_play().is_none() {
                 let sender = self.sender.clone();
+                let data = self.music_data.clone();
                 task::spawn(async move {
-                    if let Ok(mut data) = MusicData::new().await {
-                        if let Ok(vsi) = data.personal_fm().await {
-                            // 提取歌曲 id 列表
-                            let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u64>>();
-                            if let Ok(si) = data.songs_detail(&song_id_list).await {
-                                if !vsi.is_empty() {
-                                    // 创建播放列表
-                                    create_player_list(&si, sender.clone(), false, true).await.ok();
-                                    // 下载专辑图片
-                                    let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
-                                    download_img(&si[0].pic_url, &image_path, 130, 130, 100_000).await.ok();
-                                    sender.send(Action::RefreshMineFm(si[0].to_owned())).unwrap_or(());
-                                }
+                    let mut data = data.lock().await;
+                    if let Ok(vsi) = data.personal_fm().await {
+                        // 提取歌曲 id 列表
+                        let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u64>>();
+                        if let Ok(si) = data.songs_detail(&song_id_list).await {
+                            if !vsi.is_empty() {
+                                // 创建播放列表
+                                create_player_list(&si, sender.clone(), false, true).await.ok();
+                                // 下载专辑图片
+                                let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
+                                download_img(&si[0].pic_url, &image_path, 130, 130, 100_000).await.ok();
+                                sender.send(Action::RefreshMineFm(si[0].to_owned())).unwrap_or(());
                             }
-                        } else {
-                            sender.send(Action::ShowNotice("获取 FM 歌单失败!".to_owned())).unwrap();
                         }
                     } else {
-                        sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+                        sender.send(Action::ShowNotice("获取 FM 歌单失败!".to_owned())).unwrap();
                     }
                 });
             }
@@ -475,43 +462,41 @@ impl View {
             self.mine_login_switch_list();
         }
         let sender = self.sender.clone();
+        let data = self.music_data.clone();
         task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                if row_id == 1 {
-                    if let Ok(song_list) = data.cloud_disk(refresh).await {
-                        sender
-                            .send(Action::RefreshMineView(song_list, "音乐云盘".to_owned()))
-                            .unwrap_or(());
-                    } else {
-                        sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
-                    }
-                } else if row_id == 2 {
-                    if let Ok(song_list) = data.recommend_songs().await {
-                        sender
-                            .send(Action::RefreshMineView(song_list, "每日歌曲推荐".to_owned()))
-                            .unwrap_or(());
-                    } else {
-                        sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
-                    }
+            let mut data = data.lock().await;
+            if row_id == 1 {
+                if let Ok(song_list) = data.cloud_disk(refresh).await {
+                    sender
+                        .send(Action::RefreshMineView(song_list, "音乐云盘".to_owned()))
+                        .unwrap_or(());
                 } else {
-                    row_id -= 3;
-                    if let Ok(login_info) = data.login_info().await {
-                        if let Ok(user_song_list) = &data.user_song_list(login_info.uid, 0, 50).await {
-                            if let Ok(song_list) = data.song_list_detail(user_song_list[row_id].id, refresh).await {
-                                sender
-                                    .send(Action::RefreshMineView(
-                                        song_list,
-                                        user_song_list[row_id].name.to_owned(),
-                                    ))
-                                    .unwrap_or(());
-                            } else {
-                                sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
-                            }
+                    sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
+                }
+            } else if row_id == 2 {
+                if let Ok(song_list) = data.recommend_songs().await {
+                    sender
+                        .send(Action::RefreshMineView(song_list, "每日歌曲推荐".to_owned()))
+                        .unwrap_or(());
+                } else {
+                    sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
+                }
+            } else {
+                row_id -= 3;
+                if let Ok(login_info) = data.login_info().await {
+                    if let Ok(user_song_list) = &data.user_song_list(login_info.uid, 0, 50).await {
+                        if let Ok(song_list) = data.song_list_detail(user_song_list[row_id].id, refresh).await {
+                            sender
+                                .send(Action::RefreshMineView(
+                                    song_list,
+                                    user_song_list[row_id].name.to_owned(),
+                                ))
+                                .unwrap_or(());
+                        } else {
+                            sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                         }
                     }
                 }
-            } else {
-                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
             }
         });
     }
@@ -531,28 +516,26 @@ impl View {
         let mut row_id = self.mine.borrow().get_selected_row_id();
         if row_id > 3 {
             let sender = self.sender.clone();
+            let data = self.music_data.clone();
             task::spawn(async move {
-                if let Ok(mut data) = MusicData::new().await {
-                    row_id -= 3;
-                    if let Ok(login_info) = data.login_info().await {
-                        if let Ok(sl) = &data.user_song_list(login_info.uid, 0, 50).await {
-                            if data.song_list_like(false, sl[row_id as usize].id).await {
-                                fs::remove_file(format!("{}user_song_list.db", NCM_DATA.to_string_lossy()))
-                                    .await
-                                    .ok();
-                                sender.send(Action::ShowNotice("已删除歌单!".to_owned())).unwrap_or(());
-                                if let Ok(vsl) = data.user_song_list(login_info.uid, 0, 50).await {
-                                    sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
-                                }
-                            } else {
-                                sender
-                                    .send(Action::ShowNotice("删除歌单失败!".to_owned()))
-                                    .unwrap_or(());
+                let mut data = data.lock().await;
+                row_id -= 3;
+                if let Ok(login_info) = data.login_info().await {
+                    if let Ok(sl) = &data.user_song_list(login_info.uid, 0, 50).await {
+                        if data.song_list_like(false, sl[row_id as usize].id).await {
+                            fs::remove_file(format!("{}user_song_list.db", NCM_DATA.to_string_lossy()))
+                                .await
+                                .ok();
+                            sender.send(Action::ShowNotice("已删除歌单!".to_owned())).unwrap_or(());
+                            if let Ok(vsl) = data.user_song_list(login_info.uid, 0, 50).await {
+                                sender.send(Action::RefreshMineSidebar(vsl)).unwrap_or(());
                             }
+                        } else {
+                            sender
+                                .send(Action::ShowNotice("删除歌单失败!".to_owned()))
+                                .unwrap_or(());
                         }
                     }
-                } else {
-                    sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
                 }
             });
         }
@@ -569,15 +552,13 @@ impl View {
     pub(crate) fn like_fm(&self) {
         if let Some(si) = self.mine.borrow_mut().fmview.get_now_play() {
             let sender = self.sender.clone();
+            let data = self.music_data.clone();
             task::spawn(async move {
-                if let Ok(mut data) = MusicData::new().await {
-                    if data.like(true, si.id).await {
-                        sender.send(Action::ShowNotice("收藏成功!".to_owned())).unwrap();
-                    } else {
-                        sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
-                    }
+                let mut data = data.lock().await;
+                if data.like(true, si.id).await {
+                    sender.send(Action::ShowNotice("收藏成功!".to_owned())).unwrap();
                 } else {
-                    sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+                    sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
                 }
             });
         }
@@ -585,13 +566,10 @@ impl View {
 
     pub(crate) fn dislike_fm(&self) {
         if let Some(si) = self.mine.borrow_mut().fmview.get_now_play() {
-            let sender = self.sender.clone();
+            let data = self.music_data.clone();
             task::spawn(async move {
-                if let Ok(mut data) = MusicData::new().await {
-                    data.fm_trash(si.id).await;
-                } else {
-                    sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
-                }
+                let mut data = data.lock().await;
+                data.fm_trash(si.id).await;
             });
         }
     }
@@ -607,11 +585,11 @@ impl View {
     pub(crate) fn cancel_collection(&self) {
         if let Some(id) = self.mine.borrow_mut().listview.get_song_id() {
             let sender = self.sender.clone();
+            let data = self.music_data.clone();
             task::spawn(async move {
-                if let Ok(mut data) = MusicData::new().await {
-                    data.like(false, id).await;
-                    sender.send(Action::RefreshMineCurrentView()).unwrap_or(());
-                }
+                let mut data = data.lock().await;
+                data.like(false, id).await;
+                sender.send(Action::RefreshMineCurrentView()).unwrap_or(());
             });
         }
     }

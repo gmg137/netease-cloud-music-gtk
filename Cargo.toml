@@ -19,7 +19,6 @@ gstreamer-player = "^0.15"
 cairo-rs = { version = "^0.8", features = ["png"] }
 mpris-player = "*"
 
-curl = "*"
 dirs = "*"
 rand = "*"
 hex = "*"
@@ -37,7 +36,7 @@ fragile = "*"
 xdg = "*"
 futures = "^0.3"
 async-std = "*"
-isahc = "*"
+isahc = { version = "*", features = ["cookies"] }
 custom_error = "*"
 
 log = "*"

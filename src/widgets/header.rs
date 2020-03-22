@@ -5,13 +5,11 @@
 //
 
 use super::preferences::Preferences;
-use crate::{
-    app::Action,
-    musicapi::model::LoginInfo,
-    utils::*,
-    {data::MusicData, model::NCM_CACHE, APP_VERSION},
+use crate::{app::Action, data::MusicData, model::NCM_CACHE, musicapi::model::LoginInfo, utils::*, APP_VERSION};
+use async_std::{
+    sync::{Arc, Mutex},
+    task,
 };
-use async_std::task;
 use glib::{clone, Sender};
 use gtk::{
     prelude::*, AboutDialog, Builder, Button, Dialog, Entry, Image, Label, MenuButton, ModelButton, Popover, SearchBar,
@@ -43,6 +41,7 @@ pub(crate) struct Header {
     close_button: ModelButton,
     about: AboutDialog,
     sender: Sender<Action>,
+    music_data: Arc<Mutex<MusicData>>,
 }
 
 #[derive(Debug, Clone)]
@@ -55,7 +54,12 @@ pub(crate) struct LoginDialog {
 }
 
 impl Header {
-    pub(crate) fn new(builder: &Builder, sender: &Sender<Action>, configs: &Configs) -> Rc<Self> {
+    pub(crate) fn new(
+        builder: &Builder,
+        sender: &Sender<Action>,
+        configs: &Configs,
+        music_data: Arc<Mutex<MusicData>>,
+    ) -> Rc<Self> {
         let back: Button = builder.get_object("back_button").expect("Couldn't get back button");
         let switch: StackSwitcher = builder.get_object("stack_switch").expect("Couldn't get stack switch");
         let title: Label = builder.get_object("subpages_title").expect("Couldn't get title");
@@ -115,6 +119,7 @@ impl Header {
             task,
             login_dialog,
             sender: sender.clone(),
+            music_data,
         };
         let h = Rc::new(header);
         Self::init(&h, &sender);
@@ -227,62 +232,56 @@ impl Header {
     // 登录
     pub(crate) fn login(&self, name: String, pass: String) {
         let sender = self.sender.clone();
+        let data = self.music_data.clone();
         task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                sender.send(Action::RefreshHome).unwrap();
-                if let Ok(login_info) = data.login(name, pass).await {
-                    if login_info.code == 200 {
-                        sender.send(Action::RefreshHeaderUser).unwrap();
-                        return;
-                    } else {
-                        sender.send(Action::ShowNotice(login_info.msg)).unwrap();
-                        return;
-                    }
-                };
-                sender.send(Action::ShowNotice("登陆异常!".to_owned())).unwrap();
-            } else {
-                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
-            }
+            let mut data = data.lock().await;
+            sender.send(Action::RefreshHome).unwrap();
+            if let Ok(login_info) = data.login(name, pass).await {
+                if login_info.code == 200 {
+                    sender.send(Action::RefreshHeaderUser).unwrap();
+                    return;
+                } else {
+                    sender.send(Action::ShowNotice(login_info.msg)).unwrap();
+                    return;
+                }
+            };
+            sender.send(Action::ShowNotice("登陆异常!".to_owned())).unwrap();
         });
     }
 
     // 退出
     pub(crate) fn logout(&self) {
         let sender = self.sender.clone();
-        task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                data.logout().await.ok();
-                sender.send(Action::RefreshHeaderUser).unwrap();
-            } else {
-                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
-            }
+        let data = self.music_data.clone();
+        task::block_on(async move {
+            let mut data = data.lock().await;
+            data.logout().await.ok();
+            sender.send(Action::RefreshHeaderUser).unwrap();
         });
     }
 
     // 更新用户头像和相关按钮
     pub(crate) fn update_user_button(&self) {
         let sender = self.sender.clone();
+        let data = self.music_data.clone();
         task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                if data.login {
-                    if let Ok(login_info) = data.login_info().await {
-                        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &login_info.uid);
-                        download_img(&login_info.avatar_url, &image_path, 37, 37, 5000)
-                            .await
-                            .ok();
-                        sender
-                            .send(Action::RefreshHeaderUserLogin(login_info.to_owned()))
-                            .unwrap();
-                        sender.send(Action::RefreshMine).unwrap_or(());
-                        return;
-                    }
+            let mut data = data.lock().await;
+            if data.login {
+                if let Ok(login_info) = data.login_info().await {
+                    let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &login_info.uid);
+                    download_img(&login_info.avatar_url, &image_path, 37, 37, 5000)
+                        .await
+                        .ok();
+                    sender
+                        .send(Action::RefreshHeaderUserLogin(login_info.to_owned()))
+                        .unwrap();
+                    sender.send(Action::RefreshMine).unwrap_or(());
+                    return;
                 }
-                sender.send(Action::RefreshHeaderUserLogout).unwrap();
-                sender.send(Action::RefreshMine).unwrap_or(());
-                return;
-            } else {
-                sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
             }
+            sender.send(Action::RefreshHeaderUserLogout).unwrap();
+            sender.send(Action::RefreshMine).unwrap_or(());
+            return;
         });
     }
 
@@ -308,16 +307,14 @@ impl Header {
     // 签到
     pub(crate) fn daily_task(&self) {
         let sender = self.sender.clone();
+        let data = self.music_data.clone();
         task::spawn(async move {
-            if let Ok(mut data) = MusicData::new().await {
-                if let Ok(task) = data.daily_task().await {
-                    if task.code == 200 {
-                        sender.send(Action::ShowNotice("签到成功!".to_owned())).unwrap();
-                    } else {
-                        sender.send(Action::ShowNotice(task.msg)).unwrap();
-                    }
+            let mut data = data.lock().await;
+            if let Ok(task) = data.daily_task().await {
+                if task.code == 200 {
+                    sender.send(Action::ShowNotice("签到成功!".to_owned())).unwrap();
                 } else {
-                    sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();
+                    sender.send(Action::ShowNotice(task.msg)).unwrap();
                 }
             } else {
                 sender.send(Action::ShowNotice("接口请求异常!".to_owned())).unwrap();

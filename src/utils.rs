@@ -91,7 +91,7 @@ pub(crate) async fn create_player_list(
 ) -> NCMResult<()> {
     // 提取歌曲 id 列表
     let song_id_list = list.iter().map(|si| si.id).collect::<Vec<u64>>();
-    let mut api = MusicData::new().await?;
+    let mut api = MusicData::new();
     // 批量搜索歌曲 URL
     if let Ok(v) = api.songs_url(&song_id_list, 320).await {
         // 初始化播放列表
@@ -260,7 +260,7 @@ pub(crate) async fn update_player_list(sender: Sender<Action>) -> NCMResult<()> 
     } = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
     // 提取歌曲 id 列表
     let song_id_list = player_list.iter().map(|(si, _)| si.id).collect::<Vec<u64>>();
-    let mut api = MusicData::new().await?;
+    let mut api = MusicData::new();
     // 批量搜索歌曲 URL
     if let Ok(v) = api.songs_url(&song_id_list, 320).await {
         // 初始化播放列表

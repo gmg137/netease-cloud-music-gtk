@@ -5,6 +5,7 @@
 //
 
 use crate::{
+    data::MusicData,
     model::{DATE_DAY, DATE_MONTH, ISO_WEEK},
     musicapi::model::{LoginInfo, Parse, SongInfo, SongList},
     task::{actuator_loop, Task},
@@ -12,7 +13,10 @@ use crate::{
     view::*,
     widgets::{header::*, mark_all_notif, notice::*, player::*},
 };
-use async_std::{sync::Arc, task};
+use async_std::{
+    sync::{Arc, Mutex},
+    task,
+};
 use futures::channel::mpsc;
 use gio::{self, prelude::*};
 use glib::Receiver;
@@ -110,8 +114,13 @@ impl App {
             actuator_loop(receiver_task, sender_clone).await.ok();
         });
 
-        let header = Header::new(&builder, &sender, &configs);
-        let view = View::new(&builder, &sender, &sender_task);
+        let music_data = Arc::new(Mutex::new(MusicData::new()));
+        let data = music_data.clone();
+        task::block_on(async move {
+            data.lock().await.re_login().await.ok();
+        });
+        let header = Header::new(&builder, &sender, &configs, Arc::clone(&music_data));
+        let view = View::new(&builder, &sender, &sender_task, Arc::clone(&music_data));
         let player = PlayerWrapper::new(&builder, &sender, &sender_task);
 
         window.show_all();

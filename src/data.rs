@@ -8,7 +8,7 @@ use crate::{
     model::{Errors, NCMResult, DATE_DAY, NCM_CONFIG, NCM_DATA},
     musicapi::{model::*, MusicApi},
 };
-use async_std::{fs, prelude::*};
+use async_std::{fs, prelude::*, task};
 use openssl::hash::{hash, MessageDigest};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -45,38 +45,46 @@ struct LoginKey {
 
 impl MusicData {
     #[allow(unused)]
-    pub(crate) async fn new() -> NCMResult<Self> {
-        if let Ok(buffer) = fs::read(format!("{}status_data.db", NCM_CONFIG.to_string_lossy())).await {
-            let mut status_data: StatusData = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
-            // 对比缓存数据是否过期
-            if status_data.day != *DATE_DAY {
-                // 清理缓存数据
-                clear_cache(&NCM_DATA).await;
-                // 更新日期
-                status_data.day = *DATE_DAY;
-                fs::write(
-                    format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
-                    bincode::serialize(&status_data).map_err(|_| Errors::NoneError)?,
-                )
-                .await?;
-            }
-            return Ok(MusicData {
-                musicapi: MusicApi::new()?,
-                login: status_data.login,
-            });
+    pub(crate) fn new() -> Self {
+        if let Ok(data) = task::block_on(Self::from_db()) {
+            return data;
         }
-        let data = StatusData {
+        task::spawn(async {
+            let data = StatusData {
+                login: false,
+                day: *DATE_DAY,
+            };
+            if let Ok(value) = bincode::serialize(&data) {
+                fs::write(format!("{}status_data.db", NCM_CONFIG.to_string_lossy()), value)
+                    .await
+                    .ok();
+            }
+        });
+        MusicData {
+            musicapi: MusicApi::new(),
             login: false,
-            day: *DATE_DAY,
-        };
-        fs::write(
-            format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
-            bincode::serialize(&data).map_err(|_| Errors::NoneError)?,
-        )
-        .await?;
+        }
+    }
+
+    // 从数据库查询登陆状态
+    pub(crate) async fn from_db() -> NCMResult<Self> {
+        let buffer = fs::read(format!("{}status_data.db", NCM_CONFIG.to_string_lossy())).await?;
+        let mut status_data: StatusData = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
+        // 对比缓存数据是否过期
+        if status_data.day != *DATE_DAY {
+            // 清理缓存数据
+            clear_cache(&NCM_DATA).await.ok();
+            // 更新日期
+            status_data.day = *DATE_DAY;
+            fs::write(
+                format!("{}status_data.db", NCM_CONFIG.to_string_lossy()),
+                bincode::serialize(&status_data).map_err(|_| Errors::NoneError)?,
+            )
+            .await?;
+        }
         Ok(MusicData {
-            musicapi: MusicApi::new()?,
-            login: false,
+            musicapi: MusicApi::new(),
+            login: status_data.login,
         })
     }
 
@@ -84,7 +92,7 @@ impl MusicData {
     #[allow(unused)]
     pub(crate) async fn login(&mut self, username: String, password: String) -> NCMResult<LoginInfo> {
         let password = hex::encode(hash(MessageDigest::md5(), &password.as_bytes())?);
-        let login_info = self.musicapi.login(username.to_owned(), password.to_owned())?;
+        let login_info = self.musicapi.login(username.to_owned(), password.to_owned()).await?;
         if login_info.code.eq(&200) {
             self.login = true;
             let data = StatusData {
@@ -113,10 +121,10 @@ impl MusicData {
 
     // 重新登录
     #[allow(unused)]
-    async fn re_login(&mut self) -> NCMResult<LoginInfo> {
+    pub(crate) async fn re_login(&mut self) -> NCMResult<LoginInfo> {
         if let Ok(buffer) = fs::read(format!("{}login_key.db", NCM_CONFIG.to_string_lossy())).await {
             let LoginKey { username, password } = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
-            let login_info = self.musicapi.login(username, password)?;
+            let login_info = self.musicapi.login(username, password).await?;
             if login_info.code.eq(&200) {
                 self.login = true;
                 let data = StatusData {
@@ -168,6 +176,8 @@ impl MusicData {
     #[allow(unused)]
     pub(crate) async fn logout(&mut self) -> NCMResult<()> {
         if self.login {
+            self.login = false;
+            self.musicapi = MusicApi::new();
             let data = StatusData {
                 login: false,
                 day: *DATE_DAY,
@@ -182,16 +192,13 @@ impl MusicData {
             fs::remove_file(format!("{}recommend_songs.db", NCM_DATA.to_string_lossy())).await?;
             fs::remove_file(format!("{}login_info.db", NCM_DATA.to_string_lossy())).await?;
         }
-        self.login = false;
-        let cookie_path = format!("{}cookie", NCM_CONFIG.to_string_lossy());
-        fs::write(&cookie_path, "").await?;
         Ok(())
     }
 
     // 每日签到
     #[allow(unused)]
     pub(crate) async fn daily_task(&mut self) -> NCMResult<Msg> {
-        self.musicapi.daily_task()
+        self.musicapi.daily_task().await
     }
 
     // 用户歌单
@@ -209,7 +216,7 @@ impl MusicData {
                 }
             }
             // 查询 api
-            let usl = self.musicapi.user_song_list(uid, offset, limit)?;
+            let usl = self.musicapi.user_song_list(uid, offset, limit).await?;
             if !usl.is_empty() {
                 fs::write(path, bincode::serialize(&usl).map_err(|_| Errors::NoneError)?).await?;
                 return Ok(usl);
@@ -230,7 +237,7 @@ impl MusicData {
                 }
             }
         }
-        let sld = self.musicapi.song_list_detail(songlist_id)?;
+        let sld = self.musicapi.song_list_detail(songlist_id).await?;
         if !sld.is_empty() {
             fs::write(path, bincode::serialize(&sld).map_err(|_| Errors::NoneError)?).await?;
             return Ok(sld);
@@ -242,7 +249,7 @@ impl MusicData {
     // ids: 歌曲 id 列表
     #[allow(unused)]
     pub(crate) async fn songs_detail(&mut self, ids: &[u64]) -> NCMResult<Vec<SongInfo>> {
-        self.musicapi.songs_detail(ids)
+        self.musicapi.songs_detail(ids).await
     }
 
     // 歌曲 URL
@@ -252,7 +259,7 @@ impl MusicData {
     //       128: 128k
     #[allow(unused)]
     pub(crate) async fn songs_url(&mut self, ids: &[u64], rate: u32) -> NCMResult<Vec<SongUrl>> {
-        self.musicapi.songs_url(ids, rate)
+        self.musicapi.songs_url(ids, rate).await
     }
 
     // 每日推荐歌单
@@ -265,7 +272,7 @@ impl MusicData {
                     return Ok(song_list);
                 }
             }
-            if let Ok(rr) = self.musicapi.recommend_resource() {
+            if let Ok(rr) = self.musicapi.recommend_resource().await {
                 if !rr.is_empty() {
                     fs::write(path, bincode::serialize(&rr).map_err(|_| Errors::NoneError)?).await?;
                     return Ok(rr);
@@ -285,7 +292,7 @@ impl MusicData {
                     return Ok(songs);
                 }
             }
-            if let Ok(rs) = self.musicapi.recommend_songs() {
+            if let Ok(rs) = self.musicapi.recommend_songs().await {
                 if !rs.is_empty() {
                     fs::write(path, bincode::serialize(&rs).map_err(|_| Errors::NoneError)?).await?;
                     return Ok(rs);
@@ -307,7 +314,7 @@ impl MusicData {
                     }
                 }
             }
-            if let Ok(rs) = self.musicapi.user_cloud_disk() {
+            if let Ok(rs) = self.musicapi.user_cloud_disk().await {
                 if !rs.is_empty() {
                     fs::write(path, bincode::serialize(&rs).map_err(|_| Errors::NoneError)?).await?;
                     return Ok(rs);
@@ -320,7 +327,7 @@ impl MusicData {
     // 私人FM
     #[allow(unused)]
     pub(crate) async fn personal_fm(&mut self) -> NCMResult<Vec<SongInfo>> {
-        self.musicapi.personal_fm()
+        self.musicapi.personal_fm().await
     }
 
     // 收藏/喜欢
@@ -328,7 +335,7 @@ impl MusicData {
     // like: true 收藏，false 取消
     #[allow(unused)]
     pub(crate) async fn like(&mut self, like: bool, songid: u64) -> bool {
-        if self.musicapi.like(like, songid) {
+        if self.musicapi.like(like, songid).await {
             if let Ok(login_info) = self.login_info().await {
                 if let Ok(usl) = &self.user_song_list(login_info.uid, 0, 50).await {
                     let row_id = 0; // 假定喜欢的音乐歌单总排在第一位
@@ -344,7 +351,7 @@ impl MusicData {
     // songid: 歌曲id
     #[allow(unused)]
     pub(crate) async fn fm_trash(&mut self, songid: u64) -> bool {
-        self.musicapi.fm_trash(songid)
+        self.musicapi.fm_trash(songid).await
     }
 
     // 搜索
@@ -354,7 +361,7 @@ impl MusicData {
     // limit: 数量
     #[allow(unused)]
     pub(crate) async fn search(&mut self, keywords: String, types: u32, offset: u16, limit: u16) -> NCMResult<String> {
-        self.musicapi.search(keywords, types, offset, limit)
+        self.musicapi.search(keywords, types, offset, limit).await
     }
 
     // 新碟上架
@@ -368,7 +375,7 @@ impl MusicData {
                 return Ok(song_list);
             }
         }
-        if let Ok(na) = self.musicapi.new_albums(offset, limit) {
+        if let Ok(na) = self.musicapi.new_albums(offset, limit).await {
             if !na.is_empty() {
                 fs::write(
                     path,
@@ -393,7 +400,7 @@ impl MusicData {
                 return Ok(album);
             }
         }
-        if let Ok(a) = self.musicapi.album(album_id) {
+        if let Ok(a) = self.musicapi.album(album_id).await {
             if !a.is_empty() {
                 fs::write(path, bincode::serialize(&a).map_err(|_| Errors::NoneError)?).await?;
                 return Ok(a);
@@ -416,7 +423,7 @@ impl MusicData {
                 return Ok(to_song_list);
             }
         }
-        if let Ok(tsl) = self.musicapi.top_song_list(order, offset, limit) {
+        if let Ok(tsl) = self.musicapi.top_song_list(order, offset, limit).await {
             if !tsl.is_empty() {
                 fs::write(path, bincode::serialize(&tsl).map_err(|_| Errors::NoneError)?).await?;
                 return Ok(tsl);
@@ -461,7 +468,7 @@ impl MusicData {
                 return Ok(song_lyric);
             }
         }
-        if let Ok(sl) = self.musicapi.song_lyric(music_id) {
+        if let Ok(sl) = self.musicapi.song_lyric(music_id).await {
             if !sl.is_empty() {
                 fs::write(path, bincode::serialize(&sl).map_err(|_| Errors::NoneError)?).await?;
                 return Ok(sl);
@@ -475,7 +482,7 @@ impl MusicData {
     // id: 歌单 id
     #[allow(unused)]
     pub(crate) async fn song_list_like(&mut self, like: bool, id: u64) -> bool {
-        self.musicapi.song_list_like(like, id)
+        self.musicapi.song_list_like(like, id).await
     }
 }
 
@@ -529,6 +536,6 @@ mod tests {
         //dbg!(data.top_song_list("new", 0, 3));
         //dbg!(data.new_albums(0, 5));
         //dbg!(data.album(75889022));
-        assert!(true);
+        //assert!(true);
     }
 }
