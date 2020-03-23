@@ -3,8 +3,11 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-use crate::{app::Action, musicapi::model::SongInfo, utils::*};
-use async_std::task;
+use crate::{app::Action, data::MusicData, musicapi::model::SongInfo, utils::*};
+use async_std::{
+    sync::{Arc, Mutex},
+    task,
+};
 use glib::Sender;
 use gtk::{prelude::*, Builder, Button, CellRendererText, Label, ListStore, Menu, MenuItem, TreeView, TreeViewColumn};
 
@@ -31,10 +34,15 @@ pub(crate) struct ListView {
     pub(crate) lowview: LowView,
     song_list: Vec<SongInfo>,
     sender: Sender<Action>,
+    music_data: Arc<Mutex<MusicData>>,
 }
 
 impl ListView {
-    pub(crate) fn new(mine_login_list_builder: &Builder, sender: Sender<Action>) -> Self {
+    pub(crate) fn new(
+        mine_login_list_builder: &Builder,
+        sender: Sender<Action>,
+        music_data: Arc<Mutex<MusicData>>,
+    ) -> Self {
         let title: Label = mine_login_list_builder
             .get_object("mine_up_title")
             .expect("无法获取 mine_up_title .");
@@ -87,6 +95,7 @@ impl ListView {
             lowview,
             song_list: vec![],
             sender,
+            music_data,
         };
         Self::init(&s);
         s
@@ -210,6 +219,10 @@ impl ListView {
         let song_list = self.song_list.clone();
         let sender = self.sender.clone();
         sender.send(Action::PlayerTypes(PlayerTypes::Song)).unwrap_or(());
-        task::spawn(async move { create_player_list(&song_list, sender, true, false).await.ok() });
+        let data = self.music_data.clone();
+        task::spawn(async move {
+            let mut api = data.lock().await;
+            create_player_list(&mut api, &song_list, sender, true, false).await.ok()
+        });
     }
 }

@@ -480,6 +480,18 @@ impl PlayerWidget {
         }
     }
 
+    pub(crate) fn play_one(&self) {
+        let (shuffle, loops) = match *self.loops_state.borrow() {
+            LoopsState::SHUFFLE => (true, false),
+            LoopsState::PLAYLIST => (false, true),
+            LoopsState::CONSECUTIVE => (false, false),
+            LoopsState::NONE => (false, false),
+        };
+        if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, shuffle, loops)) {
+            self.sender.send(Action::ReadyPlayer(si)).unwrap();
+        }
+    }
+
     fn backward(&self) {
         let state = match *self.loops_state.borrow() {
             LoopsState::SHUFFLE => true,

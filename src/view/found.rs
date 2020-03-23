@@ -5,6 +5,7 @@
 //
 use crate::{
     app::Action,
+    data::MusicData,
     musicapi::model::SongInfo,
     utils::{create_player_list, PlayerTypes},
 };
@@ -210,6 +211,7 @@ impl Found {
         let song_list = self.song_list.clone();
         let sender = self.sender.clone();
         sender.send(Action::PlayerTypes(PlayerTypes::Song)).unwrap_or(());
-        task::spawn(async move { create_player_list(&song_list, sender, true, false).await.ok() });
+        let mut api = MusicData::new();
+        task::spawn(async move { create_player_list(&mut api, &song_list, sender, true, false).await.ok() });
     }
 }

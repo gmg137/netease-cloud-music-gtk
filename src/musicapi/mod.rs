@@ -5,18 +5,49 @@
 //
 mod encrypt;
 pub(crate) mod model;
-use crate::model::{Errors, NCMResult, NCM_CONFIG};
-use chrono::prelude::*;
-use encrypt::Encrypt;
+use crate::model::{Errors, NCMResult};
+use encrypt::Crypto;
 use isahc::prelude::*;
+use lazy_static::lazy_static;
 use model::*;
-use openssl::hash::{hash, MessageDigest};
-use std::{collections::HashMap, fs, time::Duration};
+use regex::Regex;
+use std::{collections::HashMap, time::Duration};
+use urlqstring::QueryParams;
+
+lazy_static! {
+    static ref _CSRF: Regex = Regex::new(r"_csrf=(?P<csrf>[^(;|$)]+)").unwrap();
+}
 
 static BASE_URL: &str = "https://music.163.com";
 
+const LINUX_USER_AGNET: &str =
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36";
+
+const USER_AGENT_LIST: [&str; 14] = [
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B143 Safari/601.1",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B143 Safari/601.1",
+    "Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Mobile Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Mobile Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 5.1.1; Nexus 6 Build/LYZ28E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Mobile Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_2 like Mac OS X) AppleWebKit/603.2.4 (KHTML, like Gecko) Mobile/14F89;GameHelper",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 10_0 like Mac OS X) AppleWebKit/602.1.38 (KHTML, like Gecko) Version/10.0 Mobile/14A300 Safari/602.1",
+    "Mozilla/5.0 (iPad; CPU OS 10_0 like Mac OS X) AppleWebKit/602.1.38 (KHTML, like Gecko) Version/10.0 Mobile/14A300 Safari/602.1",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:46.0) Gecko/20100101 Firefox/46.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/603.2.4 (KHTML, like Gecko) Version/10.1.1 Safari/603.2.4",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:46.0) Gecko/20100101 Firefox/46.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/13.1058",
+];
+
 pub struct MusicApi {
     client: HttpClient,
+    csrf: String,
+}
+
+enum CryptoApi {
+    WEAPI,
+    LINUXAPI,
 }
 
 impl MusicApi {
@@ -27,25 +58,52 @@ impl MusicApi {
             .cookies()
             .build()
             .expect("初始化网络请求失败!");
-        Self { client }
+        Self {
+            client,
+            csrf: String::new(),
+        }
     }
 
     // 发送请求
     // method: 请求方法
     // path: 请求路径
     // params: 请求参数
-    // custom: 是否显示本机信息
-    async fn request(&mut self, method: Method, path: &str, params: &mut HashMap<String, String>) -> NCMResult<String> {
-        let endpoint = format!("{}{}", BASE_URL, path);
+    // cryptoapi: 请求加密方式
+    // ua: 要使用的 USER_AGENT_LIST
+    async fn request(
+        &mut self,
+        method: Method,
+        path: &str,
+        params: HashMap<&str, &str>,
+        cryptoapi: CryptoApi,
+        ua: &str,
+    ) -> NCMResult<String> {
+        let mut url = format!("{}{}", BASE_URL, path);
         match method {
             Method::POST => {
-                let local: DateTime<Local> = Local::now();
-                let times = local.timestamp();
-                let hextoken = hex::encode(hash(MessageDigest::md5(), &times.to_string().as_bytes())?);
-                let make_cookie = format!("version=0;os=pc;JSESSIONID-WYYY=%2FKSy%2B4xG6fYVld42G9E%2BxAj9OyjC0BYXENKxOIRH%5CR72cpy9aBjkohZ24BNkpjnBxlB6lzAG4D%5C%2FMNUZ7VUeRUeVPJKYu%2BKBnZJjEmqgpOx%2BU6VYmypKB%5CXb%2F3W7%2BDjOElCb8KlhDS2cRkxkTb9PBDXro41Oq7aBB6M6OStEK8E%2Flyc8%3A{}; _iuqxldmzr_=32; _ntes_nnid={},{}; _ntes_nuid={}", times,hextoken,hextoken,times+50);
-                let params = Encrypt::encrypt_request(params)?;
-                let request = Request::post(&endpoint)
-                    .header("Cookie", make_cookie)
+                let user_agent = match cryptoapi {
+                    CryptoApi::LINUXAPI => LINUX_USER_AGNET.to_string(),
+                    CryptoApi::WEAPI => choose_user_agent(ua).to_string(),
+                };
+                let body = match cryptoapi {
+                    CryptoApi::LINUXAPI => {
+                        let data = format!(
+                            r#"{{"method":"linuxapi","url":"{}","params":{}}}"#,
+                            url.replace("weapi", "api"),
+                            QueryParams::from_map(params).json()
+                        );
+                        url = "https://music.163.com/api/linux/forward".to_owned();
+                        Crypto::linuxapi(&data)
+                    }
+                    CryptoApi::WEAPI => {
+                        let mut params = params;
+                        params.insert("csrf_token", &self.csrf[..]);
+                        Crypto::weapi(&QueryParams::from_map(params).json())
+                    }
+                };
+
+                let request = Request::post(&url)
+                    .header("Cookie", "os=pc")
                     .header("Accept", "*/*")
                     .header("Accept-Encoding", "gzip,deflate,br")
                     .header("Accept-Language", "en-US,en;q=0.5")
@@ -53,23 +111,26 @@ impl MusicApi {
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .header("Host", "music.163.com")
                     .header("Referer", "https://music.163.com")
-                    .header(
-                        "User-Agent",
-                        "Mozilla/5.0 (X11; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0",
-                    )
-                    .body(params)
+                    .header("User-Agent", user_agent)
+                    .body(body)
                     .unwrap();
-                self.client
-                    .send_async(request)
-                    .await
-                    .map_err(|_| Errors::NoneError)?
-                    .text_async()
-                    .await
-                    .map_err(|_| Errors::NoneError)
+                let mut response = self.client.send_async(request).await.map_err(|_| Errors::NoneError)?;
+                for (k, v) in response.headers() {
+                    let v = v.to_str().unwrap_or("");
+                    if k.eq("set-cookie") && v.contains("__csrf") {
+                        let csrf_token = if let Some(caps) = _CSRF.captures(v) {
+                            caps.name("csrf").unwrap().as_str()
+                        } else {
+                            ""
+                        };
+                        self.csrf = csrf_token.to_owned();
+                    }
+                }
+                response.text_async().await.map_err(|_| Errors::NoneError)
             }
             Method::GET => self
                 .client
-                .get_async(&endpoint)
+                .get_async(&url)
                 .await
                 .map_err(|_| Errors::NoneError)?
                 .text_async()
@@ -87,25 +148,27 @@ impl MusicApi {
         let path;
         if username.len().eq(&11) && username.parse::<u64>().is_ok() {
             path = "/weapi/login/cellphone";
-            params.insert("phone".to_owned(), username);
-            params.insert("password".to_owned(), password);
-            params.insert("rememberLogin".to_owned(), "true".to_owned());
+            params.insert("phone", &username[..]);
+            params.insert("password", &password[..]);
+            params.insert("rememberLogin", "true");
         } else {
             let client_token = "1_jVUMqWEPke0/1/Vu56xCmJpo5vP1grjn_SOVVDzOc78w8OKLVZ2JH7IfkjSXqgfmh";
             path = "/weapi/login";
-            params.insert("username".to_owned(), username);
-            params.insert("password".to_owned(), password);
-            params.insert("rememberLogin".to_owned(), "true".to_owned());
-            params.insert("clientToken".to_owned(), client_token.to_owned());
+            params.insert("username", &username[..]);
+            params.insert("password", &password[..]);
+            params.insert("rememberLogin", "true");
+            params.insert("clientToken", client_token);
         }
-        let result = self.request(Method::POST, path, &mut params).await?;
+        let result = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await?;
         to_login_info(result)
     }
 
     // 登陆状态
     #[allow(unused)]
     pub async fn login_status(&mut self) -> NCMResult<LoginInfo> {
-        let result = self.request(Method::GET, "", &mut HashMap::new()).await?;
+        let result = self
+            .request(Method::GET, "", HashMap::new(), CryptoApi::WEAPI, "")
+            .await?;
         let re = regex::Regex::new(
             r#"userId:(?P<id>\d+),nickname:"(?P<nickname>\w+)",avatarUrl.+?(?P<avatar_url>http.+?jpg)""#,
         )?;
@@ -125,8 +188,9 @@ impl MusicApi {
     // 退出
     #[allow(unused)]
     pub async fn logout(&mut self) {
-        let cookie_path = format!("{}cookie", NCM_CONFIG.to_string_lossy());
-        fs::write(&cookie_path, "").unwrap_or(());
+        let path = "https://music.163.com/weapi/logout";
+        self.request(Method::POST, path, HashMap::new(), CryptoApi::WEAPI, "pc")
+            .await;
     }
 
     // 每日签到
@@ -134,8 +198,8 @@ impl MusicApi {
     pub async fn daily_task(&mut self) -> NCMResult<Msg> {
         let path = "/weapi/point/dailyTask";
         let mut params = HashMap::new();
-        params.insert("type".to_owned(), "0".to_owned());
-        let result = self.request(Method::POST, path, &mut params).await?;
+        params.insert("type", "0");
+        let result = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await?;
         to_msg(result)
     }
 
@@ -147,11 +211,13 @@ impl MusicApi {
     pub async fn user_song_list(&mut self, uid: u64, offset: u8, limit: u8) -> NCMResult<Vec<SongList>> {
         let path = "/weapi/user/playlist";
         let mut params = HashMap::new();
-        params.insert("uid".to_owned(), uid.to_string());
-        params.insert("offset".to_owned(), offset.to_string());
-        params.insert("limit".to_owned(), limit.to_string());
-        params.insert("csrf_token".to_owned(), "".to_string());
-        let result = self.request(Method::POST, path, &mut params).await?;
+        let uid = uid.to_string();
+        let offset = offset.to_string();
+        let limit = limit.to_string();
+        params.insert("uid", uid.as_str());
+        params.insert("offset", offset.as_str());
+        params.insert("limit", limit.as_str());
+        let result = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await?;
         to_song_list(result, Parse::USL)
     }
 
@@ -160,10 +226,9 @@ impl MusicApi {
     pub async fn user_cloud_disk(&mut self) -> NCMResult<Vec<SongInfo>> {
         let path = "/weapi/v1/cloud/get";
         let mut params = HashMap::new();
-        params.insert("offset".to_owned(), 0.to_string());
-        params.insert("limit".to_owned(), 1000.to_string());
-        params.insert("csrf_token".to_owned(), "".to_string());
-        let result = self.request(Method::POST, path, &mut params).await?;
+        params.insert("offset", "0");
+        params.insert("limit", "1000");
+        let result = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await?;
         to_song_info(result, Parse::UCD)
     }
 
@@ -171,14 +236,14 @@ impl MusicApi {
     // songlist_id: 歌单 id
     #[allow(unused)]
     pub async fn song_list_detail(&mut self, songlist_id: u64) -> NCMResult<Vec<SongInfo>> {
-        let path = "/weapi/v3/playlist/detail";
+        let path = "/api/v3/playlist/detail";
         let mut params = HashMap::new();
-        params.insert("id".to_owned(), songlist_id.to_string());
-        params.insert("total".to_owned(), true.to_string());
-        params.insert("limit".to_owned(), 1000.to_string());
-        params.insert("offest".to_owned(), 0.to_string());
-        params.insert("n".to_owned(), 1000.to_string());
-        let result = self.request(Method::POST, path, &mut params).await?;
+        let songlist_id = songlist_id.to_string();
+        params.insert("id", songlist_id.as_str());
+        params.insert("n", "1000");
+        let result = self
+            .request(Method::POST, path, params, CryptoApi::LINUXAPI, "")
+            .await?;
         to_song_info(result, Parse::USL)
     }
 
@@ -188,19 +253,17 @@ impl MusicApi {
     pub async fn songs_detail(&mut self, ids: &[u64]) -> NCMResult<Vec<SongInfo>> {
         let path = "/weapi/v3/song/detail";
         let mut params = HashMap::new();
-        let mut json = String::from("[");
-        for id in ids {
-            let s = format!(r#"{{"id":{}}},"#, id);
-            json.push_str(&s);
-        }
-        let mut json = json.trim_end_matches(',').to_owned();
-        json.push_str("]");
-        params.insert("c".to_owned(), json);
-        params.insert(
-            "ids".to_owned(),
-            serde_json::to_string(ids).unwrap_or_else(|_| "[]".to_owned()),
+        let c = format!(
+            r#""[{{"id":{}}}]""#,
+            ids.iter().map(|i| i.to_string()).collect::<Vec<String>>().join(",")
         );
-        let result = self.request(Method::POST, path, &mut params).await?;
+        let ids = format!(
+            r#""[{}]""#,
+            ids.iter().map(|i| i.to_string()).collect::<Vec<String>>().join(",")
+        );
+        params.insert("c", &c[..]);
+        params.insert("ids", &ids[..]);
+        let result = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await?;
         to_song_info(result, Parse::USL)
     }
 
@@ -211,11 +274,15 @@ impl MusicApi {
     //       128: 128k
     #[allow(unused)]
     pub async fn songs_url(&mut self, ids: &[u64], rate: u32) -> NCMResult<Vec<SongUrl>> {
-        let path = "/weapi/song/enhance/player/url";
+        let path = "/api/song/enhance/player/url";
         let mut params = HashMap::new();
-        params.insert("ids".to_owned(), serde_json::to_string(ids)?);
-        params.insert("br".to_owned(), (rate * 1000).to_string());
-        let result = self.request(Method::POST, path, &mut params).await?;
+        let ids = serde_json::to_string(ids)?;
+        let rate = (rate * 1000).to_string();
+        params.insert("ids", ids.as_str());
+        params.insert("br", rate.as_str());
+        let result = self
+            .request(Method::POST, path, params, CryptoApi::LINUXAPI, "")
+            .await?;
         to_song_url(result)
     }
 
@@ -223,8 +290,9 @@ impl MusicApi {
     #[allow(unused)]
     pub async fn recommend_resource(&mut self) -> NCMResult<Vec<SongList>> {
         let path = "/weapi/v1/discovery/recommend/resource";
-        let mut params = HashMap::new();
-        let result = self.request(Method::POST, path, &mut params).await?;
+        let result = self
+            .request(Method::POST, path, HashMap::new(), CryptoApi::WEAPI, "")
+            .await?;
         to_song_list(result, Parse::RMD)
     }
 
@@ -233,7 +301,8 @@ impl MusicApi {
     pub async fn recommend_songs(&mut self) -> NCMResult<Vec<SongInfo>> {
         let path = "/weapi/v2/discovery/recommend/songs";
         let mut params = HashMap::new();
-        let result = self.request(Method::POST, path, &mut params).await?;
+        params.insert("total", "ture");
+        let result = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await?;
         to_song_info(result, Parse::RMDS)
     }
 
@@ -241,7 +310,9 @@ impl MusicApi {
     #[allow(unused)]
     pub async fn personal_fm(&mut self) -> NCMResult<Vec<SongInfo>> {
         let path = "/weapi/v1/radio/get";
-        let result = self.request(Method::POST, path, &mut HashMap::new()).await?;
+        let result = self
+            .request(Method::POST, path, HashMap::new(), CryptoApi::WEAPI, "")
+            .await?;
         to_song_info(result, Parse::RMD)
     }
 
@@ -252,11 +323,13 @@ impl MusicApi {
     pub async fn like(&mut self, like: bool, songid: u64) -> bool {
         let path = "/weapi/radio/like";
         let mut params = HashMap::new();
-        params.insert("alg".to_owned(), "itembased".to_owned());
-        params.insert("trackId".to_owned(), songid.to_string());
-        params.insert("like".to_owned(), like.to_string());
-        params.insert("time".to_owned(), "25".to_owned());
-        if let Ok(result) = self.request(Method::POST, path, &mut params).await {
+        let songid = songid.to_string();
+        let like = like.to_string();
+        params.insert("alg", "itembased");
+        params.insert("trackId", songid.as_str());
+        params.insert("like", like.as_str());
+        params.insert("time", "25");
+        if let Ok(result) = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await {
             return to_msg(result)
                 .unwrap_or(Msg {
                     code: 0,
@@ -274,10 +347,11 @@ impl MusicApi {
     pub async fn fm_trash(&mut self, songid: u64) -> bool {
         let path = "/weapi/radio/trash/add";
         let mut params = HashMap::new();
-        params.insert("alg".to_owned(), "RT".to_owned());
-        params.insert("songId".to_owned(), songid.to_string());
-        params.insert("time".to_owned(), "25".to_owned());
-        if let Ok(result) = self.request(Method::POST, path, &mut params).await {
+        let songid = songid.to_string();
+        params.insert("alg", "RT");
+        params.insert("songId", songid.as_str());
+        params.insert("time", "25");
+        if let Ok(result) = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await {
             return to_msg(result)
                 .unwrap_or(Msg {
                     code: 0,
@@ -296,14 +370,16 @@ impl MusicApi {
     // limit: 数量
     #[allow(unused)]
     pub async fn search(&mut self, keywords: String, types: u32, offset: u16, limit: u16) -> NCMResult<String> {
-        let path = "/weapi/cloudsearch/get/web";
+        let path = "/weapi/search/get";
         let mut params = HashMap::new();
-        params.insert("s".to_owned(), keywords);
-        params.insert("type".to_owned(), types.to_string());
-        params.insert("total".to_owned(), "true".to_string());
-        params.insert("offset".to_owned(), offset.to_string());
-        params.insert("limit".to_owned(), limit.to_string());
-        let result = self.request(Method::POST, path, &mut params).await?;
+        let _types = types.to_string();
+        let offset = offset.to_string();
+        let limit = limit.to_string();
+        params.insert("s", &keywords[..]);
+        params.insert("type", &_types[..]);
+        params.insert("offset", &offset[..]);
+        params.insert("limit", &limit[..]);
+        let result = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await?;
         match types {
             1 => to_song_info(result, Parse::SEARCH).and_then(|s| Ok(serde_json::to_string(&s)?)),
             100 => to_singer_info(result).and_then(|s| Ok(serde_json::to_string(&s)?)),
@@ -318,11 +394,13 @@ impl MusicApi {
     pub async fn new_albums(&mut self, offset: u8, limit: u8) -> NCMResult<Vec<SongList>> {
         let path = "/weapi/album/new";
         let mut params = HashMap::new();
-        params.insert("area".to_owned(), "ALL".to_owned());
-        params.insert("offset".to_owned(), offset.to_string());
-        params.insert("limit".to_owned(), limit.to_string());
-        params.insert("total".to_owned(), true.to_string());
-        let result = self.request(Method::POST, path, &mut params).await?;
+        let offset = offset.to_string();
+        let limit = limit.to_string();
+        params.insert("area", "ALL");
+        params.insert("offset", &offset[..]);
+        params.insert("limit", &limit[..]);
+        params.insert("total", "true");
+        let result = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await?;
         to_song_list(result, Parse::ALBUM)
     }
 
@@ -331,7 +409,9 @@ impl MusicApi {
     #[allow(unused)]
     pub async fn album(&mut self, album_id: u64) -> NCMResult<Vec<SongInfo>> {
         let path = format!("/weapi/v1/album/{}", album_id);
-        let result = self.request(Method::POST, &path, &mut HashMap::new()).await?;
+        let result = self
+            .request(Method::POST, &path, HashMap::new(), CryptoApi::WEAPI, "")
+            .await?;
         to_song_info(result, Parse::ALBUM)
     }
 
@@ -345,12 +425,14 @@ impl MusicApi {
     pub async fn top_song_list(&mut self, order: &str, offset: u8, limit: u8) -> NCMResult<Vec<SongList>> {
         let path = "/weapi/playlist/list";
         let mut params = HashMap::new();
-        params.insert("cat".to_owned(), "全部".to_owned());
-        params.insert("order".to_owned(), order.to_owned());
-        params.insert("total".to_owned(), true.to_string());
-        params.insert("offset".to_owned(), offset.to_string());
-        params.insert("limit".to_owned(), limit.to_string());
-        let result = self.request(Method::POST, path, &mut params).await?;
+        let offset = offset.to_string();
+        let limit = limit.to_string();
+        params.insert("cat", "全部");
+        params.insert("order", order);
+        params.insert("total", "true");
+        params.insert("offset", &offset[..]);
+        params.insert("limit", &limit[..]);
+        let result = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await?;
         to_song_list(result, Parse::TOP)
     }
 
@@ -384,14 +466,16 @@ impl MusicApi {
     // music_id: 歌曲id
     #[allow(unused)]
     pub async fn song_lyric(&mut self, music_id: u64) -> NCMResult<Vec<String>> {
-        let path = "/weapi/song/lyric";
+        let path = "/api/song/lyric";
         let mut params = HashMap::new();
-        params.insert("os".to_owned(), "osx".to_owned());
-        params.insert("id".to_owned(), music_id.to_string());
-        params.insert("lv".to_owned(), "-1".to_owned());
-        params.insert("kv".to_owned(), "-1".to_owned());
-        params.insert("tv".to_owned(), "-1".to_owned());
-        let result = self.request(Method::POST, path, &mut params).await?;
+        let id = music_id.to_string();
+        params.insert("id", &id[..]);
+        params.insert("lv", "-1");
+        params.insert("kv", "-1");
+        params.insert("tv", "-1");
+        let result = self
+            .request(Method::POST, path, params, CryptoApi::LINUXAPI, "")
+            .await?;
         to_lyric(result)
     }
 
@@ -406,8 +490,9 @@ impl MusicApi {
             "/weapi/playlist/unsubscribe"
         };
         let mut params = HashMap::new();
-        params.insert("id".to_owned(), id.to_string());
-        if let Ok(result) = self.request(Method::POST, path, &mut params).await {
+        let id = id.to_string();
+        params.insert("id", &id[..]);
+        if let Ok(result) = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await {
             return to_msg(result)
                 .unwrap_or(Msg {
                     code: 0,
@@ -418,4 +503,17 @@ impl MusicApi {
         }
         false
     }
+}
+
+fn choose_user_agent(ua: &str) -> &str {
+    let index = if ua == "mobile" {
+        rand::random::<usize>() % 7
+    } else if ua == "pc" {
+        rand::random::<usize>() % 5 + 8
+    } else if !ua.is_empty() {
+        return ua;
+    } else {
+        rand::random::<usize>() % USER_AGENT_LIST.len()
+    };
+    USER_AGENT_LIST[index]
 }

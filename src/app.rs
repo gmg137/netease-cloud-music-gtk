@@ -67,7 +67,7 @@ pub(crate) enum Action {
     ReadyPlayer(SongInfo),
     RefreshLyricsText(String),
     Player(SongInfo),
-    PlayerForward,
+    PlayerOne,
     RefreshPlayerImage(String),
     PlayerSubpages,
     PlayerFound,
@@ -237,7 +237,7 @@ impl App {
                     i.show(&self.overlay)
                 }
             }
-            Action::PlayerForward => self.player.forward(),
+            Action::PlayerOne => self.player.play_one(),
             Action::RefreshPlayerImage(path) => self.player.set_cover_image(path),
             Action::PlayerSubpages => self.view.play_subpages(),
             Action::PlayerFound => self.view.play_found(),

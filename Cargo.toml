@@ -29,7 +29,7 @@ serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 bincode = "*"
 regex = "*"
-serde_urlencoded = "*"
+urlqstring = "*"
 lazy_static = "*"
 chrono = "*"
 fragile = "*"

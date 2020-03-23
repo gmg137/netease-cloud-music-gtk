@@ -122,6 +122,7 @@ impl View {
             &mine_login_fm_builder,
             &mine_login_list_builder,
             sender.clone(),
+            music_data.clone(),
         )));
         let subpages = Rc::new(RefCell::new(Subpages::new(&subpages_builder, sender.clone())));
 
@@ -383,17 +384,17 @@ impl View {
             let mut data = data.lock().await;
             if let Ok(vsi) = data.personal_fm().await {
                 // 提取歌曲 id 列表
-                let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u64>>();
-                if let Ok(si) = data.songs_detail(&song_id_list).await {
-                    if !vsi.is_empty() {
-                        // 创建播放列表
-                        create_player_list(&si, sender.clone(), false, true).await.ok();
-                        // 下载专辑图片
-                        let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
-                        download_img(&si[0].pic_url, &image_path, 130, 130, 100_000).await.ok();
-                        if sender.send(Action::RefreshMineFm(si[0].to_owned())).is_ok() {
-                            sender.send(Action::PlayerFm).unwrap_or(());
-                        }
+                if !vsi.is_empty() {
+                    let mut api = MusicData::new();
+                    // 创建播放列表
+                    create_player_list(&mut api, &vsi, sender.clone(), false, true)
+                        .await
+                        .ok();
+                    // 下载专辑图片
+                    let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &vsi[0].id);
+                    download_img(&vsi[0].pic_url, &image_path, 130, 130, 100_000).await.ok();
+                    if sender.send(Action::RefreshMineFm(vsi[0].to_owned())).is_ok() {
+                        sender.send(Action::PlayerFm).unwrap_or(());
                     }
                 }
             } else {
@@ -442,15 +443,16 @@ impl View {
                     if let Ok(vsi) = data.personal_fm().await {
                         // 提取歌曲 id 列表
                         let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u64>>();
-                        if let Ok(si) = data.songs_detail(&song_id_list).await {
-                            if !vsi.is_empty() {
-                                // 创建播放列表
-                                create_player_list(&si, sender.clone(), false, true).await.ok();
-                                // 下载专辑图片
-                                let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &si[0].id);
-                                download_img(&si[0].pic_url, &image_path, 130, 130, 100_000).await.ok();
-                                sender.send(Action::RefreshMineFm(si[0].to_owned())).unwrap_or(());
-                            }
+                        if !vsi.is_empty() {
+                            let mut api = MusicData::new();
+                            // 创建播放列表
+                            create_player_list(&mut api, &vsi, sender.clone(), false, true)
+                                .await
+                                .ok();
+                            // 下载专辑图片
+                            let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &vsi[0].id);
+                            download_img(&vsi[0].pic_url, &image_path, 130, 130, 100_000).await.ok();
+                            sender.send(Action::RefreshMineFm(vsi[0].to_owned())).unwrap_or(());
                         }
                     } else {
                         sender.send(Action::ShowNotice("获取 FM 歌单失败!".to_owned())).unwrap();

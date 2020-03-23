@@ -84,6 +84,7 @@ struct PlayerListData {
 // fm: 创建 FM 播放列表
 #[allow(unused)]
 pub(crate) async fn create_player_list(
+    api: &mut MusicData,
     list: &[SongInfo],
     sender: Sender<Action>,
     play: bool,
@@ -91,7 +92,6 @@ pub(crate) async fn create_player_list(
 ) -> NCMResult<()> {
     // 提取歌曲 id 列表
     let song_id_list = list.iter().map(|si| si.id).collect::<Vec<u64>>();
-    let mut api = MusicData::new();
     // 批量搜索歌曲 URL
     if let Ok(v) = api.songs_url(&song_id_list, 320).await {
         // 初始化播放列表
@@ -125,7 +125,7 @@ pub(crate) async fn create_player_list(
         // 如果需要播放
         if !player_list.is_empty() && play {
             // 播放歌单
-            sender.send(Action::PlayerForward).ok();
+            sender.send(Action::PlayerOne).unwrap();
         }
     }
     Ok(())

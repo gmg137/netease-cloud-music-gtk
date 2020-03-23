@@ -5,9 +5,11 @@
 //
 use crate::{
     app::Action,
+    data::MusicData,
     musicapi::model::{SongInfo, SongList},
     utils::*,
 };
+use async_std::sync::{Arc, Mutex};
 use glib::Sender;
 use gtk::{prelude::*, Builder, Label, ListBox, ListBoxRow};
 mod fm;
@@ -27,12 +29,13 @@ impl Mine {
         mine_login_fm_builder: &Builder,
         mine_login_list_builder: &Builder,
         sender: Sender<Action>,
+        music_data: Arc<Mutex<MusicData>>,
     ) -> Self {
         let sidebar: ListBox = mine_login_builder
             .get_object("mine_listbox")
             .expect("无法获取 mine_listbox .");
         let fmview = fm::FmView::new(&mine_login_fm_builder, sender.clone());
-        let listview = list::ListView::new(&mine_login_list_builder, sender.clone());
+        let listview = list::ListView::new(&mine_login_list_builder, sender.clone(), music_data);
 
         let s = Mine {
             sidebar,

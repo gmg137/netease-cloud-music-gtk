@@ -114,7 +114,6 @@ custom_error! { pub Errors
     OpenSSLError{ source: openssl::error::ErrorStack } = "openSSL Error",
     RegexError{ source: regex::Error } = "regex Error",
     SerdeJsonError{ source: serde_json::error::Error } = "serde json Error",
-    SerdeUrlEncodeError{ source: serde_urlencoded::ser::Error } = "serde url encode Error",
     ParseError{ source: std::num::ParseIntError } = "parse Error",
     AsyncIoError{ source: io::Error } = "async io Error",
     IsahcError{ source: isahc::Error } = "isahc Error",

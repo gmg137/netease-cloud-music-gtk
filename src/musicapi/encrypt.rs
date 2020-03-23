@@ -3,71 +3,112 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-use crate::model::{Errors, NCMResult};
-use num::bigint::BigUint;
-use openssl::{
-    hash::{hash, MessageDigest},
-    symm::{encrypt, Cipher},
-};
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use serde::Serialize;
-use serde_urlencoded;
+use base64;
+use lazy_static::lazy_static;
+use openssl::hash::{hash, DigestBytes, MessageDigest};
+use openssl::rsa::{Padding, Rsa};
+use openssl::symm::{encrypt, Cipher};
+use rand::rngs::OsRng;
+use rand::RngCore;
+use urlqstring::QueryParams;
+use AesMode::{cbc, ecb};
 
-static MODULUS:&str = "00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7";
-static NONCE: &str = "0CoJUm6Qyw8W8jud";
-static PUBKEY: &str = "010001";
+lazy_static! {
+    static ref IV: Vec<u8> = "0102030405060708".as_bytes().to_vec();
+    static ref PRESET_KEY: Vec<u8> = "0CoJUm6Qyw8W8jud".as_bytes().to_vec();
+    static ref LINUX_API_KEY: Vec<u8> = "rFgB&h#%2?^eDg:Q".as_bytes().to_vec();
+    static ref BASE62: Vec<u8> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".as_bytes().to_vec();
+    static ref RSA_PUBLIC_KEY: Vec<u8> = "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDgtQn2JZ34ZC28NWYpAUd98iZ37BUrX/aKzmFbt7clFSs6sXqHauqKWqdtLkF2KexO40H1YTX8z2lSgBBOAxLsvaklV8k4cBFK9snQXE9/DDaFt6Rr7iVZMldczhC0JNgTz+SHXT6CBHuX3e9SdB1Ua44oncaTWz7OBGLbCiK45wIDAQAB\n-----END PUBLIC KEY-----".as_bytes().to_vec();
+    static ref EAPIKEY: Vec<u8> = "e82ckenh8dichen8".as_bytes().to_vec();
+}
 
-pub(crate) struct Encrypt;
+#[allow(non_snake_case)]
+pub struct Crypto;
 
-#[allow(unused)]
-impl Encrypt {
-    pub(crate) fn encrypt_id(id: String) -> NCMResult<String> {
-        let magic = b"3go8&$8*3*3h0k(2)2";
-        let magic_len = magic.len();
-        let id = id;
-        let mut song_id = id.clone().into_bytes();
-        id.as_bytes().iter().enumerate().for_each(|(i, sid)| {
-            song_id[i] = *sid ^ magic[i % magic_len];
-        });
-        let result = hash(MessageDigest::md5(), &song_id)?;
-        Ok(base64::encode_config(&hex::encode(result), base64::URL_SAFE)
-            .replace("/", "_")
-            .replace("+", "-"))
+#[allow(dead_code, non_camel_case_types)]
+pub enum HashType {
+    md5,
+}
+
+#[allow(non_camel_case_types)]
+pub enum AesMode {
+    cbc,
+    ecb,
+}
+
+impl Crypto {
+    #[allow(dead_code)]
+    pub fn hex_random_bytes(n: usize) -> String {
+        let mut data: Vec<u8> = Vec::with_capacity(n);
+        OsRng.fill_bytes(&mut data);
+        hex::encode(data)
     }
 
-    pub(crate) fn encrypt_request(text: impl Serialize + std::fmt::Debug) -> NCMResult<String> {
-        let data = serde_json::to_string(&text)?;
-        let secret = Self.create_key(16);
-        let params = Self.aes(Self.aes(data, NONCE)?, &secret)?;
-        #[allow(non_snake_case)]
-        let encSecKey = Self.rsa(secret)?;
-        let meal = &[("params", params), ("encSecKey", encSecKey)];
-        Ok(serde_urlencoded::to_string(&meal)?)
+    #[allow(dead_code)]
+    pub fn eapi(url: &str, text: &str) -> String {
+        let message = format!("nobody{}use{}md5forencrypt", url, text);
+        let digest = hex::encode(hash(MessageDigest::md5(), message.as_bytes()).unwrap());
+        let data = format!("{}-36cd479b6b5-{}-36cd479b6b5-{}", url, text, digest);
+        let params = Crypto::aes_encrypt(&data, &*EAPIKEY, ecb, Some(&*IV), |t: &Vec<u8>| hex::encode_upper(t));
+        QueryParams::from(vec![("params", params.as_str())]).stringify()
     }
 
-    fn aes(&self, text: String, key: &str) -> NCMResult<String> {
-        let pad = 16 - text.len() % 16;
-        let p = pad as u8 as char;
-        let mut text = text;
-        for _ in 0..pad {
-            text.push(p);
+    pub fn weapi(text: &str) -> String {
+        let mut secret_key = [0u8; 16];
+        OsRng.fill_bytes(&mut secret_key);
+        let key: Vec<u8> = secret_key.iter().map(|i| BASE62[(i % 62) as usize]).collect();
+
+        let params1 = Crypto::aes_encrypt(text, &*PRESET_KEY, cbc, Some(&*IV), |t: &Vec<u8>| base64::encode(t));
+
+        let params = Crypto::aes_encrypt(&params1, &key, cbc, Some(&*IV), |t: &Vec<u8>| base64::encode(t));
+
+        let enc_sec_key = Crypto::rsa_encrypt(
+            std::str::from_utf8(&key.iter().rev().map(|n| *n).collect::<Vec<u8>>()).unwrap(),
+            &*RSA_PUBLIC_KEY,
+        );
+
+        QueryParams::from(vec![("params", params.as_str()), ("encSecKey", enc_sec_key.as_str())]).stringify()
+    }
+
+    pub fn linuxapi(text: &str) -> String {
+        let params = Crypto::aes_encrypt(text, &*LINUX_API_KEY, ecb, None, |t: &Vec<u8>| hex::encode(t)).to_uppercase();
+        QueryParams::from(vec![("eparams", params.as_str())]).stringify()
+    }
+
+    pub fn aes_encrypt(
+        data: &str,
+        key: &Vec<u8>,
+        mode: AesMode,
+        iv: Option<&[u8]>,
+        encode: fn(&Vec<u8>) -> String,
+    ) -> String {
+        let cipher = match mode {
+            cbc => Cipher::aes_128_cbc(),
+            ecb => Cipher::aes_128_ecb(),
+        };
+        let cipher_text = encrypt(cipher, key, iv, data.as_bytes()).unwrap();
+
+        encode(&cipher_text)
+    }
+
+    pub fn rsa_encrypt(data: &str, key: &Vec<u8>) -> String {
+        let rsa = Rsa::public_key_from_pem(key).unwrap();
+
+        let prefix = vec![0u8; 128 - data.len()];
+
+        let data = [&prefix[..], &data.as_bytes()[..]].concat();
+
+        let mut buf = vec![0; rsa.size() as usize];
+
+        rsa.public_encrypt(&data, &mut buf, Padding::NONE).unwrap();
+
+        hex::encode(buf)
+    }
+
+    #[allow(dead_code)]
+    pub fn hash_encrypt(data: &str, algorithm: HashType, encode: fn(DigestBytes) -> String) -> String {
+        match algorithm {
+            HashType::md5 => encode(hash(MessageDigest::md5(), data.as_bytes()).unwrap()),
         }
-        let text = text.as_bytes();
-        let cipher = Cipher::aes_128_cbc();
-        let ciphertext = encrypt(cipher, key.as_bytes(), Some(b"0102030405060708"), text)?;
-        Ok(base64::encode(&ciphertext))
-    }
-
-    fn rsa(&self, text: String) -> NCMResult<String> {
-        let text = text.chars().rev().collect::<String>();
-        let text = BigUint::parse_bytes(hex::encode(text).as_bytes(), 16).ok_or(Errors::NoneError)?;
-        let pubkey = BigUint::parse_bytes(PUBKEY.as_bytes(), 16).ok_or(Errors::NoneError)?;
-        let modulus = BigUint::parse_bytes(MODULUS.as_bytes(), 16).ok_or(Errors::NoneError)?;
-        let pow = text.modpow(&pubkey, &modulus);
-        Ok(pow.to_str_radix(16))
-    }
-
-    fn create_key(&self, len: usize) -> String {
-        hex::encode(thread_rng().sample_iter(&Alphanumeric).take(len).collect::<String>())[..16].to_string()
     }
 }
