@@ -120,7 +120,10 @@ impl App {
         let music_data = Arc::new(Mutex::new(MusicData::new()));
         let data = music_data.clone();
         task::block_on(async move {
-            data.lock().await.re_login().await.ok();
+            let mut data = data.lock().await;
+            if data.login {
+                data.re_login().await.ok();
+            }
         });
         let header = Header::new(&builder, &sender, &configs, Arc::clone(&music_data));
         let view = View::new(&builder, &sender, &sender_task, Arc::clone(&music_data));

@@ -187,10 +187,11 @@ impl MusicData {
                 bincode::serialize(&data).map_err(|_| Errors::NoneError)?,
             )
             .await?;
-            fs::remove_file(format!("{}user_song_list.db", NCM_DATA.to_string_lossy())).await?;
-            fs::remove_file(format!("{}recommend_resource.db", NCM_DATA.to_string_lossy())).await?;
-            fs::remove_file(format!("{}recommend_songs.db", NCM_DATA.to_string_lossy())).await?;
-            fs::remove_file(format!("{}login_info.db", NCM_DATA.to_string_lossy())).await?;
+            fs::remove_file(format!("{}user_song_list.db", NCM_DATA.to_string_lossy())).await;
+            fs::remove_file(format!("{}recommend_resource.db", NCM_DATA.to_string_lossy())).await;
+            fs::remove_file(format!("{}recommend_songs.db", NCM_DATA.to_string_lossy())).await;
+            fs::remove_file(format!("{}login_info.db", NCM_DATA.to_string_lossy())).await;
+            fs::remove_file(format!("{}login_key.db", NCM_CONFIG.to_string_lossy())).await;
         }
         Ok(())
     }
