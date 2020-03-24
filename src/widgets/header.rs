@@ -177,6 +177,7 @@ impl Header {
         s.search
             .connect_clicked(clone!(@weak search_bar, @weak search_entry=> move |_| {
                 search_entry.set_property_is_focus(true);
+                search_entry.set_text("");
                 search_bar.set_search_mode(!search_bar.get_search_mode());
             }));
 
