@@ -516,18 +516,9 @@ impl PlayerWidget {
     }
 
     fn like(&self) {
-        let sender = self.sender.clone();
         let song_id = *self.info.song_id.borrow();
         if let Some(id) = song_id {
-            task::spawn(async move {
-                let mut data = MusicData::new();
-                if data.like(true, id).await {
-                    sender.send(Action::ShowNotice("已添加到喜欢!".to_owned())).unwrap();
-                    sender.send(Action::RefreshMineLikeList()).unwrap();
-                } else {
-                    sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
-                }
-            });
+            self.sender.send(Action::LikeSong(id)).unwrap();
             return;
         }
         self.sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();

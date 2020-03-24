@@ -19,7 +19,7 @@ use async_std::{
 };
 use futures::channel::mpsc;
 use gio::{self, prelude::*};
-use glib::Receiver;
+use glib::{Receiver, Sender};
 use gtk::{prelude::*, ApplicationWindow, Builder, Overlay};
 use std::{cell::RefCell, rc::Rc};
 
@@ -37,6 +37,7 @@ pub(crate) enum Action {
     RefreshSubUpView(u64, String, String),
     RefreshSubLowView(Vec<SongInfo>),
     ShowSubLike(bool),
+    LikeSong(u64),
     LikeSongList,
     DisLikeSongList,
     RefreshFoundViewInit(u8),
@@ -91,7 +92,9 @@ pub(crate) struct App {
     notice: RefCell<Option<InAppNotification>>,
     overlay: Overlay,
     configs: Rc<RefCell<Configs>>,
+    sender: Sender<Action>,
     receiver: RefCell<Option<Receiver<Action>>>,
+    music_data: Arc<Mutex<MusicData>>,
 }
 
 impl App {
@@ -161,7 +164,9 @@ impl App {
             notice,
             overlay,
             configs: Rc::new(RefCell::new(configs)),
+            sender,
             receiver,
+            music_data,
         };
         Rc::new(app)
     }
@@ -188,6 +193,19 @@ impl App {
             Action::SwitchStackMain => self.view.switch_stack_main(),
             Action::SwitchStackSub((id, name, image_path), parse) => {
                 self.view.switch_stack_sub(id, name, image_path, parse)
+            }
+            Action::LikeSong(song_id) => {
+                let data = self.music_data.clone();
+                let sender = self.sender.clone();
+                task::spawn(async move {
+                    let mut data = data.lock().await;
+                    if data.like(true, song_id).await {
+                        sender.send(Action::ShowNotice("已添加到喜欢!".to_owned())).unwrap();
+                        sender.send(Action::RefreshMineLikeList()).unwrap();
+                    } else {
+                        sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
+                    }
+                });
             }
             Action::LikeSongList => self.view.sub_like_song_list(),
             Action::DisLikeSongList => self.view.dis_like_song_list(),
