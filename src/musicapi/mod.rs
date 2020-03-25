@@ -115,15 +115,17 @@ impl MusicApi {
                     .body(body)
                     .unwrap();
                 let mut response = self.client.send_async(request).await.map_err(|_| Errors::NoneError)?;
-                for (k, v) in response.headers() {
-                    let v = v.to_str().unwrap_or("");
-                    if k.eq("set-cookie") && v.contains("__csrf") {
-                        let csrf_token = if let Some(caps) = _CSRF.captures(v) {
-                            caps.name("csrf").unwrap().as_str()
-                        } else {
-                            ""
-                        };
-                        self.csrf = csrf_token.to_owned();
+                if self.csrf.is_empty() {
+                    for (k, v) in response.headers() {
+                        let v = v.to_str().unwrap_or("");
+                        if k.eq("set-cookie") && v.contains("__csrf") {
+                            let csrf_token = if let Some(caps) = _CSRF.captures(v) {
+                                caps.name("csrf").unwrap().as_str()
+                            } else {
+                                ""
+                            };
+                            self.csrf = csrf_token.to_owned();
+                        }
                     }
                 }
                 response.text_async().await.map_err(|_| Errors::NoneError)
