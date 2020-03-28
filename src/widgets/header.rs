@@ -183,15 +183,18 @@ impl Header {
 
         // 搜索框
         let search_entry = &s.search_entry;
+        let search = &s.search;
         let sender_clone = sender.clone();
-        s.search_entry.connect_activate(clone!(@weak search_entry => move |_| {
-            // 回车键直接搜索
-            if let Some(text) = search_entry.get_text(){
-                if !text.is_empty(){
-                    sender_clone.send(Action::Search(text.to_owned())).unwrap_or(());
+        s.search_entry
+            .connect_activate(clone!(@weak search_entry, @weak search => move |_| {
+                // 回车键直接搜索
+                if let Some(text) = search_entry.get_text() {
+                    if !text.is_empty() {
+                        search.clicked();
+                        sender_clone.send(Action::Search(text.to_owned())).unwrap_or(());
+                    }
                 }
-            }
-        }));
+            }));
 
         // 返回按钮
         let send = sender.clone();

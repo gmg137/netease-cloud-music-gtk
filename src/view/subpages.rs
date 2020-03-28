@@ -155,6 +155,7 @@ impl Subpages {
         self.tree.set_model(Some(&self.store));
         if name.is_empty() && image_path.is_empty() {
             self.overview.grid.hide();
+            return;
         }
         if let Ok(image) = Pixbuf::new_from_file(&image_path) {
             let image = image.scale_simple(140, 140, InterpType::Bilinear);
