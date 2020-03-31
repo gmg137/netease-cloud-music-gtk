@@ -71,3 +71,4 @@ cargo deb
 - [podcasts](https://gitlab.gnome.org/World/podcasts)
 - [gnome-music](https://gitlab.gnome.org/GNOME/gnome-music)
 - [musicbox](https://github.com/darknessomi/musicbox)
+- [NeteaseCloudMusicRustApi](https://github.com/Itanq/NeteaseCloudMusicRustApi)
