@@ -23,7 +23,7 @@
 - 新碟上架
 
 ## 运行依赖
-> openssl, curl, gstreamer, gstreamer-plugins-base, gstreamer-plugins-good, gstreamer-plugins-bad, gstreamer-plugins-ugly
+> openssl, gstreamer, gstreamer-plugins-base, gstreamer-plugins-good, gstreamer-plugins-bad, gstreamer-plugins-ugly
 
 ## 安装
 - 直接到 [Release](https://github.com/gmg137/netease-cloud-music-gtk/releases) 页面下载 RPM/DEB 包安装。
@@ -31,7 +31,7 @@
 ## 从源码编译/打包
 ```
 // openSUSE 安装依赖
-sudo zypper in git gcc curl dbus-1-devel gtk3-devel libopenssl-1_1-devel gstreamer-devel \
+sudo zypper in git gcc dbus-1-devel gtk3-devel libopenssl-1_1-devel gstreamer-devel \
       gstreamer-plugins-bad gstreamer-plugins-bad-devel \
       gstreamer-plugins-base gstreamer-plugins-base-devel \
       gstreamer-plugins-good gstreamer-plugins-ugly cairo-devel

@@ -16,7 +16,6 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildRequires: gstreamer-devel
 BuildRequires: gstreamer-plugins-bad-devel
 BuildRequires: gstreamer-plugins-base-devel
-Requires: curl
 Requires: openssl
 Requires: gstreamer
 Requires: gstreamer-plugins-bad
