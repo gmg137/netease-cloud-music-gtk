@@ -24,7 +24,7 @@ use async_std::{
 use found::*;
 use futures::{channel::mpsc, sink::SinkExt};
 use glib::Sender;
-use gtk::{prelude::*, Builder, Stack};
+use gtk::{prelude::*, Builder, Spinner, Stack};
 use home::*;
 use mine::*;
 use std::{cell::RefCell, rc::Rc};
@@ -32,13 +32,13 @@ use subpages::*;
 
 #[derive(Clone)]
 pub(crate) struct View {
-    stack: gtk::Stack,
-    main_stack: gtk::Stack,
-    mine_stack: gtk::Stack,
-    mine_login_center_stack: gtk::Stack,
-    subpages_stack: gtk::Stack,
+    stack: Stack,
+    main_stack: Stack,
+    mine_stack: Stack,
+    mine_login_center_stack: Stack,
     home: Rc<RefCell<Home>>,
     found: Rc<RefCell<Found>>,
+    found_content_stack: Stack,
     mine: Rc<RefCell<Mine>>,
     subpages: Rc<RefCell<Subpages>>,
     sender: Sender<Action>,
@@ -72,6 +72,16 @@ impl View {
         let glade_src = include_str!("../../ui/found.ui");
         let found_builder = Builder::new_from_string(glade_src);
         let found_stack: Stack = found_builder.get_object("found_stack").expect("无法获取 found_stack.");
+        let found_content_stack: Stack = found_builder
+            .get_object("found_content_stack")
+            .expect("无法获取 found_content_stack.");
+
+        let spinner_stack = Stack::new();
+        let spinner = Spinner::new();
+        spinner.start();
+        spinner_stack.add(&spinner);
+        found_content_stack.add_named(&spinner_stack, "spinner_stack");
+        found_content_stack.set_visible_child_name("found_right_stack");
 
         let glade_src = include_str!("../../ui/mine_fm.ui");
         let mine_login_fm_builder = Builder::new_from_string(glade_src);
@@ -93,8 +103,15 @@ impl View {
         let mine_login_center_stack: Stack = mine_login_builder
             .get_object("mine_login_center_stack")
             .expect("无法获取 mine_login_center_stack.");
+
+        let spinner_stack = Stack::new();
+        let spinner = Spinner::new();
+        spinner.start();
+        spinner_stack.add(&spinner);
+
         mine_login_center_stack.add_named(&mine_fm_stack, "mine_fm_stack");
         mine_login_center_stack.add_named(&mine_list_stack, "mine_list_stack");
+        mine_login_center_stack.add_named(&spinner_stack, "spinner_stack");
         mine_login_center_stack.set_visible_child_name("mine_fm_stack");
 
         let glade_src = include_str!("../../ui/mine_not_login.ui");
@@ -111,9 +128,15 @@ impl View {
         main_stack.add_titled(&found_stack, "found", "发现");
         main_stack.add_titled(&mine_stack, "mine", "我的");
 
-        stack.add(&main_stack);
-        stack.add(&subpages_stack);
-        stack.set_visible_child(&main_stack);
+        let spinner_stack = Stack::new();
+        let spinner = Spinner::new();
+        spinner.start();
+        spinner_stack.add(&spinner);
+
+        stack.add_named(&main_stack, "main_stack");
+        stack.add_named(&subpages_stack, "subpages_stack");
+        stack.add_named(&spinner_stack, "spinner_stack");
+        stack.set_visible_child_name("main_stack");
 
         let home = Rc::new(RefCell::new(Home::new(&home_builder, sender.clone())));
         let found = Rc::new(RefCell::new(Found::new(&found_builder, sender.clone())));
@@ -131,9 +154,9 @@ impl View {
             main_stack,
             mine_stack,
             mine_login_center_stack,
-            subpages_stack,
             home,
             found,
+            found_content_stack,
             mine,
             subpages,
             sender: sender.clone(),
@@ -146,7 +169,12 @@ impl View {
         self.stack.set_visible_child(&self.main_stack);
     }
 
+    pub(crate) fn switch_stack_subpages(&self) {
+        self.stack.set_visible_child_name("subpages_stack");
+    }
+
     pub(crate) fn switch_stack_sub(&self, id: u64, name: String, image_path: String, parse: Parse) {
+        self.stack.set_visible_child_name("spinner_stack");
         let sender = self.sender.clone();
         let name_clone = name.to_owned();
         let data = self.music_data.clone();
@@ -161,6 +189,7 @@ impl View {
                             .is_ok()
                         {
                             sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
+                            sender.send(Action::SwitchStackSubSpinner).unwrap_or(());
                         }
                     } else {
                         sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
@@ -174,6 +203,7 @@ impl View {
                             .is_ok()
                         {
                             sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
+                            sender.send(Action::SwitchStackSubSpinner).unwrap_or(());
                         }
                     } else {
                         sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
@@ -183,10 +213,10 @@ impl View {
             }
         });
         self.sender.send(Action::SwitchHeaderBar(name)).unwrap_or(());
-        self.stack.set_visible_child(&self.subpages_stack);
     }
 
     pub(crate) fn switch_stack_search(&self, text: String) {
+        self.stack.set_visible_child_name("spinner_stack");
         let sender = self.sender.clone();
         let text_clone = text.clone();
         task::spawn(async move {
@@ -200,6 +230,7 @@ impl View {
                     {
                         // 刷新搜索结果
                         sender.send(Action::RefreshSubLowView(song_list)).unwrap_or(());
+                        sender.send(Action::SwitchStackSubSpinner).unwrap_or(());
                     }
                 }
             } else {
@@ -207,7 +238,6 @@ impl View {
             }
         });
         self.sender.send(Action::SwitchHeaderBar(text)).unwrap_or(());
-        self.stack.set_visible_child(&self.subpages_stack);
     }
 
     pub(crate) fn update_home_view(&self, tsl: Arc<Vec<SongList>>, rr: Arc<Vec<SongList>>) {
@@ -309,16 +339,22 @@ impl View {
         self.update_found_low_view(song_list);
     }
 
+    pub(crate) fn found_content_switch_stack_right(&self) {
+        self.found_content_stack.set_visible_child_name("found_right_stack");
+    }
+
     pub(crate) fn update_found_view_data(&self, row_id: u8) {
         let sender = self.sender.clone();
         let lid = TOP_ID.get(&row_id).unwrap();
         let title = TOP_NAME.get(&row_id).unwrap();
+        self.found_content_stack.set_visible_child_name("spinner_stack");
         task::spawn(async move {
             let mut data = MusicData::new();
             if let Ok(song_list) = data.song_list_detail(*lid, false).await {
                 sender
                     .send(Action::RefreshFoundView(song_list, (*title).to_string()))
                     .unwrap_or(());
+                sender.send(Action::SwitchStackFoundSpinner).unwrap_or(());
             } else {
                 sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
             }
@@ -462,6 +498,7 @@ impl View {
             return;
         } else {
             self.mine_login_switch_list();
+            self.mine_login_center_stack.set_visible_child_name("spinner_stack");
         }
         let sender = self.sender.clone();
         let data = self.music_data.clone();
@@ -472,6 +509,7 @@ impl View {
                     sender
                         .send(Action::RefreshMineView(song_list, "音乐云盘".to_owned()))
                         .unwrap_or(());
+                    sender.send(Action::SwitchStackMineSpinner).unwrap_or(());
                 } else {
                     sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                 }
@@ -480,6 +518,7 @@ impl View {
                     sender
                         .send(Action::RefreshMineView(song_list, "每日歌曲推荐".to_owned()))
                         .unwrap_or(());
+                    sender.send(Action::SwitchStackMineSpinner).unwrap_or(());
                 } else {
                     sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                 }
@@ -494,6 +533,7 @@ impl View {
                                     user_song_list[row_id].name.to_owned(),
                                 ))
                                 .unwrap_or(());
+                            sender.send(Action::SwitchStackMineSpinner).unwrap_or(());
                         } else {
                             sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                         }

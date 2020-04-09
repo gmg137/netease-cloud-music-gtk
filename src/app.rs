@@ -25,6 +25,9 @@ use std::{cell::RefCell, rc::Rc};
 
 pub(crate) enum Action {
     SwitchStackMain,
+    SwitchStackSubSpinner,
+    SwitchStackMineSpinner,
+    SwitchStackFoundSpinner,
     SwitchStackSub((u64, String, String), Parse),
     SwitchHeaderBar(String),
     RefreshHeaderUser,
@@ -194,6 +197,9 @@ impl App {
             Action::RefreshSubLowView(song_list) => self.view.update_sub_low_view(song_list),
             Action::ShowSubLike(show) => self.view.show_sub_like_button(show),
             Action::SwitchStackMain => self.view.switch_stack_main(),
+            Action::SwitchStackSubSpinner => self.view.switch_stack_subpages(),
+            Action::SwitchStackMineSpinner => self.view.mine_login_switch_list(),
+            Action::SwitchStackFoundSpinner => self.view.found_content_switch_stack_right(),
             Action::SwitchStackSub((id, name, image_path), parse) => {
                 self.view.switch_stack_sub(id, name, image_path, parse)
             }
