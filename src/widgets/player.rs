@@ -4,7 +4,7 @@
 // Distributed under terms of the GPLv3 license.
 //
 use crate::{app::Action, data::MusicData, model::NCM_CACHE, musicapi::model::SongInfo, task::Task, utils::*};
-use async_std::task;
+use async_std::{sync, task};
 use chrono::NaiveTime;
 use fragile::Fragile;
 use futures::{channel::mpsc, sink::SinkExt};
@@ -156,10 +156,16 @@ pub(crate) struct PlayerWidget {
     player_types: Rc<RefCell<PlayerTypes>>,
     sender: Sender<Action>,
     sender_task: mpsc::Sender<Task>,
+    music_data: sync::Arc<sync::Mutex<MusicData>>,
 }
 
 impl PlayerWidget {
-    fn new(builder: &Builder, sender: Sender<Action>, sender_task: mpsc::Sender<Task>) -> Self {
+    fn new(
+        builder: &Builder,
+        sender: Sender<Action>,
+        sender_task: mpsc::Sender<Task>,
+        music_data: sync::Arc<sync::Mutex<MusicData>>,
+    ) -> Self {
         let dispatcher = gst_player::PlayerGMainContextSignalDispatcher::new(None);
         let player = gst_player::Player::new(
             None,
@@ -288,6 +294,7 @@ impl PlayerWidget {
             player_types: Rc::new(RefCell::new(PlayerTypes::Song)),
             sender,
             sender_task,
+            music_data,
         }
     }
 
@@ -305,8 +312,9 @@ impl PlayerWidget {
         *self.player_types.borrow_mut() = player_types;
         let sender = self.sender.clone();
         let mut sender_task = self.sender_task.clone();
+        let data = self.music_data.clone();
         task::spawn(async move {
-            let mut data = MusicData::new();
+            let mut data = data.lock().await;
             // 下载歌词
             if lyrics {
                 download_lyrics(&mut data, &song_info.name, &song_info).await.ok();
@@ -573,8 +581,18 @@ impl Deref for PlayerWrapper {
 }
 
 impl PlayerWrapper {
-    pub(crate) fn new(builder: &Builder, sender: &Sender<Action>, sender_task: &mpsc::Sender<Task>) -> Self {
-        let w = PlayerWrapper(Rc::new(PlayerWidget::new(builder, sender.clone(), sender_task.clone())));
+    pub(crate) fn new(
+        builder: &Builder,
+        sender: &Sender<Action>,
+        sender_task: &mpsc::Sender<Task>,
+        music_data: sync::Arc<sync::Mutex<MusicData>>,
+    ) -> Self {
+        let w = PlayerWrapper(Rc::new(PlayerWidget::new(
+            builder,
+            sender.clone(),
+            sender_task.clone(),
+            music_data,
+        )));
         w.init(sender);
         w
     }

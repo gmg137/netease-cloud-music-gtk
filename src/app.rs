@@ -130,7 +130,7 @@ impl App {
         });
         let header = Header::new(&builder, &sender, &configs, Arc::clone(&music_data));
         let view = View::new(&builder, &sender, &sender_task, Arc::clone(&music_data));
-        let player = PlayerWrapper::new(&builder, &sender, &sender_task);
+        let player = PlayerWrapper::new(&builder, &sender, &sender_task, Arc::clone(&music_data));
 
         window.show_all();
 
