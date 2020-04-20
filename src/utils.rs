@@ -381,6 +381,8 @@ pub(crate) struct Configs {
     pub(crate) loops: LoopsState,
     // 自动清理缓存
     pub(crate) clear: ClearCached,
+    // 音量
+    pub(crate) volume: f64,
 }
 
 // 加载配置
@@ -424,6 +426,7 @@ pub(crate) async fn get_config() -> NCMResult<Configs> {
         lyrics: false,
         loops: LoopsState::CONSECUTIVE,
         clear: ClearCached::NONE,
+        volume: 0.30,
     };
     Ok(conf)
 }

@@ -195,9 +195,13 @@ impl PlayerWidget {
         let backward: Button = builder.get_object("backward_button").unwrap();
         let like: Button = builder.get_object("like_button").unwrap();
         let volume: VolumeButton = builder.get_object("volume_button").unwrap();
-        let volume_value = mpris.get_volume().unwrap_or(0.0);
+        let volume_value = match task::block_on(get_config()) {
+            Ok(config) => config.volume,
+            _ => 0.30,
+        };
         volume.set_value(volume_value);
         player.set_volume(volume_value);
+        mpris.set_volume(volume_value).ok();
         let lyrics: MenuButton = builder.get_object("lyrics_button").unwrap();
         let lyrics_text: TextView = builder.get_object("lyrics_text_view").unwrap();
 
@@ -533,6 +537,12 @@ impl PlayerWidget {
     }
 
     fn set_volume(&self, value: f64) {
+        task::spawn(async move {
+            if let Ok(mut config) = get_config().await {
+                config.volume = value;
+                save_config(&config).await.ok();
+            }
+        });
         self.info.mpris.set_volume(value).ok();
         self.player.set_volume(value);
     }
