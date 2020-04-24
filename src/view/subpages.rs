@@ -13,6 +13,7 @@ use async_std::task;
 use gdk_pixbuf::{InterpType, Pixbuf};
 use glib::Sender;
 use gtk::{prelude::*, Builder, Button, CellRendererText, Grid, Image, Label, ListStore, TreeView, TreeViewColumn};
+use pango::EllipsizeMode;
 
 #[derive(Clone)]
 pub(crate) struct Subpages {
@@ -181,6 +182,7 @@ impl Subpages {
         title.set_property_xalign(0.0);
         title.set_property_yalign(0.5);
         title.set_property_height(48);
+        title.set_property_ellipsize(EllipsizeMode::End);
         column.pack_start(&title, true);
         column.add_attribute(&title, "text", 1);
 
@@ -193,12 +195,14 @@ impl Subpages {
         let singer = CellRendererText::new();
         singer.set_property_xpad(22);
         singer.set_property_xalign(0.0);
+        singer.set_property_ellipsize(EllipsizeMode::End);
         column.pack_start(&singer, true);
         column.add_attribute(&singer, "text", 3);
 
         let album = CellRendererText::new();
         album.set_property_xpad(32);
         album.set_property_xalign(0.0);
+        album.set_property_ellipsize(EllipsizeMode::End);
         column.pack_start(&album, true);
         column.add_attribute(&album, "text", 4);
         self.tree.append_column(&column);
