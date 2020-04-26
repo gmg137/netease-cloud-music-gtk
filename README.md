@@ -26,25 +26,47 @@
 > openssl, gstreamer, gstreamer-plugins-base, gstreamer-plugins-good, gstreamer-plugins-bad, gstreamer-plugins-ugly
 
 ## 安装
-- 直接到 [Release](https://github.com/gmg137/netease-cloud-music-gtk/releases) 页面下载 RPM/DEB 包安装。
-
-## 从源码编译/打包
+### openSUSE Tumbleweed
+```bash
+sudo zypper in netease-cloud-music-gtk
 ```
-// openSUSE 安装依赖
+### Arch Linux
+[使用方法](https://www.archlinuxcn.org/archlinux-cn-repo-and-mirror/)：在 /etc/pacman.conf 文件末尾添加以下两行（[或者选择其它镜像](https://github.com/archlinuxcn/mirrorlist-repo)）：
+```
+[archlinuxcn]
+Server = https://repo.archlinuxcn.org/$arch
+```
+### Debian
+```bash
+echo "deb https://dl.bintray.com/debianopt/debianopt buster main" | sudo tee -a /etc/apt/sources.list
+
+curl -o bintray-public.key.asc https://bintray.com/user/downloadSubjectPublicKey?username=bintray
+
+sudo apt-key add bintray-public.key.asc
+
+sudo apt install netease-cloud-music-gtk
+```
+### openSUSE Leap / Ubuntu
+- 下载 [RPM/DEB](https://gitee.com/gmg137/netease-cloud-music-gtk/releases)包安装。
+
+## 从源码安装
+### openSUSE 安装依赖
+```bash
 sudo zypper in git gcc dbus-1-devel gtk3-devel libopenssl-1_1-devel gstreamer-devel \
       gstreamer-plugins-bad gstreamer-plugins-bad-devel \
       gstreamer-plugins-base gstreamer-plugins-base-devel \
       gstreamer-plugins-good gstreamer-plugins-ugly cairo-devel
 ```
-```
-// ubuntu 安装依赖
+### ubuntu 安装依赖
+```bash
 sudo apt install git gcc libdbus-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
       gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
       gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
       gstreamer1.0-libav libgtk-3-dev libatk1.0-dev libcogl-pango-dev \
       libssl-dev libcairo2-dev libgstreamer-plugins-bad1.0-dev
 ```
-```
+### 编译/打包
+```bash
 git clone https://github.com/gmg137/netease-cloud-music-gtk.git
 cd netease-cloud-music-gtk
 
