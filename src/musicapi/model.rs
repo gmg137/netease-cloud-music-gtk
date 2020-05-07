@@ -186,17 +186,17 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get(0)
                             .ok_or(Errors::NoneError)?
                             .get("name")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!("未知"))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or("未知")
                             .to_owned(),
                         album: v
                             .get("al")
                             .ok_or(Errors::NoneError)?
                             .get("name")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!("未知"))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or("未知")
                             .to_owned(),
                         pic_url: v
                             .get("al")
@@ -285,17 +285,17 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get(0)
                             .ok_or(Errors::NoneError)?
                             .get("name")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!("未知"))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&"未知")
                             .to_owned(),
                         album: v
                             .get("album")
                             .ok_or(Errors::NoneError)?
                             .get("name")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!("未知"))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&"未知")
                             .to_owned(),
                         pic_url: v
                             .get("album")
@@ -344,17 +344,17 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get(0)
                             .ok_or(Errors::NoneError)?
                             .get("name")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!("未知"))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&"未知")
                             .to_owned(),
                         album: v
                             .get("album")
                             .ok_or(Errors::NoneError)?
                             .get("name")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!("未知"))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&"未知")
                             .to_owned(),
                         pic_url: v
                             .get("album")
@@ -403,17 +403,17 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get(0)
                             .ok_or(Errors::NoneError)?
                             .get("name")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!("未知"))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&"未知")
                             .to_owned(),
                         album: v
                             .get("album")
                             .ok_or(Errors::NoneError)?
                             .get("name")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!("未知"))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&"未知")
                             .to_owned(),
                         pic_url: v
                             .get("album")
@@ -458,17 +458,17 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                             .get(0)
                             .ok_or(Errors::NoneError)?
                             .get("name")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!("未知"))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&"未知")
                             .to_owned(),
                         album: value
                             .get("album")
                             .ok_or(Errors::NoneError)?
                             .get("name")
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&json!("未知"))
                             .as_str()
-                            .ok_or(Errors::NoneError)?
+                            .unwrap_or(&"未知")
                             .to_owned(),
                         pic_url: value
                             .get("album")
