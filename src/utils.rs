@@ -37,7 +37,9 @@ where
         let client = HttpClient::builder().timeout(Duration::from_millis(timeout)).build()?;
         let mut response = client.get_async(music_url).await?;
         if response.status().is_success() {
-            response.copy_to_file(path)?;
+            let tmp_path = format!("{}.tmp", path);
+            response.copy_to_file(&tmp_path)?;
+            fs::rename(&tmp_path, path).await?;
         }
     }
     Ok(())
