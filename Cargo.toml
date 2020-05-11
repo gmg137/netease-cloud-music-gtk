@@ -17,6 +17,7 @@ gdk-pixbuf ="^0.8"
 gstreamer = "^0.15"
 gstreamer-player = "^0.15"
 cairo-rs = { version = "^0.8", features = ["png"] }
+libappindicator = "^0.5"
 mpris-player = "*"
 
 dirs = "*"

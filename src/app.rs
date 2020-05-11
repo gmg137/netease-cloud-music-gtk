@@ -11,7 +11,7 @@ use crate::{
     task::{actuator_loop, Task},
     utils::*,
     view::*,
-    widgets::{header::*, mark_all_notif, notice::*, player::*},
+    widgets::{header::*, mark_all_notif, notice::*, player::*, tray::*},
 };
 use async_std::{
     sync::{Arc, Mutex},
@@ -92,6 +92,7 @@ pub(crate) struct App {
     view: Rc<View>,
     header: Rc<Header>,
     player: PlayerWrapper,
+    tray: Tray,
     notice: RefCell<Option<InAppNotification>>,
     overlay: Overlay,
     configs: Rc<RefCell<Configs>>,
@@ -131,6 +132,7 @@ impl App {
         let header = Header::new(&builder, &sender, &configs, Arc::clone(&music_data));
         let view = View::new(&builder, &sender, &sender_task, Arc::clone(&music_data));
         let player = PlayerWrapper::new(&builder, &sender, &sender_task, Arc::clone(&music_data));
+        let tray = Tray::new(&sender);
 
         window.show_all();
 
@@ -167,6 +169,7 @@ impl App {
             header,
             view,
             player,
+            tray,
             notice,
             overlay,
             configs: Rc::new(RefCell::new(configs)),
@@ -333,6 +336,7 @@ impl App {
                     if let Some(app) = weak.upgrade() {
                         app.window.show_now();
                         app.window.present();
+                        app.tray.show_all();
                     } else {
                         debug_assert!(false, "I hate computers");
                     }
