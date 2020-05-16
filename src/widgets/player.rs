@@ -58,9 +58,6 @@ impl PlayerInfo {
         metadata.art_url = Some(format!("file://{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id));
 
         self.mpris.set_metadata(metadata);
-        self.mpris.set_can_play(true);
-        self.mpris.set_can_go_next(true);
-        self.mpris.set_can_go_previous(true);
     }
 }
 
@@ -182,9 +179,7 @@ impl PlayerWidget {
         );
         mpris.set_can_raise(true);
         mpris.set_can_control(true);
-        mpris.set_can_play(false);
-        mpris.set_can_go_next(false);
-        mpris.set_can_go_previous(false);
+        mpris.set_can_quit(true);
 
         let mut config = player.get_config();
         config.set_user_agent("User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0");
@@ -277,7 +272,7 @@ impl PlayerWidget {
                     .image
                     .set_from_icon_name(Some("media-playlist-shuffle-symbolic"), gtk::IconSize::Menu);
                 loops.shuffle.set_active(true);
-                mpris.set_shuffle(true).ok();
+                mpris.property_changed("Shuffle".to_string(), true);
             }
         }
         let info = PlayerInfo {
@@ -589,7 +584,7 @@ impl PlayerWidget {
                     self.set_loops(LoopStatus::None);
                 } else if status.eq("Track") {
                     self.set_loops(LoopStatus::Track);
-                } else if status.eq("PlayList") {
+                } else if status.eq("Playlist") {
                     self.set_loops(LoopStatus::Playlist);
                 } else {
                     self.set_loops(LoopStatus::None);
@@ -783,6 +778,10 @@ impl PlayerWrapper {
 
     fn connect_mpris_buttons(&self) {
         let weak = Rc::clone(self);
+
+        self.info.mpris.connect_quit(clone!(@weak weak => move || {
+            weak.sender.send(Action::QuitMain).unwrap();
+        }));
 
         self.info
             .mpris
