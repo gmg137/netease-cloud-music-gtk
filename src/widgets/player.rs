@@ -536,15 +536,17 @@ impl PlayerWidget {
         self.sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
     }
 
-    fn set_volume(&self, value: f64) {
+    fn set_volume(&self, value: f64, mpris: bool) {
         task::spawn(async move {
             if let Ok(mut config) = get_config().await {
                 config.volume = value;
                 save_config(&config).await.ok();
             }
         });
-        self.info.mpris.set_volume(value).ok();
         self.player.set_volume(value);
+        if mpris {
+            self.controls.volume.set_value(value);
+        }
     }
 
     fn get_lyrics_text(&self) {
@@ -643,7 +645,7 @@ impl PlayerWrapper {
         self.controls
             .volume
             .connect_value_changed(clone!(@weak weak => move |_, value| {
-                weak.set_volume(value);
+                weak.set_volume(value,false);
             }));
 
         self.controls.lyrics.connect_clicked(clone!(@weak weak => move |_| {
@@ -775,6 +777,10 @@ impl PlayerWrapper {
 
         self.info.mpris.connect_raise(clone!(@weak weak => move || {
             weak.sender.send(Action::ActivateApp).unwrap();
+        }));
+
+        self.info.mpris.connect_volume(clone!(@weak weak => move |volume| {
+            weak.set_volume(volume, true);
         }));
     }
 }
