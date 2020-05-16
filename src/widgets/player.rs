@@ -59,6 +59,8 @@ impl PlayerInfo {
 
         self.mpris.set_metadata(metadata);
         self.mpris.set_can_play(true);
+        self.mpris.set_can_go_next(true);
+        self.mpris.set_can_go_previous(true);
     }
 }
 
@@ -132,7 +134,7 @@ struct PlayerLoops {
 }
 
 // 播放列表循环模式
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) enum LoopsState {
     // 随机
     SHUFFLE,
@@ -181,8 +183,8 @@ impl PlayerWidget {
         mpris.set_can_raise(true);
         mpris.set_can_control(true);
         mpris.set_can_play(false);
-        mpris.set_can_seek(false);
-        mpris.set_can_set_fullscreen(false);
+        mpris.set_can_go_next(false);
+        mpris.set_can_go_previous(false);
 
         let mut config = player.get_config();
         config.set_user_agent("User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0");
@@ -195,9 +197,10 @@ impl PlayerWidget {
         let backward: Button = builder.get_object("backward_button").unwrap();
         let like: Button = builder.get_object("like_button").unwrap();
         let volume: VolumeButton = builder.get_object("volume_button").unwrap();
-        let volume_value = match task::block_on(get_config()) {
-            Ok(config) => config.volume,
-            _ => 0.30,
+
+        let (volume_value, loop_state) = match task::block_on(get_config()) {
+            Ok(config) => (config.volume, config.loops),
+            _ => (0.30, LoopsState::NONE),
         };
         volume.set_value(volume_value);
         player.set_volume(volume_value);
@@ -232,13 +235,6 @@ impl PlayerWidget {
         let song: Label = builder.get_object("song_label").unwrap();
         let singer: Label = builder.get_object("singer_label").unwrap();
         let cover: Image = builder.get_object("song_cover").unwrap();
-        let info = PlayerInfo {
-            mpris,
-            song,
-            singer,
-            cover,
-            song_id: RefCell::new(None),
-        };
 
         let shuffle: RadioButton = builder.get_object("shuffle_radio").unwrap();
         let playlist: RadioButton = builder.get_object("playlist_radio").unwrap();
@@ -254,39 +250,44 @@ impl PlayerWidget {
         };
 
         let action_bar: ActionBar = builder.get_object("play_action_bar").unwrap();
-        let loop_state = task::block_on(async {
-            if let Ok(conf) = get_config().await {
-                conf.loops
-            } else {
-                LoopsState::NONE
-            }
-        });
         match loop_state {
             LoopsState::NONE => {
                 loops
                     .image
                     .set_from_icon_name(Some("media-playlist-consecutive-symbolic"), gtk::IconSize::Menu);
                 loops.none.set_active(true);
+                mpris.set_loop_status(LoopStatus::None);
             }
             LoopsState::TRACK => {
                 loops
                     .image
                     .set_from_icon_name(Some("media-playlist-repeat-song-symbolic"), gtk::IconSize::Menu);
                 loops.track.set_active(true);
+                mpris.set_loop_status(LoopStatus::Track);
             }
             LoopsState::PLAYLIST => {
                 loops
                     .image
                     .set_from_icon_name(Some("media-playlist-repeat-symbolic"), gtk::IconSize::Menu);
                 loops.playlist.set_active(true);
+                mpris.set_loop_status(LoopStatus::Playlist);
             }
             LoopsState::SHUFFLE => {
                 loops
                     .image
                     .set_from_icon_name(Some("media-playlist-shuffle-symbolic"), gtk::IconSize::Menu);
                 loops.shuffle.set_active(true);
+                mpris.set_shuffle(true).ok();
             }
         }
+        let info = PlayerInfo {
+            mpris,
+            song,
+            singer,
+            cover,
+            song_id: RefCell::new(None),
+        };
+
         PlayerWidget {
             player,
             action_bar,
@@ -537,7 +538,7 @@ impl PlayerWidget {
     }
 
     fn set_volume(&self, value: f64, mpris: bool) {
-        task::spawn(async move {
+        task::block_on(async move {
             if let Ok(mut config) = get_config().await {
                 config.volume = value;
                 save_config(&config).await.ok();
@@ -737,7 +738,7 @@ impl PlayerWrapper {
         self.loops.shuffle.connect_toggled(clone!(@weak weak => move |_| {
             *weak.loops_state.borrow_mut() = LoopsState::SHUFFLE;
             weak.loops.image.set_from_icon_name(Some("media-playlist-shuffle-symbolic"),gtk::IconSize::Menu);
-            task::spawn(async {
+            task::block_on(async {
                 if let Ok(mut conf) = get_config().await {
                     conf.loops = LoopsState::SHUFFLE;
                     save_config(&conf).await.ok();
@@ -748,7 +749,7 @@ impl PlayerWrapper {
         self.loops.playlist.connect_toggled(clone!(@weak weak => move |_| {
             *weak.loops_state.borrow_mut() = LoopsState::PLAYLIST;
             weak.loops.image.set_from_icon_name(Some("media-playlist-repeat-symbolic"),gtk::IconSize::Menu);
-            task::spawn(async {
+            task::block_on(async {
                 if let Ok(mut conf) = get_config().await {
                     conf.loops = LoopsState::PLAYLIST;
                     save_config(&conf).await.ok();
@@ -759,7 +760,7 @@ impl PlayerWrapper {
         self.loops.track.connect_toggled(clone!(@weak weak => move |_| {
             *weak.loops_state.borrow_mut() = LoopsState::TRACK;
             weak.loops.image.set_from_icon_name(Some("media-playlist-repeat-song-symbolic"),gtk::IconSize::Menu);
-            task::spawn(async {
+            task::block_on(async {
                 if let Ok(mut conf) = get_config().await {
                     conf.loops = LoopsState::TRACK;
                     save_config(&conf).await.ok();
@@ -769,10 +770,12 @@ impl PlayerWrapper {
         self.loops.none.connect_toggled(clone!(@weak weak => move |_| {
             *weak.loops_state.borrow_mut() = LoopsState::NONE;
             weak.loops.image.set_from_icon_name(Some("media-playlist-consecutive-symbolic"),gtk::IconSize::Menu);
-            task::spawn(async {
+            task::block_on(async {
                 if let Ok(mut conf) = get_config().await {
-                    conf.loops = LoopsState::NONE;
-                    save_config(&conf).await.ok();
+                    if conf.loops != LoopsState::NONE{
+                        conf.loops = LoopsState::NONE;
+                        save_config(&conf).await.ok();
+                    }
                 }
             });
         }));

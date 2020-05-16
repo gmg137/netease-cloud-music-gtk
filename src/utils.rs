@@ -6,7 +6,9 @@
 use crate::{
     app::Action,
     data::{clear_cache, MusicData},
-    model::{Errors, NCMResult, DATE_DAY, DATE_MONTH, ISO_WEEK, LYRICS_PATH, NCM_CACHE, NCM_CONFIG, NCM_DATA},
+    model::{
+        Errors, NCMResult, DATE_DAY, DATE_MONTH, GLOBAL_CONFIGS, ISO_WEEK, LYRICS_PATH, NCM_CACHE, NCM_CONFIG, NCM_DATA,
+    },
     musicapi::model::SongInfo,
     widgets::player::LoopsState,
 };
@@ -390,6 +392,9 @@ pub(crate) struct Configs {
 // 加载配置
 #[allow(unused)]
 pub(crate) async fn get_config() -> NCMResult<Configs> {
+    if let Some(configs) = GLOBAL_CONFIGS.clone().read().unwrap().to_owned() {
+        return Ok(configs);
+    }
     let path = format!("{}config.db", NCM_CONFIG.to_string_lossy());
     if let Ok(buffer) = fs::read(path).await {
         if let Ok(mut conf) = bincode::deserialize::<Configs>(&buffer).map_err(|_| Errors::NoneError) {
@@ -430,6 +435,9 @@ pub(crate) async fn get_config() -> NCMResult<Configs> {
         clear: ClearCached::NONE,
         volume: 0.30,
     };
+    let global_configs = GLOBAL_CONFIGS.clone();
+    let mut global_configs = global_configs.write().unwrap();
+    *global_configs = Some(conf.to_owned());
     Ok(conf)
 }
 
@@ -441,6 +449,9 @@ pub(crate) async fn save_config(conf: &Configs) -> NCMResult<()> {
         bincode::serialize(&conf).map_err(|_| Errors::NoneError)?,
     )
     .await?;
+    let global_configs = GLOBAL_CONFIGS.clone();
+    let mut global_configs = global_configs.write().unwrap();
+    *global_configs = Some(conf.to_owned());
     Ok(())
 }
 

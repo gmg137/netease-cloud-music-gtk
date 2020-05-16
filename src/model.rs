@@ -3,11 +3,16 @@
 // Copyright (C) 2020 gmg137 <gmg137@live.com>
 // Distributed under terms of the MIT license.
 //
+use crate::utils::Configs;
 use async_std::io;
 use chrono::prelude::*;
 use custom_error::custom_error;
 use lazy_static::lazy_static;
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::{Arc, RwLock},
+};
 
 pub(crate) type NCMResult<T> = Result<T, Errors>;
 
@@ -108,6 +113,9 @@ lazy_static! {
         m.insert(17,"华语金曲榜");
         m
     };
+
+    // 缓存全局配置
+    pub(crate) static ref GLOBAL_CONFIGS: Arc<RwLock<Option<Configs>>> = Arc::new(RwLock::new(None));
 }
 
 custom_error! { pub Errors
