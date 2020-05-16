@@ -426,7 +426,7 @@ pub(crate) async fn get_config() -> NCMResult<Configs> {
     let conf = Configs {
         tray: false,
         lyrics: false,
-        loops: LoopsState::CONSECUTIVE,
+        loops: LoopsState::NONE,
         clear: ClearCached::NONE,
         volume: 0.30,
     };

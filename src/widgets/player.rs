@@ -14,7 +14,7 @@ use gst::ClockTime;
 use gtk::{
     prelude::*, ActionBar, Builder, Button, Image, Label, MenuButton, RadioButton, Scale, TextView, VolumeButton,
 };
-use mpris_player::{Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
+use mpris_player::{LoopStatus, Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, ops::Deref, path::Path, rc::Rc, sync::Arc};
 
@@ -126,8 +126,8 @@ impl PlayerTimes {
 struct PlayerLoops {
     shuffle: RadioButton,
     playlist: RadioButton,
+    track: RadioButton,
     none: RadioButton,
-    consecutive: RadioButton,
     image: Image,
 }
 
@@ -139,9 +139,9 @@ pub(crate) enum LoopsState {
     // 列表循环
     PLAYLIST,
     // 单曲循环
-    NONE,
+    TRACK,
     // 不循环
-    CONSECUTIVE,
+    NONE,
 }
 
 #[derive(Clone)]
@@ -242,14 +242,14 @@ impl PlayerWidget {
 
         let shuffle: RadioButton = builder.get_object("shuffle_radio").unwrap();
         let playlist: RadioButton = builder.get_object("playlist_radio").unwrap();
+        let track: RadioButton = builder.get_object("track_radio").unwrap();
         let none: RadioButton = builder.get_object("none_radio").unwrap();
-        let consecutive: RadioButton = builder.get_object("consecutive_radio").unwrap();
         let image: Image = builder.get_object("loops_image").unwrap();
         let loops = PlayerLoops {
             shuffle,
             playlist,
+            track,
             none,
-            consecutive,
             image,
         };
 
@@ -258,21 +258,21 @@ impl PlayerWidget {
             if let Ok(conf) = get_config().await {
                 conf.loops
             } else {
-                LoopsState::CONSECUTIVE
+                LoopsState::NONE
             }
         });
         match loop_state {
-            LoopsState::CONSECUTIVE => {
-                loops
-                    .image
-                    .set_from_icon_name(Some("media-playlist-consecutive-symbolic"), gtk::IconSize::Menu);
-                loops.consecutive.set_active(true);
-            }
             LoopsState::NONE => {
                 loops
                     .image
-                    .set_from_icon_name(Some("media-playlist-repeat-song-symbolic"), gtk::IconSize::Menu);
+                    .set_from_icon_name(Some("media-playlist-consecutive-symbolic"), gtk::IconSize::Menu);
                 loops.none.set_active(true);
+            }
+            LoopsState::TRACK => {
+                loops
+                    .image
+                    .set_from_icon_name(Some("media-playlist-repeat-song-symbolic"), gtk::IconSize::Menu);
+                loops.track.set_active(true);
             }
             LoopsState::PLAYLIST => {
                 loops
@@ -481,8 +481,8 @@ impl PlayerWidget {
         let (shuffle, loops) = match *self.loops_state.borrow() {
             LoopsState::SHUFFLE => (true, false),
             LoopsState::PLAYLIST => (false, true),
-            LoopsState::CONSECUTIVE => (false, false),
-            LoopsState::NONE => {
+            LoopsState::NONE => (false, false),
+            LoopsState::TRACK => {
                 self.play();
                 return;
             }
@@ -496,8 +496,8 @@ impl PlayerWidget {
         let (shuffle, loops) = match *self.loops_state.borrow() {
             LoopsState::SHUFFLE => (true, false),
             LoopsState::PLAYLIST => (false, true),
-            LoopsState::CONSECUTIVE => (false, false),
             LoopsState::NONE => (false, false),
+            LoopsState::TRACK => (false, false),
         };
         if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, shuffle, loops)) {
             self.sender.send(Action::ReadyPlayer(si)).unwrap();
@@ -515,12 +515,12 @@ impl PlayerWidget {
                 }
                 return;
             }
-            LoopsState::NONE => {
+            LoopsState::TRACK => {
                 self.stop();
                 self.play();
                 return;
             }
-            LoopsState::CONSECUTIVE => false,
+            LoopsState::NONE => false,
         };
         if let Ok(si) = task::block_on(get_player_list_song(PD::BACKWARD, state, false)) {
             self.sender.send(Action::ReadyPlayer(si)).unwrap();
@@ -561,6 +561,40 @@ impl PlayerWidget {
                 sender.send(Action::RefreshLyricsText(lrc)).unwrap();
             }
         });
+    }
+
+    // 从 Mpris2 设置播放循环
+    fn set_loops(&self, loops_status: LoopStatus) {
+        match loops_status {
+            LoopStatus::None => {
+                self.loops.none.set_active(true);
+            }
+            LoopStatus::Track => {
+                self.loops.track.set_active(true);
+            }
+            LoopStatus::Playlist => {
+                self.loops.playlist.set_active(true);
+            }
+        }
+    }
+
+    // 从 Mpris2 设置混淆播放
+    fn set_shuffle(&self, shuffle: bool) {
+        if shuffle {
+            self.loops.shuffle.set_active(true);
+        } else {
+            if let Ok(status) = self.info.mpris.get_loop_status() {
+                if status.eq("None") {
+                    self.set_loops(LoopStatus::None);
+                } else if status.eq("Track") {
+                    self.set_loops(LoopStatus::Track);
+                } else if status.eq("PlayList") {
+                    self.set_loops(LoopStatus::Playlist);
+                } else {
+                    self.set_loops(LoopStatus::None);
+                }
+            }
+        }
     }
 
     pub(crate) fn update_lyrics_text(&self, lrc: String) {
@@ -722,22 +756,22 @@ impl PlayerWrapper {
             });
         }));
 
-        self.loops.none.connect_toggled(clone!(@weak weak => move |_| {
-            *weak.loops_state.borrow_mut() = LoopsState::NONE;
+        self.loops.track.connect_toggled(clone!(@weak weak => move |_| {
+            *weak.loops_state.borrow_mut() = LoopsState::TRACK;
             weak.loops.image.set_from_icon_name(Some("media-playlist-repeat-song-symbolic"),gtk::IconSize::Menu);
             task::spawn(async {
                 if let Ok(mut conf) = get_config().await {
-                    conf.loops = LoopsState::NONE;
+                    conf.loops = LoopsState::TRACK;
                     save_config(&conf).await.ok();
                 }
             });
         }));
-        self.loops.consecutive.connect_toggled(clone!(@weak weak => move |_| {
-            *weak.loops_state.borrow_mut() = LoopsState::CONSECUTIVE;
+        self.loops.none.connect_toggled(clone!(@weak weak => move |_| {
+            *weak.loops_state.borrow_mut() = LoopsState::NONE;
             weak.loops.image.set_from_icon_name(Some("media-playlist-consecutive-symbolic"),gtk::IconSize::Menu);
             task::spawn(async {
                 if let Ok(mut conf) = get_config().await {
-                    conf.loops = LoopsState::CONSECUTIVE;
+                    conf.loops = LoopsState::NONE;
                     save_config(&conf).await.ok();
                 }
             });
@@ -781,6 +815,14 @@ impl PlayerWrapper {
 
         self.info.mpris.connect_volume(clone!(@weak weak => move |volume| {
             weak.set_volume(volume, true);
+        }));
+
+        self.info.mpris.connect_shuffle(clone!(@weak weak => move |status| {
+            weak.set_shuffle(status);
+        }));
+
+        self.info.mpris.connect_loop_status(clone!(@weak weak => move |status| {
+            weak.set_loops(status);
         }));
     }
 }
