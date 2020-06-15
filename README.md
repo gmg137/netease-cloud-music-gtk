@@ -49,6 +49,9 @@ sudo apt install netease-cloud-music-gtk
 ### openSUSE Leap / Ubuntu
 - 下载 [RPM/DEB](https://gitee.com/gmg137/netease-cloud-music-gtk/releases)包安装。
 
+### 其它发行版
+- 下载 [Appimage](https://gitee.com/gmg137/netease-cloud-music-gtk/releases) 运行。
+
 ## 从源码安装
 ### openSUSE 安装依赖
 ```bash
