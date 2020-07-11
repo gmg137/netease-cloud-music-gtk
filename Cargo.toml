@@ -8,15 +8,15 @@ edition = "2018"
 homepage = "https://github.com/gmg137/netease-cloud-music-gtk"
 
 [dependencies]
-gtk = "^0.8"
-gdk = "^0.12"
-gio = "^0.8"
-glib = "^0.9"
-pango = "^0.8"
-gdk-pixbuf ="^0.8"
-gstreamer = "^0.15"
-gstreamer-player = "^0.15"
-cairo-rs = { version = "^0.8", features = ["png"] }
+gtk = "^0.9"
+gdk = "^0.13"
+gio = "^0.9"
+glib = "^0.10"
+pango = "^0.9"
+gdk-pixbuf ="^0.9"
+gstreamer = "^0.16"
+gstreamer-player = "^0.16"
+cairo-rs = { version = "^0.9", features = ["png"] }
 mpris-player = "*"
 
 dirs = "*"

@@ -30,7 +30,7 @@ pub(crate) struct InAppNotification {
 impl Default for InAppNotification {
     fn default() -> Self {
         let glade_src = include_str!("../../ui/inapp_notif.ui");
-        let builder = gtk::Builder::new_from_string(glade_src);
+        let builder = gtk::Builder::from_string(glade_src);
 
         let revealer: gtk::Revealer = builder.get_object("revealer").unwrap();
         let text: gtk::Label = builder.get_object("text").unwrap();
@@ -79,7 +79,7 @@ impl InAppNotification {
         self.revealer.set_reveal_child(true);
     }
 
-    pub(crate) fn destroy(self) {
-        self.revealer.destroy();
-    }
+    // pub(crate) fn destroy(self) {
+    //     self.revealer.destroy();
+    // }
 }

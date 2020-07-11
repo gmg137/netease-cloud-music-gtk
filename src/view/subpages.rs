@@ -158,7 +158,7 @@ impl Subpages {
             self.overview.grid.hide();
             return;
         }
-        if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+        if let Ok(image) = Pixbuf::from_file(&image_path) {
             let image = image.scale_simple(140, 140, InterpType::Bilinear);
             self.overview.pic.set_from_pixbuf(image.as_ref());
         };
