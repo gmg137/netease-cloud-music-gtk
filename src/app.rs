@@ -106,7 +106,7 @@ impl App {
         let receiver = RefCell::new(Some(r));
 
         let glade_src = include_str!("../ui/window.ui");
-        let builder = Builder::new_from_string(glade_src);
+        let builder = Builder::from_string(glade_src);
 
         let window: ApplicationWindow = builder.get_object("applicationwindow").expect("Couldn't get window");
         window.set_application(Some(application));
@@ -256,10 +256,7 @@ impl App {
             Action::RefreshLyricsText(lrc) => self.player.update_lyrics_text(lrc),
             Action::ShowNotice(text) => {
                 let notif = mark_all_notif(text);
-                let old = self.notice.replace(Some(notif));
-                if let Some(i) = old {
-                    i.destroy()
-                }
+                let _ = self.notice.replace(Some(notif));
                 if let Some(i) = self.notice.borrow().as_ref() {
                     i.show(&self.overlay)
                 }
@@ -269,7 +266,7 @@ impl App {
             Action::PlayerSubpages => self.view.play_subpages(),
             Action::PlayerFound => self.view.play_found(),
             Action::PlayerMine => self.view.play_mine(),
-            Action::QuitMain => self.window.destroy(),
+            Action::QuitMain => self.window.close(),
             Action::ConfigsSetTray(state) => {
                 task::spawn(async move {
                     if let Ok(mut conf) = get_config().await {

@@ -45,7 +45,7 @@ impl PlayerInfo {
         self.song.set_tooltip_text(Some(&song_info.name[..]));
         self.singer.set_text(&song_info.singer);
         let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
-        if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+        if let Ok(image) = Pixbuf::from_file(&image_path) {
             let image = image.scale_simple(38, 38, InterpType::Bilinear);
             self.cover.set_from_pixbuf(image.as_ref());
         };
@@ -605,7 +605,7 @@ impl PlayerWidget {
     }
 
     pub(crate) fn set_cover_image(&self, image_path: String) {
-        if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+        if let Ok(image) = Pixbuf::from_file(&image_path) {
             let image = image.scale_simple(38, 38, InterpType::Bilinear);
             self.info.cover.set_from_pixbuf(image.as_ref());
         };

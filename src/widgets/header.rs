@@ -151,8 +151,8 @@ impl Header {
         s.login_dialog
             .ok
             .connect_clicked(clone!(@weak dialog, @weak name,@weak pass => move |_| {
-            let name = name.get_text().unwrap().as_str().to_owned();
-            let pass = pass.get_text().unwrap().as_str().to_owned();
+            let name = name.get_text().as_str().to_owned();
+            let pass = pass.get_text().as_str().to_owned();
             if !name.is_empty() && !pass.is_empty(){
                 sen.send(Action::Login(name,pass)).unwrap();
                 dialog.hide();
@@ -188,11 +188,10 @@ impl Header {
         s.search_entry
             .connect_activate(clone!(@weak search_entry, @weak search => move |_| {
                 // 回车键直接搜索
-                if let Some(text) = search_entry.get_text() {
-                    if !text.is_empty() {
-                        search.clicked();
-                        sender_clone.send(Action::Search(text.to_owned())).unwrap_or(());
-                    }
+                let text = search_entry.get_text();
+                if !text.is_empty() {
+                    search.clicked();
+                    sender_clone.send(Action::Search(text.to_owned())).unwrap_or(());
                 }
             }));
 

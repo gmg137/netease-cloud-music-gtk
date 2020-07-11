@@ -322,7 +322,7 @@ pub(crate) enum PD {
 #[allow(unused)]
 pub(crate) fn create_round_avatar(src: &str) -> io::Result<Pixbuf> {
     // 初始化图像
-    let image = Pixbuf::new_from_file(src).map_err(|_| Error::last_os_error())?;
+    let image = Pixbuf::from_file(src).map_err(|_| Error::last_os_error())?;
 
     // 获取宽高
     let w = image.get_width();

@@ -60,17 +60,17 @@ impl View {
         let mine_stack: Stack = builder.get_object("mine_stack").expect("无法获取 mine_stack.");
 
         let glade_src = include_str!("../../ui/subpages.ui");
-        let subpages_builder = Builder::new_from_string(glade_src);
+        let subpages_builder = Builder::from_string(glade_src);
         let subpages_stack: Stack = subpages_builder
             .get_object("subpages_stack")
             .expect("无法获取 subpages_stack.");
 
         let glade_src = include_str!("../../ui/home.ui");
-        let home_builder = Builder::new_from_string(glade_src);
+        let home_builder = Builder::from_string(glade_src);
         let home_stack: Stack = home_builder.get_object("home_stack").expect("无法获取 home_stack.");
 
         let glade_src = include_str!("../../ui/found.ui");
-        let found_builder = Builder::new_from_string(glade_src);
+        let found_builder = Builder::from_string(glade_src);
         let found_stack: Stack = found_builder.get_object("found_stack").expect("无法获取 found_stack.");
         let found_content_stack: Stack = found_builder
             .get_object("found_content_stack")
@@ -84,19 +84,19 @@ impl View {
         found_content_stack.set_visible_child_name("found_right_stack");
 
         let glade_src = include_str!("../../ui/mine_fm.ui");
-        let mine_login_fm_builder = Builder::new_from_string(glade_src);
+        let mine_login_fm_builder = Builder::from_string(glade_src);
         let mine_fm_stack: Stack = mine_login_fm_builder
             .get_object("mine_fm_stack")
             .expect("无法获取 mine_fm_stack.");
 
         let glade_src = include_str!("../../ui/mine_list.ui");
-        let mine_login_list_builder = Builder::new_from_string(glade_src);
+        let mine_login_list_builder = Builder::from_string(glade_src);
         let mine_list_stack: Stack = mine_login_list_builder
             .get_object("mine_list_stack")
             .expect("无法获取 mine_list_stack.");
 
         let glade_src = include_str!("../../ui/mine_login.ui");
-        let mine_login_builder = Builder::new_from_string(glade_src);
+        let mine_login_builder = Builder::from_string(glade_src);
         let mine_login_stack: Stack = mine_login_builder
             .get_object("mine_login_stack")
             .expect("无法获取 mine_login_stack.");
@@ -115,7 +115,7 @@ impl View {
         mine_login_center_stack.set_visible_child_name("mine_fm_stack");
 
         let glade_src = include_str!("../../ui/mine_not_login.ui");
-        let mine_not_login_builder = Builder::new_from_string(glade_src);
+        let mine_not_login_builder = Builder::from_string(glade_src);
         let mine_not_login_stack: Stack = mine_not_login_builder
             .get_object("mine_not_login_stack")
             .expect("无法获取 mine_not_login_stack.");

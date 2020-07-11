@@ -72,11 +72,11 @@ impl Home {
                 label.set_ellipsize(pango::EllipsizeMode::End);
                 label.set_line_wrap(true);
                 let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
-                let image = if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+                let image = if let Ok(image) = Pixbuf::from_file(&image_path) {
                     let image = image.scale_simple(140, 140, InterpType::Bilinear);
-                    Image::new_from_pixbuf(image.as_ref())
+                    Image::from_pixbuf(image.as_ref())
                 } else {
-                    let image = Image::new_from_icon_name(Some("media-optical"), gtk::IconSize::Button);
+                    let image = Image::from_icon_name(Some("media-optical"), gtk::IconSize::Button);
                     image.set_pixel_size(140);
                     image
                 };
@@ -118,11 +118,11 @@ impl Home {
                         label.set_ellipsize(pango::EllipsizeMode::End);
                         label.set_line_wrap(true);
                         let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
-                        let image = if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+                        let image = if let Ok(image) = Pixbuf::from_file(&image_path) {
                             let image = image.scale_simple(140, 140, InterpType::Bilinear);
-                            Image::new_from_pixbuf(image.as_ref())
+                            Image::from_pixbuf(image.as_ref())
                         } else {
-                            let image = Image::new_from_icon_name(Some("media-optical"), gtk::IconSize::Button);
+                            let image = Image::from_icon_name(Some("media-optical"), gtk::IconSize::Button);
                             image.set_pixel_size(140);
                             image
                         };
@@ -174,11 +174,11 @@ impl Home {
         label.set_ellipsize(pango::EllipsizeMode::End);
         label.set_line_wrap(true);
         let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_list.id);
-        let image = if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+        let image = if let Ok(image) = Pixbuf::from_file(&image_path) {
             let image = image.scale_simple(140, 140, InterpType::Bilinear);
-            Image::new_from_pixbuf(image.as_ref())
+            Image::from_pixbuf(image.as_ref())
         } else {
-            let image = Image::new_from_icon_name(Some("media-optical"), gtk::IconSize::Button);
+            let image = Image::from_icon_name(Some("media-optical"), gtk::IconSize::Button);
             image.set_pixel_size(140);
             image
         };
@@ -217,11 +217,11 @@ impl Home {
         label.set_ellipsize(pango::EllipsizeMode::End);
         label.set_line_wrap(true);
         let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_list.id);
-        let image = if let Ok(image) = Pixbuf::new_from_file(&image_path) {
+        let image = if let Ok(image) = Pixbuf::from_file(&image_path) {
             let image = image.scale_simple(140, 140, InterpType::Bilinear);
-            Image::new_from_pixbuf(image.as_ref())
+            Image::from_pixbuf(image.as_ref())
         } else {
-            let image = Image::new_from_icon_name(Some("media-optical"), gtk::IconSize::Button);
+            let image = Image::from_icon_name(Some("media-optical"), gtk::IconSize::Button);
             image.set_pixel_size(140);
             image
         };
