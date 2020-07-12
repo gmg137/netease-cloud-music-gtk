@@ -3,8 +3,6 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-use glib;
-use gtk;
 use gtk::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -79,7 +77,7 @@ impl InAppNotification {
         self.revealer.set_reveal_child(true);
     }
 
-    // pub(crate) fn destroy(self) {
-    //     self.revealer.destroy();
-    // }
+    pub(crate) fn destroy(self) {
+        self.revealer.set_reveal_child(false);
+    }
 }

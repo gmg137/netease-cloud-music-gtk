@@ -256,7 +256,10 @@ impl App {
             Action::RefreshLyricsText(lrc) => self.player.update_lyrics_text(lrc),
             Action::ShowNotice(text) => {
                 let notif = mark_all_notif(text);
-                let _ = self.notice.replace(Some(notif));
+                let old = self.notice.replace(Some(notif));
+                if let Some(i) = old {
+                    i.destroy()
+                }
                 if let Some(i) = self.notice.borrow().as_ref() {
                     i.show(&self.overlay)
                 }
