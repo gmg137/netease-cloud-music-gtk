@@ -269,7 +269,7 @@ impl App {
             Action::PlayerSubpages => self.view.play_subpages(),
             Action::PlayerFound => self.view.play_found(),
             Action::PlayerMine => self.view.play_mine(),
-            Action::QuitMain => self.window.close(),
+            Action::QuitMain => unsafe { self.window.destroy() },
             Action::ConfigsSetTray(state) => {
                 task::spawn(async move {
                     if let Ok(mut conf) = get_config().await {
