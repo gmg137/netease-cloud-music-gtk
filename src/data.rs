@@ -8,7 +8,7 @@ use crate::{
     model::{Errors, NCMResult, DATE_DAY, NCM_CONFIG, NCM_DATA},
     musicapi::{model::*, MusicApi},
 };
-use async_std::{fs, prelude::*, task};
+use async_std::{fs, prelude::*};
 use openssl::hash::{hash, MessageDigest};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -45,21 +45,19 @@ struct LoginKey {
 
 impl MusicData {
     #[allow(unused)]
-    pub(crate) fn new() -> Self {
-        if let Ok(data) = task::block_on(Self::from_db()) {
+    pub(crate) async fn new() -> Self {
+        if let Ok(data) = Self::from_db().await {
             return data;
         }
-        task::spawn(async {
-            let data = StatusData {
-                login: false,
-                day: *DATE_DAY,
-            };
-            if let Ok(value) = bincode::serialize(&data) {
-                fs::write(format!("{}status_data.db", NCM_CONFIG.to_string_lossy()), value)
-                    .await
-                    .ok();
-            }
-        });
+        let data = StatusData {
+            login: false,
+            day: *DATE_DAY,
+        };
+        if let Ok(value) = bincode::serialize(&data) {
+            fs::write(format!("{}status_data.db", NCM_CONFIG.to_string_lossy()), value)
+                .await
+                .ok();
+        }
         MusicData {
             musicapi: MusicApi::new(),
             login: false,

@@ -367,7 +367,7 @@ impl PlayerWidget {
         task::spawn(async move {
             // 下载歌词
             if lyrics {
-                let mut data = MusicData::new();
+                let mut data = MusicData::new().await;
                 download_lyrics(&mut data, &song_info.name, &song_info).await.ok();
             }
             sender.send(Action::Player(song_info.clone())).unwrap();
@@ -549,7 +549,7 @@ impl PlayerWidget {
         let sender = self.sender.clone();
         let song_id = *self.info.song_id.borrow();
         task::spawn(async move {
-            let mut data = MusicData::new();
+            let mut data = MusicData::new().await;
             if let Some(id) = song_id {
                 let lrc = get_lyrics(&mut data, id)
                     .await
@@ -578,17 +578,15 @@ impl PlayerWidget {
     fn set_shuffle(&self, shuffle: bool) {
         if shuffle {
             self.loops.shuffle.set_active(true);
-        } else {
-            if let Ok(status) = self.info.mpris.get_loop_status() {
-                if status.eq("None") {
-                    self.set_loops(LoopStatus::None);
-                } else if status.eq("Track") {
-                    self.set_loops(LoopStatus::Track);
-                } else if status.eq("Playlist") {
-                    self.set_loops(LoopStatus::Playlist);
-                } else {
-                    self.set_loops(LoopStatus::None);
-                }
+        } else if let Ok(status) = self.info.mpris.get_loop_status() {
+            if status.eq("None") {
+                self.set_loops(LoopStatus::None);
+            } else if status.eq("Track") {
+                self.set_loops(LoopStatus::Track);
+            } else if status.eq("Playlist") {
+                self.set_loops(LoopStatus::Playlist);
+            } else {
+                self.set_loops(LoopStatus::None);
             }
         }
     }

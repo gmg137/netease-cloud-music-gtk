@@ -220,7 +220,7 @@ impl View {
         let sender = self.sender.clone();
         let text_clone = text.clone();
         task::spawn(async move {
-            let mut data = MusicData::new();
+            let mut data = MusicData::new().await;
             if let Ok(json) = data.search(text_clone, 1, 0, 50).await {
                 if let Ok(song_list) = serde_json::from_str::<Vec<SongInfo>>(&json) {
                     // 发送更新子页概览, 用以清除原始歌曲列表
@@ -248,7 +248,7 @@ impl View {
         self.subpages.borrow_mut().update_up_view(id, name, image_path);
         let sender = self.sender.clone();
         task::spawn(async move {
-            let mut data = MusicData::new();
+            let mut data = MusicData::new().await;
             if data.login_info().await.is_ok() {
                 sender.send(Action::ShowSubLike(true)).unwrap_or(());
             } else {
@@ -295,7 +295,7 @@ impl View {
         let sender = self.sender.clone();
         let mut sender_task = self.sender_task.clone();
         task::spawn(async move {
-            let mut data = MusicData::new();
+            let mut data = MusicData::new().await;
             if let Ok(tsl) = data.top_song_list("hot", 0, 8).await {
                 let tsl = Arc::new(tsl);
                 sender_task.send(Task::DownloadHomeUpImage(Arc::clone(&tsl))).await.ok();
@@ -349,7 +349,7 @@ impl View {
         let title = TOP_NAME.get(&row_id).unwrap();
         self.found_content_stack.set_visible_child_name("spinner_stack");
         task::spawn(async move {
-            let mut data = MusicData::new();
+            let mut data = MusicData::new().await;
             if let Ok(song_list) = data.song_list_detail(*lid, false).await {
                 sender
                     .send(Action::RefreshFoundView(song_list, (*title).to_string()))
@@ -421,7 +421,7 @@ impl View {
             if let Ok(vsi) = data.personal_fm().await {
                 // 提取歌曲 id 列表
                 if !vsi.is_empty() {
-                    let mut api = MusicData::new();
+                    let mut api = MusicData::new().await;
                     // 创建播放列表
                     create_player_list(&mut api, &vsi, sender.clone(), false, true)
                         .await
@@ -480,7 +480,7 @@ impl View {
                         // 提取歌曲 id 列表
                         let song_id_list = vsi.iter().map(|si| si.id).collect::<Vec<u64>>();
                         if !vsi.is_empty() {
-                            let mut api = MusicData::new();
+                            let mut api = MusicData::new().await;
                             // 创建播放列表
                             create_player_list(&mut api, &vsi, sender.clone(), false, true)
                                 .await

@@ -120,7 +120,7 @@ impl App {
             actuator_loop(receiver_task, sender_clone).await.ok();
         });
 
-        let music_data = Arc::new(Mutex::new(MusicData::new()));
+        let music_data = Arc::new(Mutex::new(task::block_on(MusicData::new())));
         let data = music_data.clone();
         task::block_on(async move {
             let mut data = data.lock().await;
