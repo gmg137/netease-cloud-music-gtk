@@ -36,6 +36,15 @@ sudo zypper in netease-cloud-music-gtk
 [archlinuxcn]
 Server = https://repo.archlinuxcn.org/$arch
 ```
+添加后执行下面语句安装 archlinuxcn-keyring
+```bash
+sudo pacman -Syyu archlinuxcn-keyring
+```
+然后安装 netease-cloud-music-gtk
+```bash
+sudo pacman -Syu netease-cloud-music-gtk
+```
+
 ### Debian
 ```bash
 echo "deb https://dl.bintray.com/debianopt/debianopt buster main" | sudo tee -a /etc/apt/sources.list
