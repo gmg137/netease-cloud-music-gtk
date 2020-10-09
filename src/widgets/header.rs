@@ -174,11 +174,17 @@ impl Header {
         // 搜索按钮
         let search_bar = &s.search_bar;
         let search_entry = &s.search_entry;
+        let sender_clone = sender.clone();
         s.search
             .connect_clicked(clone!(@weak search_bar, @weak search_entry=> move |_| {
                 search_entry.set_property_is_focus(true);
                 search_entry.set_text("");
                 search_bar.set_search_mode(!search_bar.get_search_mode());
+                if search_bar.get_search_mode() {
+                    sender_clone.send(Action::PlayRemoveAccel).unwrap_or(());
+                }else {
+                    sender_clone.send(Action::PlayAddAccel).unwrap_or(());
+                }
             }));
 
         // 搜索框

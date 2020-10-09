@@ -357,7 +357,6 @@
                     <property name="tooltip_text" translatable="yes">播放</property>
                     <property name="image">play_image</property>
                     <property name="always_show_image">True</property>
-                    <accelerator key="space" signal="clicked"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -374,7 +373,6 @@
                     <property name="tooltip_text" translatable="yes">播放</property>
                     <property name="image">pause_image</property>
                     <property name="always_show_image">True</property>
-                    <accelerator key="space" signal="clicked"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>

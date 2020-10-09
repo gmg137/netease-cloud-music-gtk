@@ -20,7 +20,7 @@ use async_std::{
 use futures::channel::mpsc;
 use gio::{self, prelude::*};
 use glib::{Receiver, Sender};
-use gtk::{prelude::*, ApplicationWindow, Builder, Overlay};
+use gtk::{prelude::*, AccelGroup, ApplicationWindow, Builder, Overlay};
 use std::{cell::RefCell, rc::Rc};
 
 pub(crate) enum Action {
@@ -85,6 +85,8 @@ pub(crate) enum Action {
     ConfigsSetLyrics(bool),
     ConfigsSetClear(u8),
     ActivateApp,
+    PlayAddAccel,
+    PlayRemoveAccel,
 }
 
 pub(crate) struct App {
@@ -98,6 +100,7 @@ pub(crate) struct App {
     sender: Sender<Action>,
     receiver: RefCell<Option<Receiver<Action>>>,
     music_data: Arc<Mutex<MusicData>>,
+    accel_group: AccelGroup,
 }
 
 impl App {
@@ -111,6 +114,9 @@ impl App {
         let window: ApplicationWindow = builder.get_object("applicationwindow").expect("Couldn't get window");
         window.set_application(Some(application));
         window.set_title("网易云音乐");
+
+        let accel_group = AccelGroup::new();
+        window.add_accel_group(&accel_group);
 
         let configs = task::block_on(get_config()).unwrap();
 
@@ -131,6 +137,7 @@ impl App {
         let header = Header::new(&builder, &sender, &configs, Arc::clone(&music_data));
         let view = View::new(&builder, &sender, &sender_task, Arc::clone(&music_data));
         let player = PlayerWrapper::new(&builder, &sender, &sender_task, Arc::clone(&music_data));
+        player.play_add_accel(&accel_group);
 
         window.show_all();
 
@@ -173,6 +180,7 @@ impl App {
             sender,
             receiver,
             music_data,
+            accel_group,
         };
         Rc::new(app)
     }
@@ -312,6 +320,12 @@ impl App {
             Action::ActivateApp => {
                 self.window.show_now();
                 self.window.present();
+            }
+            Action::PlayAddAccel => {
+                self.player.play_add_accel(&self.accel_group);
+            }
+            Action::PlayRemoveAccel => {
+                self.player.play_remove_accel(&self.accel_group);
             }
         }
 

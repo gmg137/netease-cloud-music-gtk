@@ -12,7 +12,8 @@ use gdk_pixbuf::{InterpType, Pixbuf};
 use glib::{clone, Sender, SignalHandlerId, WeakRef};
 use gst::ClockTime;
 use gtk::{
-    prelude::*, ActionBar, Builder, Button, Image, Label, MenuButton, RadioButton, Scale, TextView, VolumeButton,
+    prelude::*, AccelGroup, ActionBar, Builder, Button, Image, Label, MenuButton, RadioButton, Scale, TextView,
+    VolumeButton,
 };
 use mpris_player::{LoopStatus, Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use serde::{Deserialize, Serialize};
@@ -607,6 +608,26 @@ impl PlayerWidget {
             let image = image.scale_simple(38, 38, InterpType::Bilinear);
             self.info.cover.set_from_pixbuf(image.as_ref());
         };
+    }
+
+    // 添加快捷键
+    pub(crate) fn play_add_accel(&self, ag: &AccelGroup) {
+        self.controls
+            .play
+            .add_accelerator("clicked", ag, 32, gdk::ModifierType::empty(), gtk::AccelFlags::VISIBLE);
+        self.controls
+            .pause
+            .add_accelerator("clicked", ag, 32, gdk::ModifierType::empty(), gtk::AccelFlags::VISIBLE);
+    }
+
+    // 删除快捷键
+    pub(crate) fn play_remove_accel(&self, ag: &AccelGroup) {
+        self.controls
+            .play
+            .remove_accelerator(ag, 32, gdk::ModifierType::empty());
+        self.controls
+            .pause
+            .remove_accelerator(ag, 32, gdk::ModifierType::empty());
     }
 }
 
