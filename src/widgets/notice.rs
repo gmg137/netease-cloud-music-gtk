@@ -49,7 +49,7 @@ impl InAppNotification {
 
         let revealer_weak = notif.revealer.downgrade();
         let mut time = 0;
-        timeout_add(250, move || {
+        glib::timeout_add_local(250, move || {
             if time < timer {
                 time += 250;
                 return glib::Continue(true);
