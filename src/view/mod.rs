@@ -78,6 +78,7 @@ impl View {
 
         let spinner_stack = Stack::new();
         let spinner = Spinner::new();
+        spinner.set_size_request(50, 50);
         spinner.start();
         spinner_stack.add(&spinner);
         found_content_stack.add_named(&spinner_stack, "spinner_stack");
@@ -106,6 +107,7 @@ impl View {
 
         let spinner_stack = Stack::new();
         let spinner = Spinner::new();
+        spinner.set_size_request(50, 50);
         spinner.start();
         spinner_stack.add(&spinner);
 
@@ -130,6 +132,7 @@ impl View {
 
         let spinner_stack = Stack::new();
         let spinner = Spinner::new();
+        spinner.set_size_request(50, 50);
         spinner.start();
         spinner_stack.add(&spinner);
 
