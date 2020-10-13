@@ -56,7 +56,7 @@ impl PlayerInfo {
         let mut metadata = Metadata::new();
         metadata.artist = Some(vec![song_info.singer.clone()]);
         metadata.title = Some(song_info.name.clone());
-        metadata.art_url = Some(format!("file://{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id));
+        metadata.art_url = Some(format!("file:///{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id));
 
         self.mpris.set_metadata(metadata);
     }
@@ -407,7 +407,7 @@ impl PlayerWidget {
         let song_uri = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
         if Path::new(&song_uri).exists() {
             info!("播放音乐缓存: {}", song_uri);
-            self.player.set_uri(&format!("file://{}", song_uri));
+            self.player.set_uri(&format!("file:///{}", song_uri));
         } else {
             let music_url = song_info.song_url.replace("https:", "http:");
             info!("播放在线音乐: {}", music_url);
