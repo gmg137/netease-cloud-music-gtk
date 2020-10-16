@@ -87,6 +87,7 @@ pub(crate) enum Action {
     ActivateApp,
     PlayAddAccel,
     PlayRemoveAccel,
+    BackEvent,
 }
 
 pub(crate) struct App {
@@ -124,6 +125,15 @@ impl App {
         let sender_clone = sender.clone();
         task::spawn(async move {
             actuator_loop(receiver_task, sender_clone).await.ok();
+        });
+
+        // 捕获鼠标返回键
+        let sender_clone = sender.clone();
+        window.connect_button_press_event(move |_, event| {
+            if event.get_button() == 8 {
+                sender_clone.send(Action::BackEvent).unwrap_or(());
+            }
+            gtk::Inhibit(false)
         });
 
         let music_data = Arc::new(Mutex::new(task::block_on(MusicData::new())));
@@ -326,6 +336,9 @@ impl App {
             }
             Action::PlayRemoveAccel => {
                 self.player.play_remove_accel(&self.accel_group);
+            }
+            Action::BackEvent => {
+                self.header.click_back();
             }
         }
 

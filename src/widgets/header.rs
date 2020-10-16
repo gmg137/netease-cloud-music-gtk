@@ -338,4 +338,9 @@ impl Header {
         self.title.show();
         self.back.show();
     }
+
+    // 激活返回键
+    pub(crate) fn click_back(&self) {
+        self.back.clicked();
+    }
 }
