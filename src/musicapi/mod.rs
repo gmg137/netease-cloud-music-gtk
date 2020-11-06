@@ -238,7 +238,7 @@ impl MusicApi {
     // songlist_id: 歌单 id
     #[allow(unused)]
     pub async fn song_list_detail(&mut self, songlist_id: u64) -> NCMResult<Vec<SongInfo>> {
-        let path = "/api/v3/playlist/detail";
+        let path = "/api/v6/playlist/detail";
         let mut params = HashMap::new();
         let songlist_id = songlist_id.to_string();
         params.insert("id", songlist_id.as_str());
