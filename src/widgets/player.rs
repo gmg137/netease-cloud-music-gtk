@@ -708,15 +708,17 @@ impl PlayerWrapper {
             .connect_warning(move |_, warn| warn!("gst warning: {}", warn));
 
         let sender_clone = sender.clone();
+        let data = self.music_data.clone();
         // Log gst errors.
         self.player.connect_error(move |_, _| {
             sender_clone
                 .send(Action::ShowNotice("播放格式错误!".to_owned()))
                 .unwrap();
             let sender_clone = sender_clone.clone();
+            let data = data.clone();
             // 刷新播放列表
             task::spawn(async move {
-                update_player_list(sender_clone).await.ok();
+                update_player_list(sender_clone, data).await.ok();
             });
         });
 

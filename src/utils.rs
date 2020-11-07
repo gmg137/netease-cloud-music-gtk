@@ -12,7 +12,10 @@ use crate::{
     musicapi::model::SongInfo,
     widgets::player::LoopsState,
 };
-use async_std::fs;
+use async_std::{
+    fs,
+    sync::{Arc, Mutex},
+};
 use cairo::{Context, ImageSurface};
 use gdk::{pixbuf_get_from_surface, prelude::GdkContextExt};
 use gdk_pixbuf::Pixbuf;
@@ -253,7 +256,7 @@ pub(crate) async fn get_player_list_song(pd: PD, shuffle: bool, loops: bool) -> 
 
 // 刷新播放列表
 #[allow(unused)]
-pub(crate) async fn update_player_list(sender: Sender<Action>) -> NCMResult<()> {
+pub(crate) async fn update_player_list(sender: Sender<Action>, music_data: Arc<Mutex<MusicData>>) -> NCMResult<()> {
     let path = format!("{}player_list.db", NCM_DATA.to_string_lossy());
     let buffer = fs::read(&path).await?;
     // 反序列化播放列表
@@ -264,7 +267,7 @@ pub(crate) async fn update_player_list(sender: Sender<Action>) -> NCMResult<()> 
     } = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
     // 提取歌曲 id 列表
     let song_id_list = player_list.iter().map(|(si, _)| si.id).collect::<Vec<u64>>();
-    let mut api = MusicData::new().await;
+    let mut api = music_data.lock().await;
     // 批量搜索歌曲 URL
     if let Ok(v) = api.songs_url(&song_id_list, 320).await {
         // 初始化播放列表
