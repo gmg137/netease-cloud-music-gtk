@@ -337,6 +337,7 @@ impl PlayerWidget {
                             width: 34,
                             high: 34,
                             timeout: 1000,
+                            fm: false,
                         })
                         .await
                         .ok();
@@ -365,6 +366,15 @@ impl PlayerWidget {
     pub(crate) fn ready_player(&self, song_info: SongInfo, lyrics: bool) {
         let sender = self.sender.clone();
         let mut sender_task = self.sender_task.clone();
+        // 是否刷新 FM 专辑图片
+        let mut fm = false;
+        let mut width = 34;
+        let mut high = 34;
+        if let PlayerTypes::Fm = *self.player_types.borrow() {
+            fm = true;
+            width = 140;
+            high = 140;
+        }
         task::spawn(async move {
             // 下载歌词
             if lyrics {
@@ -380,9 +390,10 @@ impl PlayerWidget {
                 .send(Task::DownloadPlayerImg {
                     url: song_info.pic_url.to_owned(),
                     path: image_path.to_owned(),
-                    width: 34,
-                    high: 34,
+                    width,
+                    high,
                     timeout: 1000,
+                    fm,
                 })
                 .await
                 .ok();

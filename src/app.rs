@@ -64,6 +64,7 @@ pub(crate) enum Action {
     RefreshMineFmPlayerList,
     RefreshMineFmPlay,
     RefreshMineFmPause,
+    RefreshMineFmImage(String),
     CancelCollection,
     Search(String),
     PlayerInit(SongInfo, PlayerTypes),
@@ -255,6 +256,7 @@ impl App {
             }
             Action::RefreshMineFmPlay => self.view.switch_fm_play(),
             Action::RefreshMineFmPause => self.view.switch_fm_pause(),
+            Action::RefreshMineFmImage(path) => self.view.set_fm_image(path),
             Action::PlayerFm => self.view.play_fm(),
             Action::PauseFm => self.player.pause(),
             Action::FmLike => self.view.like_fm(),

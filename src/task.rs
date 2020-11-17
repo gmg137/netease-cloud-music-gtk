@@ -18,6 +18,7 @@ pub(crate) enum Task {
         width: u32,
         high: u32,
         timeout: u64,
+        fm: bool,
     },
     DownloadMusic {
         url: String,
@@ -42,8 +43,12 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                 width,
                 high,
                 timeout,
+                fm,
             } => {
                 download_img(&url, &path, width, high, timeout).await.ok();
+                if fm {
+                    sender.send(Action::RefreshMineFmImage(path.clone())).unwrap();
+                }
                 sender.send(Action::RefreshPlayerImage(path)).unwrap();
             }
             Task::DownloadMineRecommendImage(rr) => {

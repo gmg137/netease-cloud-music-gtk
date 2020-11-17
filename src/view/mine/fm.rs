@@ -242,4 +242,11 @@ impl FmView {
         self.play.hide();
         self.pause.show();
     }
+
+    pub(crate) fn set_fm_image(&self, image_path: String) {
+        if let Ok(image) = Pixbuf::from_file(&image_path) {
+            let image = image.scale_simple(140, 140, InterpType::Bilinear);
+            self.image.set_from_pixbuf(image.as_ref());
+        };
+    }
 }

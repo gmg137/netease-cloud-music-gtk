@@ -627,6 +627,10 @@ impl View {
         self.mine.borrow_mut().fmview.switch_pause();
     }
 
+    pub(crate) fn set_fm_image(&self, path: String) {
+        self.mine.borrow_mut().fmview.set_fm_image(path);
+    }
+
     pub(crate) fn cancel_collection(&self) {
         if let Some(id) = self.mine.borrow_mut().listview.get_song_id() {
             let sender = self.sender.clone();
