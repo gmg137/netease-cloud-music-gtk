@@ -36,7 +36,7 @@ fragile = "*"
 xdg = "*"
 futures = "^0.3"
 async-std = "^1.6.1"
-isahc = { version = "*", features = ["cookies"] }
+isahc = { version = "^1.0.1", features = ["cookies"] }
 custom_error = "*"
 
 log = "*"

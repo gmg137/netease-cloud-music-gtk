@@ -7,7 +7,7 @@ mod encrypt;
 pub(crate) mod model;
 use crate::model::{Errors, NCMResult};
 use encrypt::Crypto;
-use isahc::prelude::*;
+use isahc::{prelude::*, *};
 use lazy_static::lazy_static;
 use model::*;
 use regex::Regex;
@@ -128,14 +128,14 @@ impl MusicApi {
                         }
                     }
                 }
-                response.text_async().await.map_err(|_| Errors::NoneError)
+                response.text().await.map_err(|_| Errors::NoneError)
             }
             Method::GET => self
                 .client
                 .get_async(&url)
                 .await
                 .map_err(|_| Errors::NoneError)?
-                .text_async()
+                .text()
                 .await
                 .map_err(|_| Errors::NoneError),
         }

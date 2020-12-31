@@ -20,7 +20,7 @@ use cairo::{Context, ImageSurface};
 use gdk::{pixbuf_get_from_surface, prelude::GdkContextExt};
 use gdk_pixbuf::Pixbuf;
 use glib::Sender;
-use isahc::{prelude::*, ResponseExt};
+use isahc::{prelude::*, *};
 use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
 use std::{io, io::Error, time::Duration};
@@ -43,7 +43,9 @@ where
         let mut response = client.get_async(music_url).await?;
         if response.status().is_success() {
             let tmp_path = format!("{}.tmp", path);
-            response.copy_to_file(&tmp_path)?;
+            let mut buf = vec![];
+            response.copy_to(&mut buf).await?;
+            fs::write(&tmp_path, buf).await?;
             fs::rename(&tmp_path, path).await?;
         }
     }
@@ -69,7 +71,9 @@ where
         let client = HttpClient::builder().timeout(Duration::from_millis(timeout)).build()?;
         let mut response = client.get_async(image_url).await?;
         if response.status().is_success() {
-            response.copy_to_file(path)?;
+            let mut buf = vec![];
+            response.copy_to(&mut buf).await?;
+            fs::write(&path, buf).await?;
         }
     }
     Ok(())
