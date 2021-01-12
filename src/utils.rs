@@ -81,13 +81,13 @@ where
 
 // 播放列表数据
 #[derive(Debug, Deserialize, Serialize)]
-struct PlayerListData {
+pub(crate) struct PlayerListData {
     // 播放列表: (歌曲信息,是否播放)
-    player_list: Vec<(SongInfo, bool)>,
+    pub player_list: Vec<(SongInfo, bool)>,
     // 混淆后的播放列表索引
     shuffle_list: Vec<i32>,
     // 当前播放歌曲的索引
-    index: i32,
+    pub index: i32,
 }
 
 // 创建播放列表
@@ -489,4 +489,35 @@ pub(crate) async fn get_lyrics(data: &mut MusicData, song_id: u64) -> NCMResult<
     }
     let lrc = fs::read_to_string(&path).await?;
     Ok(lrc)
+}
+
+// 获取播放列表
+#[allow(unused)]
+pub(crate) async fn get_playlist() -> NCMResult<PlayerListData> {
+    // 查询播放列表
+    let path = format!("{}player_list.db", NCM_DATA.to_string_lossy());
+    let buffer = fs::read(&path).await?;
+    // 反序列化播放列表
+    Ok(bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?)
+}
+
+// 按索引获取播放列表歌曲
+// index: 歌曲索引
+#[allow(unused)]
+pub(crate) async fn get_playlist_song_by_index(index_new: i32, sender: Sender<Action>) -> NCMResult<()> {
+    // 查询播放列表
+    let path = format!("{}player_list.db", NCM_DATA.to_string_lossy());
+    let buffer = fs::read(&path).await?;
+    // 反序列化播放列表
+    let mut pld: PlayerListData = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
+    // 如果播放列表不为空
+    if !pld.player_list.is_empty() {
+        pld.index = index_new;
+        fs::write(&path, bincode::serialize(&pld).map_err(|_| Errors::NoneError)?).await?;
+        if let Some((si, _)) = pld.player_list.get(index_new as usize) {
+            sender.send(Action::ReadyPlayer(si.to_owned())).unwrap();
+            return Ok(());
+        }
+    }
+    Err(Errors::NoneError)
 }

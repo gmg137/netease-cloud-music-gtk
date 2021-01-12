@@ -71,6 +71,8 @@ pub(crate) enum Action {
     PlayerTypes(PlayerTypes),
     ReadyPlayer(SongInfo),
     RefreshLyricsText(String),
+    RefreshPlaylist(PlayerListData),
+    PlaylistSong(i32),
     Player(SongInfo),
     PlayerOne,
     RefreshPlayerImage(String),
@@ -271,9 +273,11 @@ impl App {
             Action::DailyTask => self.header.daily_task(),
             Action::PlayerInit(info, pt) => self.player.initialize_player(info, pt, self.configs.borrow().lyrics),
             Action::PlayerTypes(pt) => self.player.set_player_typers(pt),
+            Action::PlaylistSong(index) => self.player.playlist_song(index),
             Action::Player(info) => self.player.player(info),
             Action::ReadyPlayer(info) => self.player.ready_player(info, self.configs.borrow().lyrics),
             Action::RefreshLyricsText(lrc) => self.player.update_lyrics_text(lrc),
+            Action::RefreshPlaylist(pl) => self.player.update_playlist(pl),
             Action::ShowNotice(text) => {
                 let notif = mark_all_notif(text);
                 let old = self.notice.replace(Some(notif));

@@ -12,10 +12,11 @@ use gdk_pixbuf::{InterpType, Pixbuf};
 use glib::{clone, Sender, SignalHandlerId, WeakRef};
 use gst::ClockTime;
 use gtk::{
-    prelude::*, AccelGroup, ActionBar, Builder, Button, Image, Label, MenuButton, RadioButton, Scale, TextView,
-    VolumeButton,
+    prelude::*, AccelGroup, ActionBar, Builder, Button, CellRendererText, Image, Label, ListStore, MenuButton, Popover,
+    RadioButton, Scale, TextView, TreeView, TreeViewColumn, VolumeButton,
 };
 use mpris_player::{LoopStatus, Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
+use pango::EllipsizeMode;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, ops::Deref, path::Path, rc::Rc, sync::Arc};
 
@@ -27,7 +28,10 @@ struct PlayerControls {
     forward: Button,
     like: Button,
     volume: VolumeButton,
-    lyrics: MenuButton,
+    more: MenuButton,
+    more_popover: Popover,
+    tree: TreeView,
+    store: ListStore,
     lyrics_text: TextView,
 }
 
@@ -201,8 +205,19 @@ impl PlayerWidget {
         volume.set_value(volume_value);
         player.set_volume(volume_value);
         mpris.set_volume(volume_value).ok();
-        let lyrics: MenuButton = builder.get_object("lyrics_button").unwrap();
+        let more: MenuButton = builder.get_object("more_button").unwrap();
+        let more_popover: Popover = builder.get_object("more_popover").unwrap();
         let lyrics_text: TextView = builder.get_object("lyrics_text_view").unwrap();
+        let tree: TreeView = builder
+            .get_object("playlist_tree_view")
+            .expect("无法获取 playlist_tree_view .");
+        let store: ListStore = ListStore::new(&[
+            glib::Type::U64,
+            String::static_type(),
+            String::static_type(),
+            String::static_type(),
+            String::static_type(),
+        ]);
 
         let controls = PlayerControls {
             play,
@@ -211,7 +226,10 @@ impl PlayerWidget {
             backward,
             like,
             volume,
-            lyrics,
+            more,
+            more_popover,
+            tree,
+            store,
             lyrics_text,
         };
 
@@ -425,6 +443,11 @@ impl PlayerWidget {
             self.player.set_uri(&music_url);
         }
         self.play();
+        // 如果播放列表已打开则刷新播放列表
+        if self.controls.more_popover.is_visible() {
+            self.get_lyrics_text();
+            self.get_playlist();
+        }
     }
 
     fn connect_update_slider(slider: &Scale, player: WeakRef<gst_player::Player>) -> SignalHandlerId {
@@ -571,6 +594,16 @@ impl PlayerWidget {
         });
     }
 
+    fn get_playlist(&self) {
+        let sender = self.sender.clone();
+        task::spawn(async move {
+            // 获取播放列表
+            if let Ok(playlist) = get_playlist().await {
+                sender.send(Action::RefreshPlaylist(playlist)).unwrap();
+            }
+        });
+    }
+
     // 从 Mpris2 设置播放循环
     fn set_loops(&self, loops_status: LoopStatus) {
         match loops_status {
@@ -610,8 +643,74 @@ impl PlayerWidget {
         }
     }
 
+    pub(crate) fn update_playlist(&self, pl: PlayerListData) {
+        self.controls.store.clear();
+        for c in self.controls.tree.get_columns().iter() {
+            self.controls.tree.remove_column(c);
+        }
+        self.controls.tree.set_model(Some(&self.controls.store));
+
+        let column = TreeViewColumn::new();
+        column.set_visible(false);
+        column.set_sizing(gtk::TreeViewColumnSizing::Fixed);
+        let id = CellRendererText::new();
+        column.pack_start(&id, true);
+        column.add_attribute(&id, "text", 0);
+        self.controls.tree.append_column(&column);
+
+        let column = TreeViewColumn::new();
+        column.set_sizing(gtk::TreeViewColumnSizing::Fixed);
+        let play = CellRendererText::new();
+        play.set_property_xpad(18);
+        play.set_property_xalign(0.0);
+        play.set_property_yalign(0.5);
+        play.set_property_height(37);
+        column.pack_start(&play, true);
+        column.add_attribute(&play, "text", 1);
+        self.controls.tree.append_column(&column);
+
+        let column = TreeViewColumn::new();
+        column.set_sizing(gtk::TreeViewColumnSizing::Fixed);
+        let title = CellRendererText::new();
+        play.set_property_xpad(18);
+        play.set_property_xalign(0.0);
+        title.set_property_ellipsize(EllipsizeMode::End);
+        column.pack_start(&title, true);
+        column.add_attribute(&title, "text", 2);
+
+        let duration = CellRendererText::new();
+        duration.set_property_xpad(32);
+        duration.set_property_xalign(0.0);
+        column.pack_start(&duration, true);
+        column.add_attribute(&duration, "text", 3);
+
+        let singer = CellRendererText::new();
+        singer.set_property_xpad(22);
+        singer.set_property_xalign(0.0);
+        singer.set_property_ellipsize(EllipsizeMode::End);
+        column.pack_start(&singer, true);
+        column.add_attribute(&singer, "text", 4);
+        self.controls.tree.append_column(&column);
+
+        let song_id = *self.info.song_id.borrow();
+        pl.player_list.iter().for_each(|(song, _)| {
+            let play_icon = if Some(song.id).eq(&song_id) { "▶" } else { "" };
+            self.controls.store.insert_with_values(
+                None,
+                &[0, 1, 2, 3, 4],
+                &[&song.id, &play_icon, &song.name, &song.duration, &song.singer],
+            );
+        });
+    }
+
     pub(crate) fn set_player_typers(&self, player_types: PlayerTypes) {
         *self.player_types.borrow_mut() = player_types;
+    }
+
+    pub(crate) fn playlist_song(&self, index: i32) {
+        if task::block_on(get_playlist_song_by_index(index, self.sender.clone())).is_err() {
+            self.sender.send(Action::ShowNotice("播放错误!".to_owned())).unwrap();
+        }
     }
 
     pub(crate) fn set_cover_image(&self, image_path: String) {
@@ -670,10 +769,24 @@ impl PlayerWrapper {
     }
 
     fn init(&self, sender: &Sender<Action>) {
+        self.connect_control_tree();
         self.connect_control_buttons();
         self.connect_loops_buttons();
         self.connect_mpris_buttons();
         self.connect_gst_signals(sender);
+    }
+
+    fn connect_control_tree(&self) {
+        let sender = self.sender.clone();
+        self.controls.tree.connect_button_press_event(move |tree, event| {
+            if event.get_event_type() == gdk::EventType::DoubleButtonPress {
+                if let Some(path) = tree.get_selection().get_selected_rows().0.get(0) {
+                    let index = path.get_indices()[0];
+                    sender.send(Action::PlaylistSong(index)).unwrap_or(());
+                }
+            }
+            Inhibit(false)
+        });
     }
 
     /// Connect the `PlayerControls` buttons to the `PlayerExt` methods.
@@ -708,8 +821,9 @@ impl PlayerWrapper {
                 weak.set_volume(value,false);
             }));
 
-        self.controls.lyrics.connect_clicked(clone!(@weak weak => move |_| {
+        self.controls.more.connect_clicked(clone!(@weak weak => move |_| {
             weak.get_lyrics_text();
+            weak.get_playlist();
         }));
     }
 
