@@ -224,11 +224,12 @@ impl View {
         let text_clone = text.clone();
         task::spawn(async move {
             let mut data = MusicData::new().await;
-            if let Ok(json) = data.search(text_clone, 1, 0, 50).await {
+            if let Ok(json) = data.search(text_clone.to_owned(), 1, 0, 50).await {
                 if let Ok(song_list) = serde_json::from_str::<Vec<SongInfo>>(&json) {
+                    let search_text = format!("search:{}", text_clone);
                     // 发送更新子页概览, 用以清除原始歌曲列表
                     if sender
-                        .send(Action::RefreshSubUpView(0, String::new(), String::new()))
+                        .send(Action::RefreshSubUpView(0, search_text, String::new()))
                         .is_ok()
                     {
                         // 刷新搜索结果
@@ -241,6 +242,26 @@ impl View {
             }
         });
         self.sender.send(Action::SwitchHeaderBar(text)).unwrap_or(());
+    }
+
+    // 附加搜索
+    pub(crate) fn append_search(&self, text: String, num: usize) {
+        let sender = self.sender.clone();
+        task::spawn(async move {
+            let mut data = MusicData::new().await;
+            if let Ok(json) = data.search(text.to_owned(), 1, num as u16, 50).await {
+                if let Ok(song_list) = serde_json::from_str::<Vec<SongInfo>>(&json) {
+                    // 刷新搜索结果
+                    sender.send(Action::AppendSubLowView(song_list)).unwrap_or(());
+                }
+            } else {
+                sender.send(Action::ShowNotice("没有更多搜索结果!".to_owned())).unwrap();
+            }
+        });
+    }
+
+    pub(crate) fn append_sub_low_view(&self, song_list: Vec<SongInfo>) {
+        self.subpages.borrow_mut().append_low_view(song_list);
     }
 
     pub(crate) fn update_home_view(&self, tsl: Arc<Vec<SongList>>, rr: Arc<Vec<SongList>>) {
@@ -292,6 +313,10 @@ impl View {
 
     pub(crate) fn update_sub_low_view(&self, song_list: Vec<SongInfo>) {
         self.subpages.borrow_mut().update_low_view(song_list);
+    }
+
+    pub(crate) fn get_sub_page_data(&self) -> Option<(String, usize)> {
+        self.subpages.borrow_mut().get_search_data()
     }
 
     pub(crate) fn update_home(&self) {

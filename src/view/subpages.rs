@@ -12,12 +12,16 @@ use crate::{
 use async_std::task;
 use gdk_pixbuf::{InterpType, Pixbuf};
 use glib::Sender;
-use gtk::{prelude::*, Builder, Button, CellRendererText, Grid, Image, Label, ListStore, TreeView, TreeViewColumn};
+use gtk::{
+    prelude::*, Builder, Button, CellRendererText, Grid, Image, Label, ListStore, ScrolledWindow, TreeView,
+    TreeViewColumn,
+};
 use pango::EllipsizeMode;
 
 #[derive(Clone)]
 pub(crate) struct Subpages {
     overview: Overview,
+    scrolled: ScrolledWindow,
     tree: TreeView,
     store: ListStore,
     song_list: Vec<SongInfo>,
@@ -53,6 +57,9 @@ impl Subpages {
         let play: Button = builder
             .get_object("subpages_play_button")
             .expect("无法获取 subpages_play_button .");
+        let scrolled: ScrolledWindow = builder
+            .get_object("subpages_scrolled_window")
+            .expect("无法获取 subpages_scrolled_window.");
         let overview = Overview {
             grid,
             pic,
@@ -74,6 +81,7 @@ impl Subpages {
         ]);
         let s = Subpages {
             overview,
+            scrolled,
             tree,
             store,
             song_list: vec![],
@@ -144,6 +152,14 @@ impl Subpages {
         s.overview.like.connect_clicked(move |_| {
             sender.send(Action::LikeSongList).unwrap_or(());
         });
+
+        // 检测是否滚动到底部边缘
+        let sender = s.sender.clone();
+        s.scrolled.connect_edge_overshot(move |_, position| {
+            if position == gtk::PositionType::Bottom {
+                sender.send(Action::AppendSearch).unwrap_or(());
+            }
+        });
     }
 
     pub(crate) fn update_up_view(&mut self, id: u64, name: String, image_path: String) {
@@ -158,12 +174,19 @@ impl Subpages {
             self.overview.grid.hide();
             return;
         }
+        if name.starts_with("search:") {
+            self.overview.grid.hide();
+        }
         if let Ok(image) = Pixbuf::from_file(&image_path) {
             let image = image.scale_simple(140, 140, InterpType::Bilinear);
             self.overview.pic.set_from_pixbuf(image.as_ref());
         };
         self.overview.album.set_label(&name);
         self.overview.num.set_label("0 首");
+        // 每次打开时回到页面顶部, 此设置会导致滚动条消失
+        //if let Some(adj) = self.scrolled.get_vadjustment() {
+        //adj.set_value(0.0);
+        //}
     }
 
     pub(crate) fn update_low_view(&mut self, song_list: Vec<SongInfo>) {
@@ -234,6 +257,27 @@ impl Subpages {
         });
     }
 
+    pub(crate) fn append_low_view(&mut self, song_list: Vec<SongInfo>) {
+        let mut song_list_old = self.song_list.to_owned();
+        let mut song_list_new = song_list.to_owned();
+        song_list_old.append(&mut song_list_new);
+        self.song_list = song_list_old;
+        song_list.iter().for_each(|song| {
+            self.store.insert_with_values(
+                None,
+                &[0, 1, 2, 3, 4, 5],
+                &[
+                    &song.id,
+                    &song.name,
+                    &song.duration,
+                    &song.singer,
+                    &song.album,
+                    &song.pic_url,
+                ],
+            );
+        });
+    }
+
     pub(crate) fn play_all(&self) {
         let song_list = self.song_list.clone();
         let sender = self.sender.clone();
@@ -257,5 +301,17 @@ impl Subpages {
     // 获取歌单 id
     pub(crate) fn get_song_list_id(&self) -> u64 {
         self.song_list_id
+    }
+
+    // 获取搜索数据
+    // return: (搜索关键词,已加载歌曲数)
+    pub(crate) fn get_search_data(&self) -> Option<(String, usize)> {
+        let text = self.overview.album.get_text().to_string();
+        let num = self.song_list.len();
+        if let Some(key) = text.strip_prefix("search:") {
+            Some((key.to_owned(), num))
+        } else {
+            None
+        }
     }
 }

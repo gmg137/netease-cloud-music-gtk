@@ -67,6 +67,8 @@ pub(crate) enum Action {
     RefreshMineFmImage(String),
     CancelCollection,
     Search(String),
+    AppendSearch,
+    AppendSubLowView(Vec<SongInfo>),
     PlayerInit(SongInfo, PlayerTypes),
     PlayerTypes(PlayerTypes),
     ReadyPlayer(SongInfo),
@@ -268,6 +270,12 @@ impl App {
             }
             Action::CancelCollection => self.view.cancel_collection(),
             Action::Search(text) => self.view.switch_stack_search(text),
+            Action::AppendSearch => {
+                if let Some((text, num)) = self.view.get_sub_page_data() {
+                    self.view.append_search(text, num);
+                }
+            }
+            Action::AppendSubLowView(song_list) => self.view.append_sub_low_view(song_list),
             Action::Login(name, pass) => self.header.login(name, pass),
             Action::Logout => self.header.logout(),
             Action::DailyTask => self.header.daily_task(),
