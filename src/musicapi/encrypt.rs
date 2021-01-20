@@ -3,7 +3,6 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-use base64;
 use lazy_static::lazy_static;
 use openssl::hash::{hash, DigestBytes, MessageDigest};
 use openssl::rsa::{Padding, Rsa};
@@ -36,15 +35,14 @@ pub enum AesMode {
     ecb,
 }
 
+#[allow(dead_code, clippy::redundant_closure)]
 impl Crypto {
-    #[allow(dead_code)]
     pub fn hex_random_bytes(n: usize) -> String {
         let mut data: Vec<u8> = Vec::with_capacity(n);
         OsRng.fill_bytes(&mut data);
         hex::encode(data)
     }
 
-    #[allow(dead_code)]
     pub fn eapi(url: &str, text: &str) -> String {
         let message = format!("nobody{}use{}md5forencrypt", url, text);
         let digest = hex::encode(hash(MessageDigest::md5(), message.as_bytes()).unwrap());
@@ -63,7 +61,7 @@ impl Crypto {
         let params = Crypto::aes_encrypt(&params1, &key, cbc, Some(&*IV), |t: &Vec<u8>| base64::encode(t));
 
         let enc_sec_key = Crypto::rsa_encrypt(
-            std::str::from_utf8(&key.iter().rev().map(|n| *n).collect::<Vec<u8>>()).unwrap(),
+            std::str::from_utf8(&key.iter().rev().copied().collect::<Vec<u8>>()).unwrap(),
             &*RSA_PUBLIC_KEY,
         );
 
@@ -77,7 +75,7 @@ impl Crypto {
 
     pub fn aes_encrypt(
         data: &str,
-        key: &Vec<u8>,
+        key: &[u8],
         mode: AesMode,
         iv: Option<&[u8]>,
         encode: fn(&Vec<u8>) -> String,
@@ -91,7 +89,7 @@ impl Crypto {
         encode(&cipher_text)
     }
 
-    pub fn rsa_encrypt(data: &str, key: &Vec<u8>) -> String {
+    pub fn rsa_encrypt(data: &str, key: &[u8]) -> String {
         let rsa = Rsa::public_key_from_pem(key).unwrap();
 
         let prefix = vec![0u8; 128 - data.len()];

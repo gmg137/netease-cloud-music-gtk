@@ -56,8 +56,7 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                 task::spawn(async move {
                     // 异步并行下载图片
                     let mut tasks = Vec::with_capacity(rr.len());
-                    let mut l = 0;
-                    for sl in rr.iter() {
+                    for (l, sl) in rr.iter().enumerate() {
                         let mut left = l;
                         let top = if l >= 4 {
                             left = l % 4;
@@ -72,10 +71,13 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                                 .await
                                 .ok();
                             sender_clone
-                                .send(Action::RefreshMineRecommendImage(left, top, sl.to_owned()))
+                                .send(Action::RefreshMineRecommendImage(
+                                    left as i32,
+                                    top as i32,
+                                    sl.to_owned(),
+                                ))
                                 .unwrap_or(());
                         });
-                        l += 1;
                     }
                     join_all(tasks).await;
                 });
@@ -85,8 +87,7 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                 task::spawn(async move {
                     // 异步并行下载图片
                     let mut tasks = Vec::new();
-                    let mut l = 0;
-                    for sl in tsl.iter() {
+                    for (l, sl) in tsl.iter().enumerate() {
                         if tasks.len() >= 8 {
                             break;
                         }
@@ -104,9 +105,10 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                             download_img(&sl.cover_img_url, &image_path, 140, 140, 100_000)
                                 .await
                                 .ok();
-                            sender_clone.send(Action::RefreshHomeUpImage(left, top, ssl)).unwrap();
+                            sender_clone
+                                .send(Action::RefreshHomeUpImage(left as i32, top as i32, ssl))
+                                .unwrap();
                         });
-                        l += 1;
                     }
                     join_all(tasks).await;
                 });
@@ -115,9 +117,8 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                 let sender = sender.clone();
                 task::spawn(async move {
                     let mut tasks = Vec::new();
-                    let mut l = 0;
                     // 异步并行下载图片
-                    for sl in na.iter() {
+                    for (l, sl) in na.iter().enumerate() {
                         let mut left = l;
                         let top = if l >= 4 {
                             left = l % 4;
@@ -132,9 +133,10 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                             download_img(&sl.cover_img_url, &image_path, 130, 130, 100_000)
                                 .await
                                 .ok();
-                            sender_clone.send(Action::RefreshHomeLowImage(left, top, ssl)).unwrap();
+                            sender_clone
+                                .send(Action::RefreshHomeLowImage(left as i32, top as i32, ssl))
+                                .unwrap();
                         });
-                        l += 1;
                     }
                     join_all(tasks).await;
                 });

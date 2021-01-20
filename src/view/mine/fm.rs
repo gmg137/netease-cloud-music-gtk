@@ -120,8 +120,7 @@ impl FmView {
         });
         self.recommend.hide();
         if !rr.is_empty() {
-            let mut l = 0;
-            for sl in rr.iter() {
+            for (l, sl) in rr.iter().enumerate() {
                 let event_box = EventBox::new();
                 let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
                 let label = Label::new(Some(&sl.name[..]));
@@ -167,8 +166,7 @@ impl FmView {
                 };
 
                 // 添加到容器
-                self.recommend.attach(&event_box, left, top, 1, 1);
-                l += 1;
+                self.recommend.attach(&event_box, left as i32, top as i32, 1, 1);
             }
             self.recommend.set_no_show_all(false);
             self.recommend.show_all();

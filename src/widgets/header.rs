@@ -290,7 +290,6 @@ impl Header {
             }
             sender.send(Action::RefreshHeaderUserLogout).unwrap();
             sender.send(Action::RefreshMine).unwrap_or(());
-            return;
         });
     }
 

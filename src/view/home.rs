@@ -105,8 +105,7 @@ impl Home {
                 });
             });
             if !na.is_empty() {
-                let mut l = 0;
-                for sl in na.iter() {
+                for (l, sl) in na.iter().enumerate() {
                     if l < 4 {
                         let event_box = EventBox::new();
                         let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -146,9 +145,8 @@ impl Home {
                         });
 
                         // 添加到容器
-                        self.low_grid.attach(&event_box, l, 0, 1, 1);
+                        self.low_grid.attach(&event_box, l as i32, 0, 1, 1);
                     }
-                    l += 1;
                 }
                 self.low_title.set_no_show_all(false);
                 self.low_title.show_all();
