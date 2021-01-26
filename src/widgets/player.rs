@@ -383,6 +383,7 @@ impl PlayerWidget {
 
     pub(crate) fn ready_player(&self, song_info: SongInfo, lyrics: bool) {
         let sender = self.sender.clone();
+        let mut song_info = song_info;
         let mut sender_task = self.sender_task.clone();
         // 是否刷新 FM 专辑图片
         let mut fm = false;
@@ -394,16 +395,39 @@ impl PlayerWidget {
             high = 140;
         }
         task::spawn(async move {
+            let mut data = MusicData::new().await;
             // 下载歌词
             if lyrics {
-                let mut data = MusicData::new().await;
                 download_lyrics(&mut data, &song_info.name, &song_info).await.ok();
             }
-            sender.send(Action::Player(song_info.clone())).unwrap();
             // 缓存音乐图片路径
             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id);
             // 缓存音乐路径
             let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
+            // 检查是否已经缓存音乐
+            if !Path::new(&path).exists() {
+                if let Ok(v) = data.songs_url(&[song_info.id], 320).await {
+                    if !v.is_empty() {
+                        song_info.song_url = v[0].url.to_string();
+                        // 缓存音乐
+                        sender_task
+                            .send(Task::DownloadMusic {
+                                url: song_info.song_url.to_owned(),
+                                path: path.to_owned(),
+                                timeout: 3000,
+                            })
+                            .await
+                            .ok();
+                    } else {
+                        sender.send(Action::ShowNotice("获取歌曲URL错误!".to_owned())).unwrap();
+                    }
+                } else {
+                    sender.send(Action::ShowNotice("获取歌曲URL错误!".to_owned())).unwrap();
+                }
+            }
+            // 播放音乐
+            sender.send(Action::Player(song_info.clone())).unwrap();
+            // 缓存封面
             sender_task
                 .send(Task::DownloadPlayerImg {
                     url: song_info.pic_url.to_owned(),
@@ -412,14 +436,6 @@ impl PlayerWidget {
                     high,
                     timeout: 1000,
                     fm,
-                })
-                .await
-                .ok();
-            sender_task
-                .send(Task::DownloadMusic {
-                    url: song_info.song_url.to_owned(),
-                    path: path.to_owned(),
-                    timeout: 3000,
                 })
                 .await
                 .ok();
@@ -833,18 +849,11 @@ impl PlayerWrapper {
             .connect_warning(move |_, warn| warn!("gst warning: {}", warn));
 
         let sender_clone = sender.clone();
-        let data = self.music_data.clone();
         // Log gst errors.
         self.player.connect_error(move |_, _| {
             sender_clone
                 .send(Action::ShowNotice("播放格式错误!".to_owned()))
                 .unwrap();
-            let sender_clone = sender_clone.clone();
-            let data = data.clone();
-            // 刷新播放列表
-            task::spawn(async move {
-                update_player_list(sender_clone, data).await.ok();
-            });
         });
 
         // The following callbacks require `Send` but are handled by the gtk main loop
