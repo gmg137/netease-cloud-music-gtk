@@ -352,8 +352,8 @@ impl PlayerWidget {
                         .send(Task::DownloadPlayerImg {
                             url: song_info.pic_url.to_owned(),
                             path: image_path.to_owned(),
-                            width: 34,
-                            high: 34,
+                            width: 140,
+                            high: 140,
                             timeout: 1000,
                             fm: false,
                         })
@@ -387,12 +387,10 @@ impl PlayerWidget {
         let mut sender_task = self.sender_task.clone();
         // 是否刷新 FM 专辑图片
         let mut fm = false;
-        let mut width = 34;
-        let mut high = 34;
+        let width = 140;
+        let high = 140;
         if let PlayerTypes::Fm = *self.player_types.borrow() {
             fm = true;
-            width = 140;
-            high = 140;
         }
         task::spawn(async move {
             let mut data = MusicData::new().await;
