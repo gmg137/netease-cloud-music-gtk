@@ -327,6 +327,9 @@ impl PlayerWidget {
                 self.play();
                 return;
             }
+            task::spawn(async {
+                clear_playlist().await.unwrap_or(());
+            });
         }
         *self.player_types.borrow_mut() = player_types;
         let sender = self.sender.clone();

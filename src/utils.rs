@@ -446,3 +446,27 @@ pub(crate) async fn get_playlist_song_by_index(index_new: i32, sender: Sender<Ac
     }
     Err(Errors::NoneError)
 }
+
+// 播放 FM 时清空原播放列表
+#[allow(unused)]
+pub(crate) async fn clear_playlist() -> NCMResult<()> {
+    // 查询播放列表
+    let path = format!("{}player_list.db", NCM_DATA.to_string_lossy());
+    let buffer = fs::read(&path).await?;
+    // 反序列化播放列表
+    let pld: PlayerListData = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
+    // 如果播放列表长度大于 3 则认为非 FM 播放列表并予以清空
+    if pld.player_list.len() > 3 {
+        fs::write(
+            &path,
+            bincode::serialize(&PlayerListData {
+                player_list: vec![],
+                shuffle_list: vec![],
+                index: 0,
+            })
+            .map_err(|_| Errors::NoneError)?,
+        )
+        .await?;
+    }
+    Ok(())
+}
