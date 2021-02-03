@@ -392,8 +392,9 @@ impl PlayerWidget {
         if let PlayerTypes::Fm = *self.player_types.borrow() {
             fm = true;
         }
+        let data = self.music_data.clone();
         task::spawn(async move {
-            let mut data = MusicData::new().await;
+            let mut data = data.lock().await;
             // 下载歌词
             if lyrics {
                 download_lyrics(&mut data, &song_info.name, &song_info).await.ok();
@@ -597,8 +598,9 @@ impl PlayerWidget {
     fn get_lyrics_text(&self) {
         let sender = self.sender.clone();
         let song_id = *self.info.song_id.borrow();
+        let data = self.music_data.clone();
         task::spawn(async move {
-            let mut data = MusicData::new().await;
+            let mut data = data.lock().await;
             if let Some(id) = song_id {
                 let lrc = get_lyrics(&mut data, id)
                     .await
