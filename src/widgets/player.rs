@@ -107,9 +107,10 @@ impl Deref for Position {
 impl PlayerTimes {
     pub(crate) fn on_duration_changed(&self, duration: Duration) {
         let seconds = duration.seconds().map(|v| v as f64).unwrap_or(0.0);
+        let useconds = duration.useconds().map(|v| v as f64).unwrap_or(0.0);
 
         self.slider.block_signal(&self.slider_update);
-        self.slider.set_range(0.0, seconds);
+        self.slider.set_range(0.0, useconds);
         self.slider.unblock_signal(&self.slider_update);
 
         self.duration.set_text(&format_duration(seconds as u32));
@@ -117,9 +118,10 @@ impl PlayerTimes {
 
     pub(crate) fn on_position_updated(&self, position: Position) {
         let seconds = position.seconds().map(|v| v as f64).unwrap_or(0.0);
+        let useconds = position.useconds().map(|v| v as f64).unwrap_or(0.0);
 
         self.slider.block_signal(&self.slider_update);
-        self.slider.set_value(seconds);
+        self.slider.set_value(useconds);
         self.slider.unblock_signal(&self.slider_update);
 
         self.progressed.set_text(&format_duration(seconds as u32));
@@ -185,6 +187,7 @@ impl PlayerWidget {
         mpris.set_can_raise(true);
         mpris.set_can_control(true);
         mpris.set_can_quit(true);
+        mpris.set_can_seek(true);
 
         let mut config = player.get_config();
         config.set_user_agent("User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0");
@@ -476,7 +479,7 @@ impl PlayerWidget {
             };
 
             let value = slider.get_value() as u64;
-            player.seek(ClockTime::from_seconds(value));
+            player.seek(ClockTime::from_useconds(value));
         })
     }
 
@@ -494,6 +497,7 @@ impl PlayerWidget {
         self.controls.play.hide();
 
         self.player.play();
+        self.info.mpris.set_position(0);
         self.info.mpris.set_playback_status(PlaybackStatus::Playing);
     }
 
@@ -869,6 +873,10 @@ impl PlayerWrapper {
         let weak = Fragile::new(Rc::clone(self));
         // Update the position label and the slider
         self.player.connect_position_updated(move |_, clock| {
+            // 实时更新播放进度
+            //if let Some(t) = clock.useconds() {
+            //weak.get().info.mpris.set_position(t as i64);
+            //}
             weak.get().timer.on_position_updated(Position(clock));
         });
 
@@ -882,6 +890,16 @@ impl PlayerWrapper {
         // 连接音量变化
         self.player.connect_volume_changed(move |p| {
             weak.get().controls.volume.set_value(p.get_volume());
+        });
+
+        let weak = Fragile::new(Rc::clone(self));
+        // 连接进度条变化
+        self.player.connect_seek_done(move |_, time| {
+            if let Some(t) = time.useconds() {
+                let weak = weak.get();
+                weak.info.mpris.set_position(t as i64);
+                weak.info.mpris.seek(t as i64).unwrap_or(());
+            }
         });
     }
 
