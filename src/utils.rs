@@ -388,8 +388,8 @@ pub(crate) async fn save_config(conf: &Configs) -> NCMResult<()> {
 }
 
 // 下载 osdlyrics 歌词
-pub(crate) async fn download_lyrics(data: &mut MusicData, file: &str, song_info: &SongInfo) -> NCMResult<()> {
-    let path = format!("{}/{}.lrc", *LYRICS_PATH, file);
+pub(crate) async fn download_lyrics(data: &mut MusicData, song_info: &SongInfo) -> NCMResult<()> {
+    let path = format!("{}/{}-{}.lrc", *LYRICS_PATH, song_info.name, song_info.singer);
     if !std::path::Path::new(&path).exists() {
         let vec = data.song_lyric(song_info.id).await?;
         let lrc = vec.join("\n");

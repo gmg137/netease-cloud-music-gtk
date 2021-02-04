@@ -339,7 +339,7 @@ impl PlayerWidget {
             let mut data = data.lock().await;
             // 下载歌词
             if lyrics {
-                download_lyrics(&mut data, &song_info.name, &song_info).await.ok();
+                download_lyrics(&mut data, &song_info).await.ok();
             }
             let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
             if std::path::Path::new(&path).exists() {
@@ -400,7 +400,7 @@ impl PlayerWidget {
             let mut data = data.lock().await;
             // 下载歌词
             if lyrics {
-                download_lyrics(&mut data, &song_info.name, &song_info).await.ok();
+                download_lyrics(&mut data, &song_info).await.ok();
             }
             // 缓存音乐图片路径
             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id);
