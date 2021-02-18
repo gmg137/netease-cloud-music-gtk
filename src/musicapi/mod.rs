@@ -45,6 +45,7 @@ pub struct MusicApi {
     csrf: String,
 }
 
+#[allow(unused)]
 enum CryptoApi {
     WEAPI,
     LINUXAPI,
@@ -238,14 +239,17 @@ impl MusicApi {
     // songlist_id: 歌单 id
     #[allow(unused)]
     pub async fn song_list_detail(&mut self, songlist_id: u64) -> NCMResult<Vec<SongInfo>> {
-        let path = "/api/v6/playlist/detail";
+        let csrf_token = self.csrf.to_owned();
+        let path = "/weapi/v6/playlist/detail";
         let mut params = HashMap::new();
         let songlist_id = songlist_id.to_string();
         params.insert("id", songlist_id.as_str());
+        params.insert("offset", "0");
+        params.insert("total", "true");
+        params.insert("limit", "1000");
         params.insert("n", "1000");
-        let result = self
-            .request(Method::POST, path, params, CryptoApi::LINUXAPI, "")
-            .await?;
+        params.insert("csrf_token", &csrf_token);
+        let result = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await?;
         to_song_info(result, Parse::USL)
     }
 
@@ -271,20 +275,17 @@ impl MusicApi {
 
     // 歌曲 URL
     // ids: 歌曲列表
-    // rate: 320: 320K,
-    //       192: 192k
-    //       128: 128k
     #[allow(unused)]
-    pub async fn songs_url(&mut self, ids: &[u64], rate: u32) -> NCMResult<Vec<SongUrl>> {
-        let path = "/api/song/enhance/player/url";
+    pub async fn songs_url(&mut self, ids: &[u64]) -> NCMResult<Vec<SongUrl>> {
+        let csrf_token = self.csrf.to_owned();
+        let path = "/weapi/song/enhance/player/url/v1";
         let mut params = HashMap::new();
         let ids = serde_json::to_string(ids)?;
-        let rate = (rate * 1000).to_string();
         params.insert("ids", ids.as_str());
-        params.insert("br", rate.as_str());
-        let result = self
-            .request(Method::POST, path, params, CryptoApi::LINUXAPI, "")
-            .await?;
+        params.insert("level", "standard");
+        params.insert("encodeType", "aac");
+        params.insert("csrf_token", &csrf_token);
+        let result = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await?;
         to_song_url(result)
     }
 
@@ -468,16 +469,15 @@ impl MusicApi {
     // music_id: 歌曲id
     #[allow(unused)]
     pub async fn song_lyric(&mut self, music_id: u64) -> NCMResult<Vec<String>> {
-        let path = "/api/song/lyric";
+        let csrf_token = self.csrf.to_owned();
+        let path = "/weapi/song/lyric";
         let mut params = HashMap::new();
         let id = music_id.to_string();
         params.insert("id", &id[..]);
         params.insert("lv", "-1");
-        params.insert("kv", "-1");
         params.insert("tv", "-1");
-        let result = self
-            .request(Method::POST, path, params, CryptoApi::LINUXAPI, "")
-            .await?;
+        params.insert("csrf_token", &csrf_token);
+        let result = self.request(Method::POST, path, params, CryptoApi::WEAPI, "").await?;
         to_lyric(result)
     }
 

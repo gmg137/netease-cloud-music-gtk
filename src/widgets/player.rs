@@ -344,10 +344,10 @@ impl PlayerWidget {
             if lyrics {
                 download_lyrics(&mut data, &song_info).await.ok();
             }
-            let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
+            let path = format!("{}{}.m4a", NCM_CACHE.to_string_lossy(), song_info.id);
             if std::path::Path::new(&path).exists() {
                 sender.send(Action::Player(song_info)).unwrap();
-            } else if let Ok(v) = data.songs_url(&[song_info.id], 320).await {
+            } else if let Ok(v) = data.songs_url(&[song_info.id]).await {
                 if !v.is_empty() {
                     let mut song_info = song_info;
                     song_info.song_url = v[0].url.to_string();
@@ -408,10 +408,10 @@ impl PlayerWidget {
             // 缓存音乐图片路径
             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id);
             // 缓存音乐路径
-            let path = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
+            let path = format!("{}{}.m4a", NCM_CACHE.to_string_lossy(), song_info.id);
             // 检查是否已经缓存音乐
             if !Path::new(&path).exists() {
-                if let Ok(v) = data.songs_url(&[song_info.id], 320).await {
+                if let Ok(v) = data.songs_url(&[song_info.id]).await {
                     if !v.is_empty() {
                         song_info.song_url = v[0].url.to_string();
                         // 缓存音乐
@@ -454,7 +454,7 @@ impl PlayerWidget {
         }
         self.sender.send(Action::ShowNotice(song_info.name.to_owned())).unwrap();
         self.info.init(&song_info);
-        let song_uri = format!("{}{}.mp3", NCM_CACHE.to_string_lossy(), song_info.id);
+        let song_uri = format!("{}{}.m4a", NCM_CACHE.to_string_lossy(), song_info.id);
         if Path::new(&song_uri).exists() {
             info!("播放音乐缓存: {}", song_uri);
             self.player.set_uri(&format!("file:///{}", song_uri));

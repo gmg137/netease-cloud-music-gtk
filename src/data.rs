@@ -253,12 +253,9 @@ impl MusicData {
 
     // 歌曲 URL
     // ids: 歌曲列表
-    // rate: 320: 320K,
-    //       192: 192k
-    //       128: 128k
     #[allow(unused)]
-    pub(crate) async fn songs_url(&mut self, ids: &[u64], rate: u32) -> NCMResult<Vec<SongUrl>> {
-        self.musicapi.songs_url(ids, rate).await
+    pub(crate) async fn songs_url(&mut self, ids: &[u64]) -> NCMResult<Vec<SongUrl>> {
+        self.musicapi.songs_url(ids).await
     }
 
     // 每日推荐歌单
