@@ -60,7 +60,12 @@ impl PlayerInfo {
         let mut metadata = Metadata::new();
         metadata.artist = Some(vec![song_info.singer.clone()]);
         metadata.title = Some(song_info.name.clone());
-        metadata.art_url = Some(format!("file:///{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id));
+        let img_uri = format!("file:///{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
+        if Path::new(&img_uri).exists() {
+            metadata.art_url = Some(img_uri);
+        } else {
+            metadata.art_url = Some(song_info.pic_url.to_owned());
+        }
 
         self.mpris.set_metadata(metadata);
     }
