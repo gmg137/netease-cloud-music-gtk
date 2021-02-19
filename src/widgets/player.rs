@@ -187,7 +187,7 @@ impl PlayerWidget {
         let mpris = MprisPlayer::new(
             "NeteaseCloudMusic".to_string(),
             "Netease Cloud Music".to_string(),
-            "com.github.gmg137.netease-cloud-music-gtk.desktop".to_string(),
+            "netease-cloud-music-gtk.desktop".to_string(),
         );
         mpris.set_can_raise(true);
         mpris.set_can_control(true);
