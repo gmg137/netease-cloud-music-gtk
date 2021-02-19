@@ -862,10 +862,12 @@ impl PlayerWrapper {
 
         let sender_clone = sender.clone();
         // Log gst errors.
+        let weak = Fragile::new(Rc::clone(self));
         self.player.connect_error(move |_, _| {
             sender_clone
                 .send(Action::ShowNotice("播放格式错误!".to_owned()))
                 .unwrap();
+            weak.get().forward();
         });
 
         // The following callbacks require `Send` but are handled by the gtk main loop
