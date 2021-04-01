@@ -16,6 +16,7 @@ pango = "^0.9"
 gdk-pixbuf ="^0.9"
 gstreamer = "^0.16"
 gstreamer-player = "^0.16"
+mp4ameta = "0.9"
 cairo-rs = { version = "^0.9", features = ["png"] }
 mpris-player = "*"
 
