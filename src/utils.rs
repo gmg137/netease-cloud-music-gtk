@@ -44,11 +44,12 @@ where
             let mut buf = vec![];
             response.copy_to(&mut buf).await?;
             fs::write(&tmp_path, buf).await?;
-            let mut tag = mp4ameta::Tag::read_from_path(&tmp_path).unwrap();
-            tag.set_artist(&song_info.singer);
-            tag.set_album(&song_info.album);
-            tag.set_title(&song_info.name);
-            tag.write_to_path(&tmp_path).unwrap();
+            if let Ok(mut tag) = mp4ameta::Tag::read_from_path(&tmp_path) {
+                tag.set_artist(&song_info.singer);
+                tag.set_album(&song_info.album);
+                tag.set_title(&song_info.name);
+                let _ = tag.write_to_path(&tmp_path).map_err(|e| error!("write m4a tag error {:?}", e));
+            }
             fs::rename(&tmp_path, path).await?;
         }
     }
