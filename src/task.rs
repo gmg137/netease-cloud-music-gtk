@@ -7,6 +7,7 @@ use crate::{app::Action, model::*, musicapi::model::*, utils::*};
 use async_std::{sync::Arc, task};
 use futures::{channel::mpsc::Receiver, future::join_all, stream::StreamExt};
 use glib::Sender;
+use std::path::PathBuf;
 
 type AsyncResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -21,8 +22,8 @@ pub(crate) enum Task {
         fm: bool,
     },
     DownloadMusic {
-        url: String,
-        path: String,
+        song_info: SongInfo,
+        path: PathBuf,
         timeout: u64,
     },
     DownloadMineRecommendImage(Arc<Vec<SongList>>),
@@ -34,9 +35,13 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
     let mut receiver = receiver.fuse();
     while let Some(task) = receiver.next().await {
         match task {
-            Task::DownloadMusic { url, path, timeout } => {
-                download_music(&url, &path, timeout).await.ok();
-            }
+            Task::DownloadMusic {
+                song_info,
+                path,
+                timeout,
+            } => {
+                download_music(&song_info, &path, timeout).await.ok();
+            },
             Task::DownloadPlayerImg {
                 url,
                 path,

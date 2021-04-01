@@ -3,9 +3,10 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-use crate::model::{Errors, NCMResult};
+use crate::model::{Errors, NCMResult, NCM_CACHE};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::path::PathBuf;
 
 #[allow(unused)]
 pub fn to_lyric(json: String) -> NCMResult<Vec<String>> {
@@ -137,6 +138,12 @@ pub struct SongInfo {
     pub duration: String,
     // 歌曲链接
     pub song_url: String,
+}
+
+impl SongInfo {
+    pub fn get_song_cache_path(&self) -> PathBuf {
+        PathBuf::from(format!("{}{}-{}.m4a", NCM_CACHE.to_string_lossy(), self.name, self.id).as_str())
+    }
 }
 
 // parse: 解析方式

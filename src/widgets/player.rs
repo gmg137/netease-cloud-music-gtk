@@ -349,8 +349,8 @@ impl PlayerWidget {
             if lyrics {
                 download_lyrics(&mut data, &song_info).await.ok();
             }
-            let path = format!("{}{}.m4a", NCM_CACHE.to_string_lossy(), song_info.id);
-            if std::path::Path::new(&path).exists() {
+            let path = song_info.get_song_cache_path();
+            if path.exists() {
                 sender.send(Action::Player(song_info)).unwrap();
             } else if let Ok(v) = data.songs_url(&[song_info.id]).await {
                 if !v.is_empty() {
@@ -372,7 +372,7 @@ impl PlayerWidget {
                         .ok();
                     sender_task
                         .send(Task::DownloadMusic {
-                            url: song_info.song_url.to_owned(),
+                            song_info: song_info.clone(),
                             path: path.to_owned(),
                             timeout: 3000,
                         })
@@ -413,17 +413,17 @@ impl PlayerWidget {
             // 缓存音乐图片路径
             let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), song_info.id);
             // 缓存音乐路径
-            let path = format!("{}{}.m4a", NCM_CACHE.to_string_lossy(), song_info.id);
+            let path = song_info.get_song_cache_path();
             // 检查是否已经缓存音乐
-            if !Path::new(&path).exists() {
+            if !path.exists() {
                 if let Ok(v) = data.songs_url(&[song_info.id]).await {
                     if !v.is_empty() {
                         song_info.song_url = v[0].url.to_string();
                         // 缓存音乐
                         sender_task
                             .send(Task::DownloadMusic {
-                                url: song_info.song_url.to_owned(),
-                                path: path.to_owned(),
+                                song_info: song_info.clone(),
+                                path: path.clone(),
                                 timeout: 3000,
                             })
                             .await
@@ -459,10 +459,10 @@ impl PlayerWidget {
         }
         self.sender.send(Action::ShowNotice(song_info.name.to_owned())).unwrap();
         self.info.init(&song_info);
-        let song_uri = format!("{}{}.m4a", NCM_CACHE.to_string_lossy(), song_info.id);
-        if Path::new(&song_uri).exists() {
-            info!("播放音乐缓存: {}", song_uri);
-            self.player.set_uri(&format!("file:///{}", song_uri));
+        let song_uri = song_info.get_song_cache_path();
+        if song_uri.exists() {
+            info!("播放音乐缓存: {}", song_uri.to_string_lossy());
+            self.player.set_uri(&format!("file:///{}", song_uri.to_string_lossy()));
         } else {
             let music_url = song_info.song_url.replace("https:", "http:");
             info!("播放在线音乐: {}", music_url);

@@ -20,18 +20,19 @@ use glib::Sender;
 use isahc::{prelude::*, *};
 use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::{io, io::Error, time::Duration};
 
 // 下载音乐
 // url: 网址
 // path: 本地保存路径(包含文件名)
 // timeout: 请求超时,单位毫秒(默认:1000)
-pub(crate) async fn download_music<I, U>(url: I, path: I, timeout: U) -> Result<(), isahc::Error>
+pub(crate) async fn download_music<I, U>(song_info: &SongInfo, path: I, timeout: U) -> Result<(), isahc::Error>
 where
-    I: Into<String>,
+    I: Into<PathBuf>,
     U: Into<Option<u64>>,
 {
-    let url = url.into();
+    let url = &song_info.song_url;
     let path = path.into();
     let timeout = timeout.into().unwrap_or(1000);
     if !std::path::Path::new(&path).exists() && url.starts_with("http://") || url.starts_with("https://") {
@@ -39,10 +40,15 @@ where
         let client = HttpClient::builder().timeout(Duration::from_millis(timeout)).build()?;
         let mut response = client.get_async(music_url).await?;
         if response.status().is_success() {
-            let tmp_path = format!("{}.tmp", path);
+            let tmp_path = path.with_extension("tmp");
             let mut buf = vec![];
             response.copy_to(&mut buf).await?;
             fs::write(&tmp_path, buf).await?;
+            let mut tag = mp4ameta::Tag::read_from_path(&tmp_path).unwrap();
+            tag.set_artist(&song_info.singer);
+            tag.set_album(&song_info.album);
+            tag.set_title(&song_info.name);
+            tag.write_to_path(&tmp_path).unwrap();
             fs::rename(&tmp_path, path).await?;
         }
     }
