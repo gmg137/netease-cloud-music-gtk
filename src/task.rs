@@ -40,7 +40,10 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                 path,
                 timeout,
             } => {
-                download_music(&song_info, &path, timeout).await.ok();
+                let result = download_music(&song_info, &path, timeout).await;
+                if result.is_err() {
+                    error!("下载音乐缓存失败: {:?}", result);
+                }
             },
             Task::DownloadPlayerImg {
                 url,
