@@ -104,7 +104,7 @@ impl MusicApi {
                 };
 
                 let request = Request::post(&url)
-                    .header("Cookie", "os=pc")
+                    .header("Cookie", "os=pc; appver=2.7.1.198277")
                     .header("Accept", "*/*")
                     .header("Accept-Encoding", "gzip,deflate,br")
                     .header("Accept-Language", "en-US,en;q=0.5")
