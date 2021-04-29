@@ -85,6 +85,15 @@ sudo apt install git gcc libdbus-1-dev libgstreamer1.0-dev libgstreamer-plugins-
       gstreamer1.0-libav libgtk-3-dev libatk1.0-dev libcogl-pango-dev \
       libssl-dev libcairo2-dev libgstreamer-plugins-bad1.0-dev
 ```
+### fedora 安装依赖
+```bash
+# 需要启用 rpmfusion-free
+sudo dnf install git gcc dbus-devel gtk3-devel openssl-devel gstreamer1-devel \
+      gstreamer1-plugins-bad-free gstreamer1-plugins-bad-free-devel \
+      gstreamer1-plugins-base gstreamer1-plugins-base-devel gstreamer1-libav \
+      gstreamer1-plugins-good gstreamer1-plugins-ugly cairo-devel
+```
+
 ### 编译/打包
 ```bash
 git clone https://github.com/gmg137/netease-cloud-music-gtk.git

@@ -13,16 +13,16 @@ Source0: %{name}-%{version}.tar.gz
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
-BuildRequires: gstreamer-devel
-BuildRequires: gstreamer-plugins-bad-devel
-BuildRequires: gstreamer-plugins-base-devel
+BuildRequires: (gstreamer-devel or gstreamer1-devel)
+BuildRequires: (gstreamer-plugins-bad-devel or gstreamer1-plugins-bad-free-devel)
+BuildRequires: (gstreamer-plugins-base-devel or gstreamer1-plugins-base-devel)
 Requires: openssl
-Requires: gstreamer
-Requires: gstreamer-plugins-bad
-Requires: gstreamer-plugins-ugly
-Requires: gstreamer-plugins-base
-Requires: gstreamer-plugins-good
-Requires: gstreamer-plugins-libav
+Requires: (gstreamer or gstreamer1)
+Requires: (gstreamer-plugins-bad or gstreamer1-plugins-bad-free)
+Requires: (gstreamer-plugins-ugly or gstreamer1-plugins-ugly)
+Requires: (gstreamer-plugins-base or gstreamer1-plugins-base)
+Requires: (gstreamer-plugins-good or gstreamer1-plugins-good)
+Requires: (gstreamer-plugins-libav or gstreamer1-libav)
 
 %description
 %{summary}
