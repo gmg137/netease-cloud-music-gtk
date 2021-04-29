@@ -129,7 +129,14 @@
     <property name="program_name">网易云音乐 GTK</property>
     <property name="comments" translatable="yes">Linux 平台下基于 Rust + GTK 开发的网易云音乐播放器 </property>
     <property name="website">https://github.com/gmg137/netease-cloud-music-gtk</property>
-    <property name="authors">gmg137, fplust</property>
+    <property name="authors">gmg137
+fplust
+NOBLES5E
+zyw271828
+haukeng
+nasen23
+MarvelousBlack
+    </property>
     <property name="logo_icon_name">netease-cloud-music-gtk</property>
     <property name="license_type">gpl-3-0</property>
     <child>
