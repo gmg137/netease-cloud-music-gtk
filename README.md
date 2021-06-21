@@ -18,7 +18,7 @@
 - 热门排行榜
 - 歌曲搜索
 - 简易歌词
-- 桌面歌词(依赖于 [OSDLyrics](https://github.com/osdlyrics/osdlyrics))
+- 桌面歌词(依赖于 [Desktop Lyric](https://extensions.gnome.org/extension/4006/desktop-lyric/)或[OSDLyrics](https://github.com/osdlyrics/osdlyrics))
 - 热门歌单
 - 新碟上架
 - Mpris 支持
