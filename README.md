@@ -93,6 +93,17 @@ sudo dnf install git gcc dbus-devel gtk3-devel openssl-devel gstreamer1-devel \
       gstreamer1-plugins-base gstreamer1-plugins-base-devel gstreamer1-libav \
       gstreamer1-plugins-good gstreamer1-plugins-ugly cairo-devel
 ```
+### mac（osx） 安装依赖
+```bash
+brew install gtk+3
+brew install gstreamer gst-plugins-base gst-plugins-good \
+      gst-plugins-bad gst-plugins-ugly gst-libav
+      
+brew install dbus
+
+# 安装之后要启动
+brew services restart dbus
+```
 
 ### 编译/打包
 ```bash
