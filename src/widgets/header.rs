@@ -67,9 +67,7 @@ impl Header {
         let search_bar: SearchBar = builder.object("search_bar").expect("Couldn't get search bar");
         let search_entry: SearchEntry = builder.object("search_entry").expect("Couldn't get search entry");
         let avatar: Image = builder.object("avatar").expect("Couldn't get avatar image");
-        let username: Label = builder
-            .object("username_label")
-            .expect("Couldn't get username_label");
+        let username: Label = builder.object("username_label").expect("Couldn't get username_label");
         let menu: MenuButton = builder.object("menu_button").expect("Couldn't get menu button");
         let logoutbox: gtk::Box = builder.object("logout_box").expect("Couldn't get login button");
         let login: ModelButton = builder.object("login_button").expect("Couldn't get login button");

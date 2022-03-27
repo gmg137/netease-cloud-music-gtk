@@ -217,7 +217,7 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                         song_url: String::new(),
                     });
                 }
-            }
+            },
             Parse::UCD => {
                 let array = value
                     .get("data")
@@ -261,7 +261,7 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                         song_url: String::new(),
                     });
                 }
-            }
+            },
             Parse::RMD => {
                 let array = value
                     .get("data")
@@ -316,7 +316,7 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                         song_url: String::new(),
                     });
                 }
-            }
+            },
             Parse::RMDS => {
                 let array = value
                     .get("data")
@@ -375,7 +375,7 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                         song_url: String::new(),
                     });
                 }
-            }
+            },
             Parse::SEARCH => {
                 let array = value
                     .get("result")
@@ -434,7 +434,7 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                         song_url: String::new(),
                     });
                 }
-            }
+            },
             Parse::ALBUM => {
                 let array = value
                     .get("songs")
@@ -489,8 +489,8 @@ pub fn to_song_info(json: String, parse: Parse) -> NCMResult<Vec<SongInfo>> {
                         song_url: String::new(),
                     });
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
         return Ok(vec);
     }
@@ -542,7 +542,7 @@ pub fn to_song_list(json: String, parse: Parse) -> NCMResult<Vec<SongList>> {
                             .to_owned(),
                     });
                 }
-            }
+            },
             Parse::RMD => {
                 let array = value
                     .get("recommend")
@@ -565,7 +565,7 @@ pub fn to_song_list(json: String, parse: Parse) -> NCMResult<Vec<SongList>> {
                         cover_img_url: v.get("picUrl").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                     });
                 }
-            }
+            },
             Parse::ALBUM => {
                 let array = value
                     .get("albums")
@@ -588,7 +588,7 @@ pub fn to_song_list(json: String, parse: Parse) -> NCMResult<Vec<SongList>> {
                         cover_img_url: v.get("picUrl").unwrap_or(&json!("")).as_str().unwrap_or("").to_owned(),
                     });
                 }
-            }
+            },
             Parse::TOP => {
                 let array = value
                     .get("playlists")
@@ -616,8 +616,8 @@ pub fn to_song_list(json: String, parse: Parse) -> NCMResult<Vec<SongList>> {
                             .to_owned(),
                     });
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
         return Ok(vec);
     }

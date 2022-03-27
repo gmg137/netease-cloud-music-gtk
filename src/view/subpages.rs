@@ -98,26 +98,11 @@ impl Subpages {
             if event.event_type() == gdk::EventType::DoubleButtonPress {
                 if let Some((model, iter)) = tree.selection().selected() {
                     let id = model.value(&iter, 0).get::<u64>().unwrap_or(0);
-                    let name = model
-                        .value(&iter, 1)
-                        .get::<String>()
-                        .unwrap_or_else(|_| "".to_owned());
-                    let duration = model
-                        .value(&iter, 2)
-                        .get::<String>()
-                        .unwrap_or_else(|_| "".to_owned());
-                    let singer = model
-                        .value(&iter, 3)
-                        .get::<String>()
-                        .unwrap_or_else(|_| "".to_owned());
-                    let album = model
-                        .value(&iter, 4)
-                        .get::<String>()
-                        .unwrap_or_else(|_| "".to_owned());
-                    let pic_url = model
-                        .value(&iter, 5)
-                        .get::<String>()
-                        .unwrap_or_else(|_| "".to_owned());
+                    let name = model.value(&iter, 1).get::<String>().unwrap_or_else(|_| "".to_owned());
+                    let duration = model.value(&iter, 2).get::<String>().unwrap_or_else(|_| "".to_owned());
+                    let singer = model.value(&iter, 3).get::<String>().unwrap_or_else(|_| "".to_owned());
+                    let album = model.value(&iter, 4).get::<String>().unwrap_or_else(|_| "".to_owned());
+                    let pic_url = model.value(&iter, 5).get::<String>().unwrap_or_else(|_| "".to_owned());
                     sender
                         .send(Action::PlayerInit(
                             SongInfo {

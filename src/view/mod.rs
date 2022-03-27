@@ -54,9 +54,7 @@ impl View {
         music_data: Arc<Mutex<MusicData>>,
     ) -> Rc<Self> {
         let stack: Stack = builder.object("stack").expect("无法获取 stack.");
-        let main_stack: Stack = builder
-            .object("main_pages_stack")
-            .expect("无法获取 main_pages_stack.");
+        let main_stack: Stack = builder.object("main_pages_stack").expect("无法获取 main_pages_stack.");
         let mine_stack: Stack = builder.object("mine_stack").expect("无法获取 mine_stack.");
 
         let glade_src = include_str!("../../ui/subpages.ui");
@@ -197,7 +195,7 @@ impl View {
                     } else {
                         sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                     }
-                }
+                },
                 Parse::ALBUM => {
                     if let Ok(song_list) = data.album(id).await {
                         // 发送更新子页概览
@@ -211,8 +209,8 @@ impl View {
                     } else {
                         sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                     }
-                }
-                _ => {}
+                },
+                _ => {},
             }
         });
         self.sender.send(Action::SwitchHeaderBar(name)).unwrap_or(());

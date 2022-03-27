@@ -3,9 +3,7 @@
 // Copyright (C) 2019 gmg137 <gmg137@live.com>
 // Distributed under terms of the GPLv3 license.
 //
-use crate::{
-    app::Action, data::MusicData, model::NCM_CACHE, musicapi::model::SongInfo, task::Task, utils::*,
-};
+use crate::{app::Action, data::MusicData, model::NCM_CACHE, musicapi::model::SongInfo, task::Task, utils::*};
 use async_std::{sync, task};
 use chrono::NaiveTime;
 use fragile::Fragile;
@@ -14,8 +12,8 @@ use gdk_pixbuf::{InterpType, Pixbuf};
 use glib::{clone, Sender, SignalHandlerId, WeakRef};
 use gst::ClockTime;
 use gtk::{
-    prelude::*, AccelGroup, ActionBar, Builder, Button, CellRendererText, Image, Label, ListStore,
-    MenuButton, Popover, RadioButton, Scale, TextView, TreeView, TreeViewColumn, VolumeButton,
+    prelude::*, AccelGroup, ActionBar, Builder, Button, CellRendererText, Image, Label, ListStore, MenuButton, Popover,
+    RadioButton, Scale, TextView, TreeView, TreeViewColumn, VolumeButton,
 };
 use mpris_player::{LoopStatus, Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use pango::EllipsizeMode;
@@ -62,11 +60,7 @@ impl PlayerInfo {
         let mut metadata = Metadata::new();
         metadata.artist = Some(vec![song_info.singer.clone()]);
         metadata.title = Some(song_info.name.clone());
-        let img_uri = format!(
-            "file:///{}{}.jpg",
-            NCM_CACHE.to_string_lossy(),
-            &song_info.id
-        );
+        let img_uri = format!("file:///{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
         if Path::new(&img_uri).exists() {
             metadata.art_url = Some(img_uri);
         } else {
@@ -201,9 +195,7 @@ impl PlayerWidget {
         mpris.set_can_seek(true);
 
         let mut config = player.config();
-        config.set_user_agent(
-            "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0",
-        );
+        config.set_user_agent("User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0");
         config.set_position_update_interval(250);
         player.set_config(config).unwrap();
 
@@ -282,37 +274,33 @@ impl PlayerWidget {
         let action_bar: ActionBar = builder.object("play_action_bar").unwrap();
         match loop_state {
             LoopsState::NONE => {
-                loops.image.set_from_icon_name(
-                    Some("media-playlist-consecutive-symbolic"),
-                    gtk::IconSize::Menu,
-                );
+                loops
+                    .image
+                    .set_from_icon_name(Some("media-playlist-consecutive-symbolic"), gtk::IconSize::Menu);
                 loops.none.set_active(true);
                 mpris.set_loop_status(LoopStatus::None);
-            }
+            },
             LoopsState::TRACK => {
-                loops.image.set_from_icon_name(
-                    Some("media-playlist-repeat-song-symbolic"),
-                    gtk::IconSize::Menu,
-                );
+                loops
+                    .image
+                    .set_from_icon_name(Some("media-playlist-repeat-song-symbolic"), gtk::IconSize::Menu);
                 loops.track.set_active(true);
                 mpris.set_loop_status(LoopStatus::Track);
-            }
+            },
             LoopsState::PLAYLIST => {
-                loops.image.set_from_icon_name(
-                    Some("media-playlist-repeat-symbolic"),
-                    gtk::IconSize::Menu,
-                );
+                loops
+                    .image
+                    .set_from_icon_name(Some("media-playlist-repeat-symbolic"), gtk::IconSize::Menu);
                 loops.playlist.set_active(true);
                 mpris.set_loop_status(LoopStatus::Playlist);
-            }
+            },
             LoopsState::SHUFFLE => {
-                loops.image.set_from_icon_name(
-                    Some("media-playlist-shuffle-symbolic"),
-                    gtk::IconSize::Menu,
-                );
+                loops
+                    .image
+                    .set_from_icon_name(Some("media-playlist-shuffle-symbolic"), gtk::IconSize::Menu);
                 loops.shuffle.set_active(true);
                 mpris.property_changed("Shuffle".to_string(), true);
-            }
+            },
         }
         let info = PlayerInfo {
             mpris,
@@ -341,12 +329,7 @@ impl PlayerWidget {
         self.action_bar.show();
     }
 
-    pub(crate) fn initialize_player(
-        &self,
-        song_info: SongInfo,
-        player_types: PlayerTypes,
-        lyrics: bool,
-    ) {
+    pub(crate) fn initialize_player(&self, song_info: SongInfo, player_types: PlayerTypes, lyrics: bool) {
         if let PlayerTypes::Fm = player_types {
             if song_info.id == self.info.song_id.borrow().unwrap_or(0) {
                 self.play();
@@ -375,8 +358,7 @@ impl PlayerWidget {
                     song_info.song_url = v[0].url.to_string();
                     sender.send(Action::Player(song_info.clone())).unwrap();
                     // 缓存音乐和图片
-                    let image_path =
-                        format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
+                    let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_info.id);
                     sender_task
                         .send(Task::DownloadPlayerImg {
                             url: song_info.pic_url.to_owned(),
@@ -401,18 +383,11 @@ impl PlayerWidget {
                         "未能获取 {}[id:{}] 的播放链接!(版权或VIP限制)",
                         song_info.name, song_info.id
                     );
-                    sender
-                        .send(Action::ShowNotice("播放失败!".to_owned()))
-                        .unwrap();
+                    sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
                 }
             } else {
-                warn!(
-                    "解析 {}[id:{}] 的播放链接失败!",
-                    song_info.name, song_info.id
-                );
-                sender
-                    .send(Action::ShowNotice("播放失败!".to_owned()))
-                    .unwrap();
+                warn!("解析 {}[id:{}] 的播放链接失败!", song_info.name, song_info.id);
+                sender.send(Action::ShowNotice("播放失败!".to_owned())).unwrap();
             }
         });
     }
@@ -454,14 +429,10 @@ impl PlayerWidget {
                             .await
                             .ok();
                     } else {
-                        sender
-                            .send(Action::ShowNotice("获取歌曲URL错误!".to_owned()))
-                            .unwrap();
+                        sender.send(Action::ShowNotice("获取歌曲URL错误!".to_owned())).unwrap();
                     }
                 } else {
-                    sender
-                        .send(Action::ShowNotice("获取歌曲URL错误!".to_owned()))
-                        .unwrap();
+                    sender.send(Action::ShowNotice("获取歌曲URL错误!".to_owned())).unwrap();
                 }
             }
             // 播放音乐
@@ -484,13 +455,9 @@ impl PlayerWidget {
     pub(crate) fn player(&self, song_info: SongInfo) {
         info!("准备播放音乐: {:?}", song_info);
         if let PlayerTypes::Fm = *self.player_types.borrow() {
-            self.sender
-                .send(Action::RefreshMineFm(song_info.to_owned()))
-                .unwrap();
+            self.sender.send(Action::RefreshMineFm(song_info.to_owned())).unwrap();
         }
-        self.sender
-            .send(Action::ShowNotice(song_info.name.to_owned()))
-            .unwrap();
+        self.sender.send(Action::ShowNotice(song_info.name.to_owned())).unwrap();
         self.info.init(&song_info);
         let song_uri = song_info.get_song_cache_path();
         if song_uri.exists() {
@@ -510,10 +477,7 @@ impl PlayerWidget {
         }
     }
 
-    fn connect_update_slider(
-        slider: &Scale,
-        player: WeakRef<gst_player::Player>,
-    ) -> SignalHandlerId {
+    fn connect_update_slider(slider: &Scale, player: WeakRef<gst_player::Player>) -> SignalHandlerId {
         slider.connect_value_changed(move |slider| {
             let player = match player.upgrade() {
                 Some(p) => p,
@@ -530,7 +494,7 @@ impl PlayerWidget {
         match *self.player_types.borrow() {
             PlayerTypes::Fm => {
                 self.sender.send(Action::RefreshMineFmPause).unwrap();
-            }
+            },
             _ => self.sender.send(Action::RefreshMineFmPlay).unwrap(),
         }
         self.reveal();
@@ -580,7 +544,7 @@ impl PlayerWidget {
             LoopsState::TRACK => {
                 self.play();
                 return;
-            }
+            },
         };
         if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, shuffle, loops)) {
             self.sender.send(Action::ReadyPlayer(si)).unwrap();
@@ -605,18 +569,16 @@ impl PlayerWidget {
             LoopsState::PLAYLIST => {
                 if let Ok(si) = task::block_on(get_player_list_song(PD::BACKWARD, false, false)) {
                     self.sender.send(Action::ReadyPlayer(si)).unwrap();
-                } else if let Ok(si) =
-                    task::block_on(get_player_list_song(PD::BACKWARD, false, true))
-                {
+                } else if let Ok(si) = task::block_on(get_player_list_song(PD::BACKWARD, false, true)) {
                     self.sender.send(Action::ReadyPlayer(si)).unwrap();
                 }
                 return;
-            }
+            },
             LoopsState::TRACK => {
                 self.stop();
                 self.play();
                 return;
-            }
+            },
             LoopsState::NONE => false,
         };
         if let Ok(si) = task::block_on(get_player_list_song(PD::BACKWARD, state, false)) {
@@ -630,9 +592,7 @@ impl PlayerWidget {
             self.sender.send(Action::LikeSong(id)).unwrap();
             return;
         }
-        self.sender
-            .send(Action::ShowNotice("收藏失败!".to_owned()))
-            .unwrap();
+        self.sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
     }
 
     fn set_volume(&self, value: f64, mpris: bool) {
@@ -678,13 +638,13 @@ impl PlayerWidget {
         match loops_status {
             LoopStatus::None => {
                 self.loops.none.set_active(true);
-            }
+            },
             LoopStatus::Track => {
                 self.loops.track.set_active(true);
-            }
+            },
             LoopStatus::Playlist => {
                 self.loops.playlist.set_active(true);
-            }
+            },
         }
     }
 
@@ -763,11 +723,7 @@ impl PlayerWidget {
 
         let song_id = *self.info.song_id.borrow();
         pl.player_list.iter().for_each(|(song, _)| {
-            let play_icon = if Some(song.id).eq(&song_id) {
-                "▶"
-            } else {
-                ""
-            };
+            let play_icon = if Some(song.id).eq(&song_id) { "▶" } else { "" };
             self.controls.store.insert_with_values(
                 None,
                 &[
@@ -787,9 +743,7 @@ impl PlayerWidget {
 
     pub(crate) fn playlist_song(&self, index: i32) {
         if task::block_on(get_playlist_song_by_index(index, self.sender.clone())).is_err() {
-            self.sender
-                .send(Action::ShowNotice("播放错误!".to_owned()))
-                .unwrap();
+            self.sender.send(Action::ShowNotice("播放错误!".to_owned())).unwrap();
         }
     }
 
@@ -802,20 +756,12 @@ impl PlayerWidget {
 
     // 添加快捷键
     pub(crate) fn play_add_accel(&self, ag: &AccelGroup) {
-        self.controls.play.add_accelerator(
-            "clicked",
-            ag,
-            32,
-            gdk::ModifierType::empty(),
-            gtk::AccelFlags::VISIBLE,
-        );
-        self.controls.pause.add_accelerator(
-            "clicked",
-            ag,
-            32,
-            gdk::ModifierType::empty(),
-            gtk::AccelFlags::VISIBLE,
-        );
+        self.controls
+            .play
+            .add_accelerator("clicked", ag, 32, gdk::ModifierType::empty(), gtk::AccelFlags::VISIBLE);
+        self.controls
+            .pause
+            .add_accelerator("clicked", ag, 32, gdk::ModifierType::empty(), gtk::AccelFlags::VISIBLE);
     }
 
     // 删除快捷键
@@ -866,17 +812,15 @@ impl PlayerWrapper {
 
     fn connect_control_tree(&self) {
         let sender = self.sender.clone();
-        self.controls
-            .tree
-            .connect_button_press_event(move |tree, event| {
-                if event.event_type() == gdk::EventType::DoubleButtonPress {
-                    if let Some(path) = tree.selection().selected_rows().0.get(0) {
-                        let index = path.indices()[0];
-                        sender.send(Action::PlaylistSong(index)).unwrap_or(());
-                    }
+        self.controls.tree.connect_button_press_event(move |tree, event| {
+            if event.event_type() == gdk::EventType::DoubleButtonPress {
+                if let Some(path) = tree.selection().selected_rows().0.get(0) {
+                    let index = path.indices()[0];
+                    sender.send(Action::PlaylistSong(index)).unwrap_or(());
                 }
-                Inhibit(false)
-            });
+            }
+            Inhibit(false)
+        });
     }
 
     /// Connect the `PlayerControls` buttons to the `PlayerExt` methods.
@@ -884,36 +828,26 @@ impl PlayerWrapper {
         let weak = Rc::clone(self);
 
         // Connect the play button to the gst Player.
-        self.controls
-            .play
-            .connect_clicked(clone!(@weak weak => move |_| {
-                weak.play();
-            }));
+        self.controls.play.connect_clicked(clone!(@weak weak => move |_| {
+            weak.play();
+        }));
 
         // Connect the pause button to the gst Player.
-        self.controls
-            .pause
-            .connect_clicked(clone!(@weak weak => move |_| {
-                weak.pause();
-            }));
+        self.controls.pause.connect_clicked(clone!(@weak weak => move |_| {
+            weak.pause();
+        }));
 
-        self.controls
-            .forward
-            .connect_clicked(clone!(@weak weak => move |_| {
-                weak.forward();
-            }));
+        self.controls.forward.connect_clicked(clone!(@weak weak => move |_| {
+            weak.forward();
+        }));
 
-        self.controls
-            .backward
-            .connect_clicked(clone!(@weak weak => move |_| {
-                weak.backward();
-            }));
+        self.controls.backward.connect_clicked(clone!(@weak weak => move |_| {
+            weak.backward();
+        }));
 
-        self.controls
-            .like
-            .connect_clicked(clone!(@weak weak => move |_| {
-                weak.like();
-            }));
+        self.controls.like.connect_clicked(clone!(@weak weak => move |_| {
+            weak.like();
+        }));
 
         self.controls
             .volume
@@ -921,12 +855,10 @@ impl PlayerWrapper {
                 weak.set_volume(value,false);
             }));
 
-        self.controls
-            .more
-            .connect_clicked(clone!(@weak weak => move |_| {
-                weak.get_lyrics_text();
-                weak.get_playlist();
-            }));
+        self.controls.more.connect_clicked(clone!(@weak weak => move |_| {
+            weak.get_lyrics_text();
+            weak.get_playlist();
+        }));
     }
 
     fn connect_gst_signals(&self, sender: &Sender<Action>) {
@@ -950,7 +882,7 @@ impl PlayerWrapper {
         self.player.connect_duration_changed(move |_, clock| {
             match clock {
                 Some(c) => weak.get().timer.on_duration_changed(Duration(c)),
-                _ => {}
+                _ => {},
             };
         });
 
@@ -963,7 +895,7 @@ impl PlayerWrapper {
             //}
             match clock {
                 Some(c) => weak.get().timer.on_position_updated(Position(c)),
-                _ => {}
+                _ => {},
             };
         });
 
@@ -1045,8 +977,9 @@ impl PlayerWrapper {
             weak.sender.send(Action::QuitMain).unwrap();
         }));
 
-        self.info.mpris.connect_play_pause(
-            clone!(@weak weak, @weak self.info.mpris as mpris => move || {
+        self.info
+            .mpris
+            .connect_play_pause(clone!(@weak weak, @weak self.info.mpris as mpris => move || {
                 if let Ok(status) = mpris.get_playback_status() {
                     match status.as_ref() {
                         "Paused" => weak.play(),
@@ -1054,8 +987,7 @@ impl PlayerWrapper {
                         _ => weak.pause(),
                     };
                 }
-            }),
-        );
+            }));
 
         self.info.mpris.connect_play(clone!(@weak weak => move || {
             weak.play();
@@ -1069,32 +1001,24 @@ impl PlayerWrapper {
             weak.forward();
         }));
 
-        self.info
-            .mpris
-            .connect_previous(clone!(@weak weak => move || {
-                weak.backward();
-            }));
+        self.info.mpris.connect_previous(clone!(@weak weak => move || {
+            weak.backward();
+        }));
 
         self.info.mpris.connect_raise(clone!(@weak weak => move || {
             weak.sender.send(Action::ActivateApp).unwrap();
         }));
 
-        self.info
-            .mpris
-            .connect_volume(clone!(@weak weak => move |volume| {
-                weak.set_volume(volume, true);
-            }));
+        self.info.mpris.connect_volume(clone!(@weak weak => move |volume| {
+            weak.set_volume(volume, true);
+        }));
 
-        self.info
-            .mpris
-            .connect_shuffle(clone!(@weak weak => move |status| {
-                weak.set_shuffle(status);
-            }));
+        self.info.mpris.connect_shuffle(clone!(@weak weak => move |status| {
+            weak.set_shuffle(status);
+        }));
 
-        self.info
-            .mpris
-            .connect_loop_status(clone!(@weak weak => move |status| {
-                weak.set_loops(status);
-            }));
+        self.info.mpris.connect_loop_status(clone!(@weak weak => move |status| {
+            weak.set_loops(status);
+        }));
     }
 }

@@ -95,12 +95,12 @@ impl MusicApi {
                         );
                         url = "https://music.163.com/api/linux/forward".to_owned();
                         Crypto::linuxapi(&data)
-                    }
+                    },
                     CryptoApi::WEAPI => {
                         let mut params = params;
                         params.insert("csrf_token", &self.csrf[..]);
                         Crypto::weapi(&QueryParams::from_map(params).json())
-                    }
+                    },
                 };
 
                 let request = Request::post(&url)
@@ -130,7 +130,7 @@ impl MusicApi {
                     }
                 }
                 response.text().await.map_err(|_| Errors::NoneError)
-            }
+            },
             Method::GET => self
                 .client
                 .get_async(&url)

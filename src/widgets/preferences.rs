@@ -20,12 +20,8 @@ pub(crate) struct Preferences {
 
 impl Preferences {
     pub(crate) fn new(builder: &Builder, sender: Sender<Action>, configs: &Configs) -> Self {
-        let dialog: Dialog = builder
-            .object("preferences_dialog")
-            .expect("没找到 preferences_dialog");
-        let tray: Switch = builder
-            .object("config_tray_switch")
-            .expect("没找到 config_tray_switch");
+        let dialog: Dialog = builder.object("preferences_dialog").expect("没找到 preferences_dialog");
+        let tray: Switch = builder.object("config_tray_switch").expect("没找到 config_tray_switch");
         let lyrics: Switch = builder
             .object("config_lyrics_switch")
             .expect("没找到 config_lyrics_switch");
@@ -35,16 +31,16 @@ impl Preferences {
         match configs.clear {
             ClearCached::NONE => {
                 clear.set_active_id(Some("0"));
-            }
+            },
             ClearCached::MONTH(_) => {
                 clear.set_active_id(Some("1"));
-            }
+            },
             ClearCached::WEEK(_) => {
                 clear.set_active_id(Some("2"));
-            }
+            },
             ClearCached::DAY(_) => {
                 clear.set_active_id(Some("3"));
-            }
+            },
         };
 
         let sender_clone = sender.clone();

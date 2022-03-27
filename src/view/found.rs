@@ -11,10 +11,7 @@ use crate::{
 };
 use async_std::task;
 use glib::Sender;
-use gtk::{
-    prelude::*, Builder, Button, CellRendererText, Label, ListBox, ListStore, TreeView,
-    TreeViewColumn,
-};
+use gtk::{prelude::*, Builder, Button, CellRendererText, Label, ListBox, ListStore, TreeView, TreeViewColumn};
 use pango::EllipsizeMode;
 
 #[derive(Clone)]
@@ -31,21 +28,15 @@ pub(crate) struct Found {
 
 impl Found {
     pub(crate) fn new(builder: &Builder, sender: Sender<Action>) -> Self {
-        let sidebar: ListBox = builder
-            .object("found_listbox")
-            .expect("无法获取 found_listbox .");
+        let sidebar: ListBox = builder.object("found_listbox").expect("无法获取 found_listbox .");
         let title: Label = builder
             .object("found_songs_title")
             .expect("无法获取 found_songs_title .");
-        let number: Label = builder
-            .object("found_songs_num")
-            .expect("无法获取 found_songs_num .");
+        let number: Label = builder.object("found_songs_num").expect("无法获取 found_songs_num .");
         let play: Button = builder
             .object("found_play_button")
             .expect("无法获取 found_play_button .");
-        let treeview: TreeView = builder
-            .object("found_tree_view")
-            .expect("无法获取 found_tree_view .");
+        let treeview: TreeView = builder.object("found_tree_view").expect("无法获取 found_tree_view .");
         let store: ListStore = ListStore::new(&[
             glib::Type::U64,
             String::static_type(),
@@ -78,26 +69,11 @@ impl Found {
             if event.event_type() == gdk::EventType::DoubleButtonPress {
                 if let Some((model, iter)) = tree.selection().selected() {
                     let id = model.value(&iter, 0).get::<u64>().unwrap_or(0);
-                    let name = model
-                        .value(&iter, 1)
-                        .get::<String>()
-                        .unwrap_or_else(|_| String::new());
-                    let duration = model
-                        .value(&iter, 2)
-                        .get::<String>()
-                        .unwrap_or_else(|_| String::new());
-                    let singer = model
-                        .value(&iter, 3)
-                        .get::<String>()
-                        .unwrap_or_else(|_| String::new());
-                    let album = model
-                        .value(&iter, 4)
-                        .get::<String>()
-                        .unwrap_or_else(|_| String::new());
-                    let pic_url = model
-                        .value(&iter, 5)
-                        .get::<String>()
-                        .unwrap_or_else(|_| String::new());
+                    let name = model.value(&iter, 1).get::<String>().unwrap_or_else(|_| String::new());
+                    let duration = model.value(&iter, 2).get::<String>().unwrap_or_else(|_| String::new());
+                    let singer = model.value(&iter, 3).get::<String>().unwrap_or_else(|_| String::new());
+                    let album = model.value(&iter, 4).get::<String>().unwrap_or_else(|_| String::new());
+                    let pic_url = model.value(&iter, 5).get::<String>().unwrap_or_else(|_| String::new());
                     sender
                         .send(Action::PlayerInit(
                             SongInfo {
@@ -213,14 +189,10 @@ impl Found {
     pub(crate) fn play_all(&self) {
         let song_list = self.song_list.clone();
         let sender = self.sender.clone();
-        sender
-            .send(Action::PlayerTypes(PlayerTypes::Song))
-            .unwrap_or(());
+        sender.send(Action::PlayerTypes(PlayerTypes::Song)).unwrap_or(());
         task::spawn(async move {
             let mut api = MusicData::new().await;
-            create_player_list(&mut api, &song_list, sender, true, false)
-                .await
-                .ok()
+            create_player_list(&mut api, &song_list, sender, true, false).await.ok()
         });
     }
 }

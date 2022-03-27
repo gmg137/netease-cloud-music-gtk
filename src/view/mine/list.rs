@@ -9,10 +9,7 @@ use async_std::{
     task,
 };
 use glib::Sender;
-use gtk::{
-    prelude::*, Builder, Button, CellRendererText, Label, ListStore, Menu, MenuItem, TreeView,
-    TreeViewColumn,
-};
+use gtk::{prelude::*, Builder, Button, CellRendererText, Label, ListStore, Menu, MenuItem, TreeView, TreeViewColumn};
 use pango::EllipsizeMode;
 
 #[derive(Clone)]
@@ -216,7 +213,7 @@ impl ListView {
                     (3, &song.singer),
                     (4, &song.album),
                     (5, &song.pic_url),
-                ]
+                ],
             );
         });
     }
@@ -224,15 +221,11 @@ impl ListView {
     pub(crate) fn play_all(&self) {
         let song_list = self.song_list.clone();
         let sender = self.sender.clone();
-        sender
-            .send(Action::PlayerTypes(PlayerTypes::Song))
-            .unwrap_or(());
+        sender.send(Action::PlayerTypes(PlayerTypes::Song)).unwrap_or(());
         let data = self.music_data.clone();
         task::spawn(async move {
             let mut api = data.lock().await;
-            create_player_list(&mut api, &song_list, sender, true, false)
-                .await
-                .ok()
+            create_player_list(&mut api, &song_list, sender, true, false).await.ok()
         });
     }
 }
