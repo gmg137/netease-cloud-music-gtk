@@ -22,14 +22,14 @@ pub(crate) struct Home {
 impl Home {
     pub(crate) fn new(builder: &Builder, sender: Sender<Action>) -> Self {
         let up_grid: Grid = builder
-            .get_object("top_song_list_grid")
+            .object("top_song_list_grid")
             .expect("无法获取 top_song_list_grid 窗口.");
         let low_grid: Grid = builder
-            .get_object("recommend_resource_grid")
+            .object("recommend_resource_grid")
             .expect("无法获取 recommend_resource_grid 窗口.");
-        let up_title: gtk::Box = builder.get_object("home_top_title").expect("无法获取 top title.");
+        let up_title: gtk::Box = builder.object("home_top_title").expect("无法获取 top title.");
         let low_title: gtk::Box = builder
-            .get_object("home_recommend_title")
+            .object("home_recommend_title")
             .expect("无法获取 recommend title.");
         up_title.hide();
         low_title.hide();
@@ -159,7 +159,7 @@ impl Home {
     }
 
     pub(crate) fn set_up_image(&self, left: i32, top: i32, song_list: SongList) {
-        if let Some(w) = self.up_grid.get_child_at(left, top) {
+        if let Some(w) = self.up_grid.child_at(left, top) {
             self.up_grid.remove(&w);
         }
         let event_box = EventBox::new();
@@ -202,7 +202,7 @@ impl Home {
     }
 
     pub(crate) fn set_low_image(&self, left: i32, top: i32, song_list: SongList) {
-        if let Some(w) = self.low_grid.get_child_at(left, top) {
+        if let Some(w) = self.low_grid.child_at(left, top) {
             self.low_grid.remove(&w);
         }
         let event_box = EventBox::new();

@@ -60,34 +60,34 @@ impl Header {
         configs: &Configs,
         music_data: Arc<Mutex<MusicData>>,
     ) -> Rc<Self> {
-        let back: Button = builder.get_object("back_button").expect("Couldn't get back button");
-        let switch: StackSwitcher = builder.get_object("stack_switch").expect("Couldn't get stack switch");
-        let title: Label = builder.get_object("subpages_title").expect("Couldn't get title");
-        let search: ToggleButton = builder.get_object("search_button").expect("Couldn't get search button");
-        let search_bar: SearchBar = builder.get_object("search_bar").expect("Couldn't get search bar");
-        let search_entry: SearchEntry = builder.get_object("search_entry").expect("Couldn't get search entry");
-        let avatar: Image = builder.get_object("avatar").expect("Couldn't get avatar image");
+        let back: Button = builder.object("back_button").expect("Couldn't get back button");
+        let switch: StackSwitcher = builder.object("stack_switch").expect("Couldn't get stack switch");
+        let title: Label = builder.object("subpages_title").expect("Couldn't get title");
+        let search: ToggleButton = builder.object("search_button").expect("Couldn't get search button");
+        let search_bar: SearchBar = builder.object("search_bar").expect("Couldn't get search bar");
+        let search_entry: SearchEntry = builder.object("search_entry").expect("Couldn't get search entry");
+        let avatar: Image = builder.object("avatar").expect("Couldn't get avatar image");
         let username: Label = builder
-            .get_object("username_label")
+            .object("username_label")
             .expect("Couldn't get username_label");
-        let menu: MenuButton = builder.get_object("menu_button").expect("Couldn't get menu button");
-        let logoutbox: gtk::Box = builder.get_object("logout_box").expect("Couldn't get login button");
-        let login: ModelButton = builder.get_object("login_button").expect("Couldn't get login button");
-        let logout: Button = builder.get_object("logout_button").expect("Couldn't get logout button");
-        let user_button: MenuButton = builder.get_object("user_button").expect("Couldn't get user button");
+        let menu: MenuButton = builder.object("menu_button").expect("Couldn't get menu button");
+        let logoutbox: gtk::Box = builder.object("logout_box").expect("Couldn't get login button");
+        let login: ModelButton = builder.object("login_button").expect("Couldn't get login button");
+        let logout: Button = builder.object("logout_button").expect("Couldn't get logout button");
+        let user_button: MenuButton = builder.object("user_button").expect("Couldn't get user button");
         let preferences_button: ModelButton = builder
-            .get_object("preferences_button")
+            .object("preferences_button")
             .expect("Couldn't get preferences button");
-        let about_button: ModelButton = builder.get_object("about_button").expect("Couldn't get about button");
-        let close_button: ModelButton = builder.get_object("close_button").expect("Couldn't get close button");
-        let about: AboutDialog = builder.get_object("about_dialog").expect("Couldn't get about dialog");
-        let task: Button = builder.get_object("task_button").expect("Couldn't get task button");
-        let dialog: Dialog = builder.get_object("login_dialog").expect("Couldn't get login dialog");
-        let popover_user: Popover = builder.get_object("popover_user").expect("Couldn't get popover");
-        let name: Entry = builder.get_object("name_entry").expect("Couldn't get name entry");
-        let pass: Entry = builder.get_object("pass_entry").expect("Couldn't get pass entry");
-        let ok: Button = builder.get_object("login").expect("Couldn't get login button");
-        let cancel: Button = builder.get_object("cancel_login").expect("Couldn't get login button");
+        let about_button: ModelButton = builder.object("about_button").expect("Couldn't get about button");
+        let close_button: ModelButton = builder.object("close_button").expect("Couldn't get close button");
+        let about: AboutDialog = builder.object("about_dialog").expect("Couldn't get about dialog");
+        let task: Button = builder.object("task_button").expect("Couldn't get task button");
+        let dialog: Dialog = builder.object("login_dialog").expect("Couldn't get login dialog");
+        let popover_user: Popover = builder.object("popover_user").expect("Couldn't get popover");
+        let name: Entry = builder.object("name_entry").expect("Couldn't get name entry");
+        let pass: Entry = builder.object("pass_entry").expect("Couldn't get pass entry");
+        let ok: Button = builder.object("login").expect("Couldn't get login button");
+        let cancel: Button = builder.object("cancel_login").expect("Couldn't get login button");
         let login_dialog = LoginDialog {
             dialog,
             name,
@@ -151,8 +151,8 @@ impl Header {
         s.login_dialog
             .ok
             .connect_clicked(clone!(@weak dialog, @weak name,@weak pass => move |_| {
-            let name = name.get_text().as_str().to_owned();
-            let pass = pass.get_text().as_str().to_owned();
+            let name = name.text().as_str().to_owned();
+            let pass = pass.text().as_str().to_owned();
             if !name.is_empty() && !pass.is_empty(){
                 sen.send(Action::Login(name,pass)).unwrap();
                 dialog.hide();
@@ -177,10 +177,10 @@ impl Header {
         let sender_clone = sender.clone();
         s.search
             .connect_clicked(clone!(@weak search_bar, @weak search_entry=> move |_| {
-                search_entry.set_property_is_focus(true);
+                search_entry.set_is_focus(true);
                 search_entry.set_text("");
-                search_bar.set_search_mode(!search_bar.get_search_mode());
-                if search_bar.get_search_mode() {
+                search_bar.set_search_mode(!search_bar.is_search_mode_enabled());
+                if search_bar.is_search_mode_enabled() {
                     sender_clone.send(Action::PlayRemoveAccel).unwrap_or(());
                 }else {
                     sender_clone.send(Action::PlayAddAccel).unwrap_or(());
@@ -194,10 +194,10 @@ impl Header {
         s.search_entry
             .connect_activate(clone!(@weak search_entry, @weak search => move |_| {
                 // 回车键直接搜索
-                let text = search_entry.get_text();
+                let text = search_entry.text();
                 if !text.is_empty() {
                     search.clicked();
-                    sender_clone.send(Action::Search(text.to_owned())).unwrap_or(());
+                    sender_clone.send(Action::Search(text.to_string())).unwrap_or(());
                 }
             }));
 

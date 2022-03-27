@@ -21,15 +21,15 @@ pub(crate) struct Preferences {
 impl Preferences {
     pub(crate) fn new(builder: &Builder, sender: Sender<Action>, configs: &Configs) -> Self {
         let dialog: Dialog = builder
-            .get_object("preferences_dialog")
+            .object("preferences_dialog")
             .expect("没找到 preferences_dialog");
         let tray: Switch = builder
-            .get_object("config_tray_switch")
+            .object("config_tray_switch")
             .expect("没找到 config_tray_switch");
         let lyrics: Switch = builder
-            .get_object("config_lyrics_switch")
+            .object("config_lyrics_switch")
             .expect("没找到 config_lyrics_switch");
-        let clear: ComboBoxText = builder.get_object("auto_clear_cache").expect("没找到 auto_clear_cache");
+        let clear: ComboBoxText = builder.object("auto_clear_cache").expect("没找到 auto_clear_cache");
         tray.set_state(configs.tray);
         lyrics.set_state(configs.lyrics);
         match configs.clear {
@@ -60,7 +60,7 @@ impl Preferences {
         });
 
         clear.connect_changed(move |s| {
-            if let Some(id) = s.get_active_id() {
+            if let Some(id) = s.active_id() {
                 sender
                     .send(Action::ConfigsSetClear(id.parse::<u8>().unwrap_or(0)))
                     .unwrap_or(());

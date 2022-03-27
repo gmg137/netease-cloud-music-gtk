@@ -9,7 +9,10 @@ use async_std::{
     task,
 };
 use glib::Sender;
-use gtk::{prelude::*, Builder, Button, CellRendererText, Label, ListStore, Menu, MenuItem, TreeView, TreeViewColumn};
+use gtk::{
+    prelude::*, Builder, Button, CellRendererText, Label, ListStore, Menu, MenuItem, TreeView,
+    TreeViewColumn,
+};
 use pango::EllipsizeMode;
 
 #[derive(Clone)]
@@ -45,19 +48,19 @@ impl ListView {
         music_data: Arc<Mutex<MusicData>>,
     ) -> Self {
         let title: Label = mine_login_list_builder
-            .get_object("mine_up_title")
+            .object("mine_up_title")
             .expect("无法获取 mine_up_title .");
         let number: Label = mine_login_list_builder
-            .get_object("mine_up_num")
+            .object("mine_up_num")
             .expect("无法获取 min_up_num .");
         let play: Button = mine_login_list_builder
-            .get_object("mine_up_play_button")
+            .object("mine_up_play_button")
             .expect("无法获取 mine_up_play_button .");
         let dislike: Button = mine_login_list_builder
-            .get_object("mine_up_del_button")
+            .object("mine_up_del_button")
             .expect("无法获取 mine_up_del_button .");
         let refresh: Button = mine_login_list_builder
-            .get_object("mine_up_refresh_button")
+            .object("mine_up_refresh_button")
             .expect("无法获取 mine_up_refresh_button .");
         let upview = UpView {
             title,
@@ -67,13 +70,13 @@ impl ListView {
             refresh,
         };
         let popmenu: Menu = mine_login_list_builder
-            .get_object("song_list_popup_menu")
+            .object("song_list_popup_menu")
             .expect("无法获取 song_list_popup_menu .");
         let cc: MenuItem = mine_login_list_builder
-            .get_object("mine_cancel_collection")
+            .object("mine_cancel_collection")
             .expect("无法获取 mine_cancel_collection .");
         let tree: TreeView = mine_login_list_builder
-            .get_object("mine_tree_view")
+            .object("mine_tree_view")
             .expect("无法获取 mine_tree_view .");
         let store: ListStore = ListStore::new(&[
             glib::Type::U64,
@@ -129,8 +132,8 @@ impl ListView {
     }
 
     pub(crate) fn get_song_id(&self) -> Option<u64> {
-        if let Some((model, iter)) = self.lowview.tree.get_selection().get_selected() {
-            return model.get_value(&iter, 0).get_some::<u64>().ok();
+        if let Some((model, iter)) = self.lowview.tree.selection().selected() {
+            return model.value(&iter, 0).get::<u64>().ok();
         }
         None
     }
@@ -143,7 +146,7 @@ impl ListView {
             self.upview.dislike.show_all();
         }
         self.lowview.store.clear();
-        for c in self.lowview.tree.get_columns().iter() {
+        for c in self.lowview.tree.columns().iter() {
             self.lowview.tree.remove_column(c);
         }
         self.lowview.tree.set_model(Some(&self.lowview.store));
@@ -163,31 +166,31 @@ impl ListView {
         let column = TreeViewColumn::new();
         column.set_sizing(gtk::TreeViewColumnSizing::Fixed);
         let title = CellRendererText::new();
-        title.set_property_xpad(20);
-        title.set_property_xalign(0.0);
-        title.set_property_yalign(0.5);
-        title.set_property_height(48);
-        title.set_property_ellipsize(EllipsizeMode::End);
+        title.set_xpad(20);
+        title.set_xalign(0.0);
+        title.set_yalign(0.5);
+        title.set_height(48);
+        title.set_ellipsize(EllipsizeMode::End);
         column.pack_start(&title, true);
         column.add_attribute(&title, "text", 1);
 
         let duration = CellRendererText::new();
-        duration.set_property_xpad(32);
-        duration.set_property_xalign(0.0);
+        duration.set_xpad(32);
+        duration.set_xalign(0.0);
         column.pack_start(&duration, true);
         column.add_attribute(&duration, "text", 2);
 
         let singer = CellRendererText::new();
-        singer.set_property_xpad(22);
-        singer.set_property_xalign(0.0);
-        singer.set_property_ellipsize(EllipsizeMode::End);
+        singer.set_xpad(22);
+        singer.set_xalign(0.0);
+        singer.set_ellipsize(EllipsizeMode::End);
         column.pack_start(&singer, true);
         column.add_attribute(&singer, "text", 3);
 
         let album = CellRendererText::new();
-        album.set_property_xpad(32);
-        album.set_property_xalign(0.0);
-        album.set_property_ellipsize(EllipsizeMode::End);
+        album.set_xpad(32);
+        album.set_xalign(0.0);
+        album.set_ellipsize(EllipsizeMode::End);
         column.pack_start(&album, true);
         column.add_attribute(&album, "text", 4);
         self.lowview.tree.append_column(&column);
@@ -206,15 +209,14 @@ impl ListView {
         song_list.iter().for_each(|song| {
             self.lowview.store.insert_with_values(
                 None,
-                &[0, 1, 2, 3, 4, 5],
                 &[
-                    &song.id,
-                    &song.name,
-                    &song.duration,
-                    &song.singer,
-                    &song.album,
-                    &song.pic_url,
-                ],
+                    (0, &song.id),
+                    (1, &song.name),
+                    (2, &song.duration),
+                    (3, &song.singer),
+                    (4, &song.album),
+                    (5, &song.pic_url),
+                ]
             );
         });
     }
@@ -222,11 +224,15 @@ impl ListView {
     pub(crate) fn play_all(&self) {
         let song_list = self.song_list.clone();
         let sender = self.sender.clone();
-        sender.send(Action::PlayerTypes(PlayerTypes::Song)).unwrap_or(());
+        sender
+            .send(Action::PlayerTypes(PlayerTypes::Song))
+            .unwrap_or(());
         let data = self.music_data.clone();
         task::spawn(async move {
             let mut api = data.lock().await;
-            create_player_list(&mut api, &song_list, sender, true, false).await.ok()
+            create_player_list(&mut api, &song_list, sender, true, false)
+                .await
+                .ok()
         });
     }
 }

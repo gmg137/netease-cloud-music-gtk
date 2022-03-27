@@ -5,6 +5,8 @@
 //
 use gtk::prelude::*;
 
+use std::time::Duration;
+
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
 pub(crate) enum State {
@@ -30,8 +32,8 @@ impl Default for InAppNotification {
         let glade_src = include_str!("../../ui/inapp_notif.ui");
         let builder = gtk::Builder::from_string(glade_src);
 
-        let revealer: gtk::Revealer = builder.get_object("revealer").unwrap();
-        let text: gtk::Label = builder.get_object("text").unwrap();
+        let revealer: gtk::Revealer = builder.object("revealer").unwrap();
+        let text: gtk::Label = builder.object("text").unwrap();
 
         InAppNotification { revealer, text }
     }
@@ -49,7 +51,7 @@ impl InAppNotification {
 
         let revealer_weak = notif.revealer.downgrade();
         let mut time = 0;
-        glib::timeout_add_local(250, move || {
+        glib::timeout_add_local(Duration::from_millis(250), move || {
             if time < timer {
                 time += 250;
                 return glib::Continue(true);

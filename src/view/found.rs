@@ -11,7 +11,10 @@ use crate::{
 };
 use async_std::task;
 use glib::Sender;
-use gtk::{prelude::*, Builder, Button, CellRendererText, Label, ListBox, ListStore, TreeView, TreeViewColumn};
+use gtk::{
+    prelude::*, Builder, Button, CellRendererText, Label, ListBox, ListStore, TreeView,
+    TreeViewColumn,
+};
 use pango::EllipsizeMode;
 
 #[derive(Clone)]
@@ -28,18 +31,20 @@ pub(crate) struct Found {
 
 impl Found {
     pub(crate) fn new(builder: &Builder, sender: Sender<Action>) -> Self {
-        let sidebar: ListBox = builder.get_object("found_listbox").expect("无法获取 found_listbox .");
+        let sidebar: ListBox = builder
+            .object("found_listbox")
+            .expect("无法获取 found_listbox .");
         let title: Label = builder
-            .get_object("found_songs_title")
+            .object("found_songs_title")
             .expect("无法获取 found_songs_title .");
         let number: Label = builder
-            .get_object("found_songs_num")
+            .object("found_songs_num")
             .expect("无法获取 found_songs_num .");
         let play: Button = builder
-            .get_object("found_play_button")
+            .object("found_play_button")
             .expect("无法获取 found_play_button .");
         let treeview: TreeView = builder
-            .get_object("found_tree_view")
+            .object("found_tree_view")
             .expect("无法获取 found_tree_view .");
         let store: ListStore = ListStore::new(&[
             glib::Type::U64,
@@ -65,39 +70,34 @@ impl Found {
     }
 
     fn init(s: &Self) {
-        if let Some(one_row) = s.sidebar.get_row_at_index(0) {
+        if let Some(one_row) = s.sidebar.row_at_index(0) {
             s.sidebar.select_row(Some(&one_row));
         }
         let sender = s.sender.clone();
         s.treeview.connect_button_press_event(move |tree, event| {
-            if event.get_event_type() == gdk::EventType::DoubleButtonPress {
-                if let Some((model, iter)) = tree.get_selection().get_selected() {
-                    let id = model.get_value(&iter, 0).get_some::<u64>().unwrap_or(0);
+            if event.event_type() == gdk::EventType::DoubleButtonPress {
+                if let Some((model, iter)) = tree.selection().selected() {
+                    let id = model.value(&iter, 0).get::<u64>().unwrap_or(0);
                     let name = model
-                        .get_value(&iter, 1)
+                        .value(&iter, 1)
                         .get::<String>()
-                        .unwrap_or(None)
-                        .unwrap_or_else(|| "".to_owned());
+                        .unwrap_or_else(|_| String::new());
                     let duration = model
-                        .get_value(&iter, 2)
+                        .value(&iter, 2)
                         .get::<String>()
-                        .unwrap_or(None)
-                        .unwrap_or_else(|| "".to_owned());
+                        .unwrap_or_else(|_| String::new());
                     let singer = model
-                        .get_value(&iter, 3)
+                        .value(&iter, 3)
                         .get::<String>()
-                        .unwrap_or(None)
-                        .unwrap_or_else(|| "".to_owned());
+                        .unwrap_or_else(|_| String::new());
                     let album = model
-                        .get_value(&iter, 4)
+                        .value(&iter, 4)
                         .get::<String>()
-                        .unwrap_or(None)
-                        .unwrap_or_else(|| "".to_owned());
+                        .unwrap_or_else(|_| String::new());
                     let pic_url = model
-                        .get_value(&iter, 5)
+                        .value(&iter, 5)
                         .get::<String>()
-                        .unwrap_or(None)
-                        .unwrap_or_else(|| "".to_owned());
+                        .unwrap_or_else(|_| String::new());
                     sender
                         .send(Action::PlayerInit(
                             SongInfo {
@@ -121,7 +121,7 @@ impl Found {
         s.sidebar.connect_row_selected(move |_, row| {
             if let Some(row) = row.as_ref() {
                 sender
-                    .send(Action::RefreshFoundViewInit(row.get_index() as u8))
+                    .send(Action::RefreshFoundViewInit(row.index() as u8))
                     .unwrap_or(());
             }
         });
@@ -135,7 +135,7 @@ impl Found {
 
     pub(crate) fn update_up_view(&self, title: String) {
         self.store.clear();
-        for c in self.treeview.get_columns().iter() {
+        for c in self.treeview.columns().iter() {
             self.treeview.remove_column(c);
         }
         self.treeview.set_model(Some(&self.store));
@@ -155,31 +155,31 @@ impl Found {
         let column = TreeViewColumn::new();
         column.set_sizing(gtk::TreeViewColumnSizing::Fixed);
         let title = CellRendererText::new();
-        title.set_property_xpad(20);
-        title.set_property_xalign(0.0);
-        title.set_property_yalign(0.5);
-        title.set_property_height(48);
-        title.set_property_ellipsize(EllipsizeMode::End);
+        title.set_xpad(20);
+        title.set_xalign(0.0);
+        title.set_yalign(0.5);
+        title.set_height(48);
+        title.set_ellipsize(EllipsizeMode::End);
         column.pack_start(&title, true);
         column.add_attribute(&title, "text", 1);
 
         let duration = CellRendererText::new();
-        duration.set_property_xpad(32);
-        duration.set_property_xalign(0.0);
+        duration.set_xpad(32);
+        duration.set_xalign(0.0);
         column.pack_start(&duration, true);
         column.add_attribute(&duration, "text", 2);
 
         let singer = CellRendererText::new();
-        singer.set_property_xpad(22);
-        singer.set_property_xalign(0.0);
-        singer.set_property_ellipsize(EllipsizeMode::End);
+        singer.set_xpad(22);
+        singer.set_xalign(0.0);
+        singer.set_ellipsize(EllipsizeMode::End);
         column.pack_start(&singer, true);
         column.add_attribute(&singer, "text", 3);
 
         let album = CellRendererText::new();
-        album.set_property_xpad(32);
-        album.set_property_xalign(0.0);
-        album.set_property_ellipsize(EllipsizeMode::End);
+        album.set_xpad(32);
+        album.set_xalign(0.0);
+        album.set_ellipsize(EllipsizeMode::End);
         column.pack_start(&album, true);
         column.add_attribute(&album, "text", 4);
         self.treeview.append_column(&column);
@@ -198,14 +198,13 @@ impl Found {
         song_list.iter().for_each(|song| {
             self.store.insert_with_values(
                 None,
-                &[0, 1, 2, 3, 4, 5],
                 &[
-                    &song.id,
-                    &song.name,
-                    &song.duration,
-                    &song.singer,
-                    &song.album,
-                    &song.pic_url,
+                    (0, &song.id),
+                    (1, &song.name),
+                    (2, &song.duration),
+                    (3, &song.singer),
+                    (4, &song.album),
+                    (5, &song.pic_url),
                 ],
             );
         });
@@ -214,10 +213,14 @@ impl Found {
     pub(crate) fn play_all(&self) {
         let song_list = self.song_list.clone();
         let sender = self.sender.clone();
-        sender.send(Action::PlayerTypes(PlayerTypes::Song)).unwrap_or(());
+        sender
+            .send(Action::PlayerTypes(PlayerTypes::Song))
+            .unwrap_or(());
         task::spawn(async move {
             let mut api = MusicData::new().await;
-            create_player_list(&mut api, &song_list, sender, true, false).await.ok()
+            create_player_list(&mut api, &song_list, sender, true, false)
+                .await
+                .ok()
         });
     }
 }

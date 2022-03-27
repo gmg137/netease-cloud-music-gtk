@@ -264,12 +264,12 @@ pub(crate) fn create_round_avatar(src: &str) -> io::Result<Pixbuf> {
     let image = Pixbuf::from_file(src).map_err(|_| Error::last_os_error())?;
 
     // 获取宽高
-    let w = image.get_width();
-    let h = image.get_height();
+    let w = image.width();
+    let h = image.height();
 
     // 创建底图
     let surface = ImageSurface::create(cairo::Format::ARgb32, w, h).map_err(|_| Error::last_os_error())?;
-    let context = Context::new(&surface);
+    let context = Context::new(&surface).map_err(|_| io::ErrorKind::Other)?;
     // 画出圆弧
     context.arc(
         w as f64 / 2.,

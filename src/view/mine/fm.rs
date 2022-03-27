@@ -33,28 +33,28 @@ pub struct FmView {
 impl FmView {
     pub(crate) fn new(mine_login_fm_builder: &Builder, sender: Sender<Action>) -> Self {
         let image: Image = mine_login_fm_builder
-            .get_object("mine_fm_image")
+            .object("mine_fm_image")
             .expect("无法获取 mine_fm_image .");
         let like: Button = mine_login_fm_builder
-            .get_object("mine_fm_like_button")
+            .object("mine_fm_like_button")
             .expect("无法获取 mine_fm_like_button .");
         let dislike: Button = mine_login_fm_builder
-            .get_object("mine_fm_dislike_button")
+            .object("mine_fm_dislike_button")
             .expect("无法获取 mine_fm_dislike_button .");
         let play: Button = mine_login_fm_builder
-            .get_object("mine_fm_play_button")
+            .object("mine_fm_play_button")
             .expect("无法获取 mine_fm_play_button .");
         let pause: Button = mine_login_fm_builder
-            .get_object("mine_fm_pause_button")
+            .object("mine_fm_pause_button")
             .expect("无法获取 mine_fm_play_button .");
         let title: Label = mine_login_fm_builder
-            .get_object("mine_fm_title")
+            .object("mine_fm_title")
             .expect("无法获取 mine_fm_title .");
         let singer: Label = mine_login_fm_builder
-            .get_object("mine_fm_singer")
+            .object("mine_fm_singer")
             .expect("无法获取 mine_fm_singer .");
         let recommend: Grid = mine_login_fm_builder
-            .get_object("recommend_resource_grid")
+            .object("recommend_resource_grid")
             .expect("无法获取 recommend_resource_grid 窗口.");
         let fmview = FmView {
             image,
@@ -174,7 +174,7 @@ impl FmView {
     }
 
     pub(crate) fn set_recommend_image(&self, left: i32, top: i32, song_list: SongList) {
-        if let Some(w) = self.recommend.get_child_at(left, top) {
+        if let Some(w) = self.recommend.child_at(left, top) {
             self.recommend.remove(&w);
         }
         let event_box = EventBox::new();

@@ -117,7 +117,8 @@ impl App {
         let glade_src = include_str!("../ui/window.ui");
         let builder = Builder::from_string(glade_src);
 
-        let window: ApplicationWindow = builder.get_object("applicationwindow").expect("Couldn't get window");
+
+        let window: ApplicationWindow = builder.object("applicationwindow").expect("Couldn't get window");
         window.set_application(Some(application));
         window.set_title("网易云音乐");
 
@@ -135,7 +136,7 @@ impl App {
         // 捕获鼠标返回键
         let sender_clone = sender.clone();
         window.connect_button_press_event(move |_, event| {
-            if event.get_button() == 8 {
+            if event.button() == 8 {
                 sender_clone.send(Action::BackEvent).unwrap_or(());
             }
             gtk::Inhibit(false)
@@ -180,7 +181,7 @@ impl App {
             }
         });
 
-        let overlay: Overlay = builder.get_object("overlay").unwrap();
+        let overlay: Overlay = builder.object("overlay").unwrap();
 
         let notice = RefCell::new(None);
 
@@ -360,8 +361,7 @@ impl App {
     }
 
     pub(crate) fn run() {
-        let application = gtk::Application::new(Some("com.github.gmg137.netease-cloud-music-gtk"), Default::default())
-            .expect("Application initialization failed...");
+        let application = gtk::Application::new(Some("com.github.gmg137.netease-cloud-music-gtk"), Default::default());
 
         let weak_app = application.downgrade();
         application.connect_startup(move |_| {
@@ -384,6 +384,6 @@ impl App {
         glib::set_application_name("netease-cloud-music-gtk");
         glib::set_prgname(Some("netease-cloud-music-gtk"));
         gtk::Window::set_default_icon_name("netease-cloud-music-gtk");
-        ApplicationExtManual::run(&application, &[]);
+        application.run();
     }
 }

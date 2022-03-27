@@ -53,27 +53,27 @@ impl View {
         sender_task: &mpsc::Sender<Task>,
         music_data: Arc<Mutex<MusicData>>,
     ) -> Rc<Self> {
-        let stack: Stack = builder.get_object("stack").expect("无法获取 stack.");
+        let stack: Stack = builder.object("stack").expect("无法获取 stack.");
         let main_stack: Stack = builder
-            .get_object("main_pages_stack")
+            .object("main_pages_stack")
             .expect("无法获取 main_pages_stack.");
-        let mine_stack: Stack = builder.get_object("mine_stack").expect("无法获取 mine_stack.");
+        let mine_stack: Stack = builder.object("mine_stack").expect("无法获取 mine_stack.");
 
         let glade_src = include_str!("../../ui/subpages.ui");
         let subpages_builder = Builder::from_string(glade_src);
         let subpages_stack: Stack = subpages_builder
-            .get_object("subpages_stack")
+            .object("subpages_stack")
             .expect("无法获取 subpages_stack.");
 
         let glade_src = include_str!("../../ui/home.ui");
         let home_builder = Builder::from_string(glade_src);
-        let home_stack: Stack = home_builder.get_object("home_stack").expect("无法获取 home_stack.");
+        let home_stack: Stack = home_builder.object("home_stack").expect("无法获取 home_stack.");
 
         let glade_src = include_str!("../../ui/found.ui");
         let found_builder = Builder::from_string(glade_src);
-        let found_stack: Stack = found_builder.get_object("found_stack").expect("无法获取 found_stack.");
+        let found_stack: Stack = found_builder.object("found_stack").expect("无法获取 found_stack.");
         let found_content_stack: Stack = found_builder
-            .get_object("found_content_stack")
+            .object("found_content_stack")
             .expect("无法获取 found_content_stack.");
 
         let spinner_stack = Stack::new();
@@ -87,22 +87,22 @@ impl View {
         let glade_src = include_str!("../../ui/mine_fm.ui");
         let mine_login_fm_builder = Builder::from_string(glade_src);
         let mine_fm_stack: Stack = mine_login_fm_builder
-            .get_object("mine_fm_stack")
+            .object("mine_fm_stack")
             .expect("无法获取 mine_fm_stack.");
 
         let glade_src = include_str!("../../ui/mine_list.ui");
         let mine_login_list_builder = Builder::from_string(glade_src);
         let mine_list_stack: Stack = mine_login_list_builder
-            .get_object("mine_list_stack")
+            .object("mine_list_stack")
             .expect("无法获取 mine_list_stack.");
 
         let glade_src = include_str!("../../ui/mine_login.ui");
         let mine_login_builder = Builder::from_string(glade_src);
         let mine_login_stack: Stack = mine_login_builder
-            .get_object("mine_login_stack")
+            .object("mine_login_stack")
             .expect("无法获取 mine_login_stack.");
         let mine_login_center_stack: Stack = mine_login_builder
-            .get_object("mine_login_center_stack")
+            .object("mine_login_center_stack")
             .expect("无法获取 mine_login_center_stack.");
 
         let spinner_stack = Stack::new();
@@ -119,7 +119,7 @@ impl View {
         let glade_src = include_str!("../../ui/mine_not_login.ui");
         let mine_not_login_builder = Builder::from_string(glade_src);
         let mine_not_login_stack: Stack = mine_not_login_builder
-            .get_object("mine_not_login_stack")
+            .object("mine_not_login_stack")
             .expect("无法获取 mine_not_login_stack.");
 
         mine_stack.add_named(&mine_login_stack, "mine_login_stack");
@@ -481,7 +481,7 @@ impl View {
     }
 
     pub(crate) fn update_mine_up_view(&self, title: String) {
-        let sidebar_id = self.mine.borrow_mut().get_selected_row_id();
+        let sidebar_id = self.mine.borrow_mut().selected_row_id();
         self.mine.borrow_mut().listview.update_up_view(title, sidebar_id);
     }
 
@@ -572,18 +572,18 @@ impl View {
     }
 
     pub(crate) fn update_mine_current_view_data(&self) {
-        let row_id = self.mine.borrow().get_selected_row_id();
+        let row_id = self.mine.borrow().selected_row_id();
         self.update_mine_view_data(row_id, true);
     }
 
     pub(crate) fn update_like_song_list(&self) {
-        if self.mine.borrow().get_selected_row_id() == 2 {
+        if self.mine.borrow().selected_row_id() == 2 {
             self.update_mine_view_data(2, false);
         }
     }
 
     pub(crate) fn dis_like_song_list(&self) {
-        let mut row_id = self.mine.borrow().get_selected_row_id();
+        let mut row_id = self.mine.borrow().selected_row_id();
         if row_id > 3 {
             let sender = self.sender.clone();
             let data = self.music_data.clone();
