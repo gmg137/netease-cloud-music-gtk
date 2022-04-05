@@ -8,7 +8,6 @@ edition = "2018"
 homepage = "https://github.com/gmg137/netease-cloud-music-gtk"
 
 [dependencies]
-gtk = "^0.15"
 gdk = "^0.15"
 gio = "^0.15"
 glib = "^0.15"
@@ -43,10 +42,9 @@ custom_error = "*"
 log = "*"
 loggerv = "*"
 
+gtk = { version = "0.4.6", package = "gtk4", features = ["v4_6"]}
+
 [features]
-default = ["gtk_3_24"]
-gtk_3_22_30 = ["gtk/v3_22_30", "gio/v2_56"]
-gtk_3_24 = ["gtk_3_22_30", "gtk/v3_24", "gio/v2_58"]
 
 [package.metadata.rpm.cargo]
 buildflags = ["--release"]

@@ -20,7 +20,7 @@ use async_std::{
 use futures::channel::mpsc;
 use gio::{self, prelude::*};
 use glib::{Receiver, Sender};
-use gtk::{prelude::*, AccelGroup, ApplicationWindow, Builder, Overlay};
+use gtk::{prelude::*, AccelGroup, ApplicationWindow, Builder, Overlay, ShortcutController, ffi::GtkGesture, Gesture};
 use std::{cell::RefCell, rc::Rc};
 
 pub(crate) enum Action {
@@ -119,10 +119,12 @@ impl App {
 
         let window: ApplicationWindow = builder.object("applicationwindow").expect("Couldn't get window");
         window.set_application(Some(application));
-        window.set_title("网易云音乐");
+        window.set_title(Some("网易云音乐"));
 
-        let accel_group = AccelGroup::new();
-        window.add_accel_group(&accel_group);
+        let accel_group = ShortcutController::new();
+        window.add_controller(&accel_group);
+
+        let  gesture = Gesture::new();
 
         let configs = task::block_on(get_config()).unwrap();
 
@@ -134,6 +136,7 @@ impl App {
 
         // 捕获鼠标返回键
         let sender_clone = sender.clone();
+        window.connect
         window.connect_button_press_event(move |_, event| {
             if event.button() == 8 {
                 sender_clone.send(Action::BackEvent).unwrap_or(());
