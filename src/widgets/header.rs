@@ -130,7 +130,7 @@ impl Header {
         s.user_button.set_sensitive(false);
         sender.send(Action::RefreshHeaderUser).unwrap();
 
-        // 登陆按钮
+        // 登录按钮
         s.login
             .connect_clicked(clone!(@weak s.login_dialog.dialog as dialog => move |_| {
                 dialog.run();
@@ -143,7 +143,7 @@ impl Header {
             sen.send(Action::Logout).unwrap();
         });
 
-        // 登陆对话框
+        // 登录对话框
         let dialog = &s.login_dialog.dialog;
         let name = &s.login_dialog.name;
         let pass = &s.login_dialog.pass;
@@ -158,7 +158,7 @@ impl Header {
                 dialog.hide();
             }}));
 
-        // 取消登陆按钮
+        // 取消登录按钮
         s.login_dialog
             .cancel
             .connect_clicked(clone!(@weak s.login_dialog.dialog as dialog => move |_| {
@@ -254,7 +254,7 @@ impl Header {
                     return;
                 }
             };
-            sender.send(Action::ShowNotice("登陆异常!".to_owned())).unwrap();
+            sender.send(Action::ShowNotice("登录异常!".to_owned())).unwrap();
         });
     }
 

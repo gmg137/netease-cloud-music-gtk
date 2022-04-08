@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 // 数据库字段说明
-// login_info: 用户登陆信息
+// login_info: 用户登录信息
 // user_song_list: 用户歌单
 // song_list_*: 歌单歌曲
 // recommend_resource: 每日推荐歌单
@@ -64,7 +64,7 @@ impl MusicData {
         }
     }
 
-    // 从数据库查询登陆状态
+    // 从数据库查询登录状态
     pub(crate) async fn from_db() -> NCMResult<Self> {
         let buffer = fs::read(format!("{}status_data.db", NCM_CONFIG.to_string_lossy())).await?;
         let mut status_data: StatusData = bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?;
@@ -145,7 +145,7 @@ impl MusicData {
         Err(Errors::NoneError)
     }
 
-    // 获取登陆信息
+    // 获取登录信息
     #[allow(unused)]
     pub(crate) async fn login_info(&mut self) -> NCMResult<LoginInfo> {
         if self.login {
