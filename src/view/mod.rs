@@ -401,7 +401,7 @@ impl View {
         let data = self.music_data.clone();
         task::spawn(async move {
             let mut data = data.lock().await;
-            // 判断是否已经登陆
+            // 判断是否已经登录
             if let Ok(login_info) = data.login_info().await {
                 sender.send(Action::MineShowLogin).unwrap_or(());
                 sender.send(Action::MineShowFm).unwrap_or(());

@@ -166,7 +166,7 @@ impl MusicApi {
         to_login_info(result)
     }
 
-    // 登陆状态
+    // 登录状态
     #[allow(unused)]
     pub async fn login_status(&mut self) -> NCMResult<LoginInfo> {
         let result = self

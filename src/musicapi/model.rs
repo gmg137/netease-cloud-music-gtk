@@ -654,10 +654,10 @@ pub fn to_msg(json: String) -> NCMResult<Msg> {
     Ok(Msg { code, msg })
 }
 
-// 登陆信息
+// 登录信息
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LoginInfo {
-    // 登陆状态码
+    // 登录状态码
     pub code: i32,
     // 用户 id
     pub uid: u64,
