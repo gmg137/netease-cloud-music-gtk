@@ -11,9 +11,11 @@ use futures::{channel::mpsc, sink::SinkExt};
 use gdk_pixbuf::{InterpType, Pixbuf};
 use glib::{clone, Sender, SignalHandlerId, WeakRef};
 use gst::ClockTime;
+use gtk::glib;
+use gtk::GestureClick;
 use gtk::{
-    prelude::*, AccelGroup, ActionBar, Builder, Button, CellRendererText, Image, Label, ListStore, MenuButton, Popover,
-    RadioButton, Scale, TextView, TreeView, TreeViewColumn, VolumeButton,
+    prelude::*, ActionBar, Builder, Button, CellRendererText, CheckButton, Image, Label, ListStore, MenuButton,
+    Popover, Scale, TextView, TreeView, TreeViewColumn, VolumeButton,
 };
 use mpris_player::{LoopStatus, Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use pango::EllipsizeMode;
@@ -111,8 +113,8 @@ impl Deref for Position {
 
 impl PlayerTimes {
     pub(crate) fn on_duration_changed(&self, duration: Duration) {
-        let seconds = duration.seconds().map(|v| v as f64).unwrap_or(0.0);
-        let useconds = duration.useconds().map(|v| v as f64).unwrap_or(0.0);
+        let seconds = duration.seconds();
+        let useconds = duration.useconds() as f64;
 
         self.slider.block_signal(&self.slider_update);
         self.slider.set_range(0.0, useconds);
@@ -122,8 +124,8 @@ impl PlayerTimes {
     }
 
     pub(crate) fn on_position_updated(&self, position: Position) {
-        let seconds = position.seconds().map(|v| v as f64).unwrap_or(0.0);
-        let useconds = position.useconds().map(|v| v as f64).unwrap_or(0.0);
+        let seconds = position.seconds();
+        let useconds = position.useconds() as f64;
 
         self.slider.block_signal(&self.slider_update);
         self.slider.set_value(useconds);
@@ -135,10 +137,10 @@ impl PlayerTimes {
 
 #[derive(Debug, Clone)]
 struct PlayerLoops {
-    shuffle: RadioButton,
-    playlist: RadioButton,
-    track: RadioButton,
-    none: RadioButton,
+    shuffle: CheckButton,
+    playlist: CheckButton,
+    track: CheckButton,
+    none: CheckButton,
     image: Image,
 }
 
@@ -194,17 +196,17 @@ impl PlayerWidget {
         mpris.set_can_quit(true);
         mpris.set_can_seek(true);
 
-        let mut config = player.get_config();
+        let mut config = player.config();
         config.set_user_agent("User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0");
         config.set_position_update_interval(250);
         player.set_config(config).unwrap();
 
-        let play: Button = builder.get_object("play_button").unwrap();
-        let pause: Button = builder.get_object("pause_button").unwrap();
-        let forward: Button = builder.get_object("forward_button").unwrap();
-        let backward: Button = builder.get_object("backward_button").unwrap();
-        let like: Button = builder.get_object("like_button").unwrap();
-        let volume: VolumeButton = builder.get_object("volume_button").unwrap();
+        let play: Button = builder.object("play_button").unwrap();
+        let pause: Button = builder.object("pause_button").unwrap();
+        let forward: Button = builder.object("forward_button").unwrap();
+        let backward: Button = builder.object("backward_button").unwrap();
+        let like: Button = builder.object("like_button").unwrap();
+        let volume: VolumeButton = builder.object("volume_button").unwrap();
 
         let (volume_value, loop_state) = match task::block_on(get_config()) {
             Ok(config) => (config.volume, config.loops),
@@ -213,11 +215,11 @@ impl PlayerWidget {
         volume.set_value(volume_value);
         player.set_volume(volume_value);
         mpris.set_volume(volume_value).ok();
-        let more: MenuButton = builder.get_object("more_button").unwrap();
-        let more_popover: Popover = builder.get_object("more_popover").unwrap();
-        let lyrics_text: TextView = builder.get_object("lyrics_text_view").unwrap();
+        let more: MenuButton = builder.object("more_button").unwrap();
+        let more_popover: Popover = builder.object("more_popover").unwrap();
+        let lyrics_text: TextView = builder.object("lyrics_text_view").unwrap();
         let tree: TreeView = builder
-            .get_object("playlist_tree_view")
+            .object("playlist_tree_view")
             .expect("无法获取 playlist_tree_view .");
         let store: ListStore = ListStore::new(&[
             glib::Type::U64,
@@ -241,9 +243,9 @@ impl PlayerWidget {
             lyrics_text,
         };
 
-        let progressed: Label = builder.get_object("progress_time_label").unwrap();
-        let duration: Label = builder.get_object("total_duration_label").unwrap();
-        let slider: Scale = builder.get_object("seek").unwrap();
+        let progressed: Label = builder.object("progress_time_label").unwrap();
+        let duration: Label = builder.object("total_duration_label").unwrap();
+        let slider: Scale = builder.object("seek").unwrap();
         slider.set_range(0.0, 1.0);
         let player_weak = player.downgrade();
         let slider_update = Rc::new(Self::connect_update_slider(&slider, player_weak));
@@ -254,15 +256,15 @@ impl PlayerWidget {
             slider_update,
         };
 
-        let song: Label = builder.get_object("song_label").unwrap();
-        let singer: Label = builder.get_object("singer_label").unwrap();
-        let cover: Image = builder.get_object("song_cover").unwrap();
+        let song: Label = builder.object("song_label").unwrap();
+        let singer: Label = builder.object("singer_label").unwrap();
+        let cover: Image = builder.object("song_cover").unwrap();
 
-        let shuffle: RadioButton = builder.get_object("shuffle_radio").unwrap();
-        let playlist: RadioButton = builder.get_object("playlist_radio").unwrap();
-        let track: RadioButton = builder.get_object("track_radio").unwrap();
-        let none: RadioButton = builder.get_object("none_radio").unwrap();
-        let image: Image = builder.get_object("loops_image").unwrap();
+        let shuffle: CheckButton = builder.object("shuffle_radio").unwrap();
+        let playlist: CheckButton = builder.object("playlist_radio").unwrap();
+        let track: CheckButton = builder.object("track_radio").unwrap();
+        let none: CheckButton = builder.object("none_radio").unwrap();
+        let image: Image = builder.object("loops_image").unwrap();
         let loops = PlayerLoops {
             shuffle,
             playlist,
@@ -271,36 +273,32 @@ impl PlayerWidget {
             image,
         };
 
-        let action_bar: ActionBar = builder.get_object("play_action_bar").unwrap();
+        let action_bar: ActionBar = builder.object("play_action_bar").unwrap();
         match loop_state {
             LoopsState::NONE => {
                 loops
                     .image
-                    .set_from_icon_name(Some("media-playlist-consecutive-symbolic"), gtk::IconSize::Menu);
+                    .set_from_icon_name(Some("media-playlist-consecutive-symbolic"));
                 loops.none.set_active(true);
                 mpris.set_loop_status(LoopStatus::None);
-            }
+            },
             LoopsState::TRACK => {
                 loops
                     .image
-                    .set_from_icon_name(Some("media-playlist-repeat-song-symbolic"), gtk::IconSize::Menu);
+                    .set_from_icon_name(Some("media-playlist-repeat-song-symbolic"));
                 loops.track.set_active(true);
                 mpris.set_loop_status(LoopStatus::Track);
-            }
+            },
             LoopsState::PLAYLIST => {
-                loops
-                    .image
-                    .set_from_icon_name(Some("media-playlist-repeat-symbolic"), gtk::IconSize::Menu);
+                loops.image.set_from_icon_name(Some("media-playlist-repeat-symbolic"));
                 loops.playlist.set_active(true);
                 mpris.set_loop_status(LoopStatus::Playlist);
-            }
+            },
             LoopsState::SHUFFLE => {
-                loops
-                    .image
-                    .set_from_icon_name(Some("media-playlist-shuffle-symbolic"), gtk::IconSize::Menu);
+                loops.image.set_from_icon_name(Some("media-playlist-shuffle-symbolic"));
                 loops.shuffle.set_active(true);
                 mpris.property_changed("Shuffle".to_string(), true);
-            }
+            },
         }
         let info = PlayerInfo {
             mpris,
@@ -462,11 +460,12 @@ impl PlayerWidget {
         let song_uri = song_info.get_song_cache_path();
         if song_uri.exists() {
             info!("播放音乐缓存: {}", song_uri.to_string_lossy());
-            self.player.set_uri(&format!("file:///{}", song_uri.to_string_lossy()));
+            self.player
+                .set_uri(Some(&format!("file:///{}", song_uri.to_string_lossy())));
         } else {
             let music_url = song_info.song_url.replace("https:", "http:");
             info!("播放在线音乐: {}", music_url);
-            self.player.set_uri(&music_url);
+            self.player.set_uri(Some(&music_url));
         }
         self.play();
         // 如果播放列表已打开则刷新播放列表
@@ -483,7 +482,7 @@ impl PlayerWidget {
                 None => return,
             };
 
-            let value = slider.get_value() as u64;
+            let value = slider.value() as u64;
             player.seek(ClockTime::from_useconds(value));
         })
     }
@@ -493,7 +492,7 @@ impl PlayerWidget {
         match *self.player_types.borrow() {
             PlayerTypes::Fm => {
                 self.sender.send(Action::RefreshMineFmPause).unwrap();
-            }
+            },
             _ => self.sender.send(Action::RefreshMineFmPlay).unwrap(),
         }
         self.reveal();
@@ -543,7 +542,7 @@ impl PlayerWidget {
             LoopsState::TRACK => {
                 self.play();
                 return;
-            }
+            },
         };
         if let Ok(si) = task::block_on(get_player_list_song(PD::FORWARD, shuffle, loops)) {
             self.sender.send(Action::ReadyPlayer(si)).unwrap();
@@ -572,12 +571,12 @@ impl PlayerWidget {
                     self.sender.send(Action::ReadyPlayer(si)).unwrap();
                 }
                 return;
-            }
+            },
             LoopsState::TRACK => {
                 self.stop();
                 self.play();
                 return;
-            }
+            },
             LoopsState::NONE => false,
         };
         if let Ok(si) = task::block_on(get_player_list_song(PD::BACKWARD, state, false)) {
@@ -637,13 +636,13 @@ impl PlayerWidget {
         match loops_status {
             LoopStatus::None => {
                 self.loops.none.set_active(true);
-            }
+            },
             LoopStatus::Track => {
                 self.loops.track.set_active(true);
-            }
+            },
             LoopStatus::Playlist => {
                 self.loops.playlist.set_active(true);
-            }
+            },
         }
     }
 
@@ -665,15 +664,14 @@ impl PlayerWidget {
     }
 
     pub(crate) fn update_lyrics_text(&self, lrc: String) {
-        if let Some(buffer) = self.controls.lyrics_text.get_buffer() {
-            buffer.set_text(&lrc);
-            self.controls.lyrics_text.set_buffer(Some(&buffer));
-        }
+        let buffer = self.controls.lyrics_text.buffer();
+        buffer.set_text(&lrc);
+        self.controls.lyrics_text.set_buffer(Some(&buffer));
     }
 
     pub(crate) fn update_playlist(&self, pl: PlayerListData) {
         self.controls.store.clear();
-        for c in self.controls.tree.get_columns().iter() {
+        for c in self.controls.tree.columns().iter() {
             self.controls.tree.remove_column(c);
         }
         self.controls.tree.set_model(Some(&self.controls.store));
@@ -689,10 +687,10 @@ impl PlayerWidget {
         let column = TreeViewColumn::new();
         column.set_sizing(gtk::TreeViewColumnSizing::Fixed);
         let play = CellRendererText::new();
-        play.set_property_xpad(18);
-        play.set_property_xalign(0.0);
-        play.set_property_yalign(0.5);
-        play.set_property_height(37);
+        play.set_xpad(18);
+        play.set_xalign(0.0);
+        play.set_yalign(0.5);
+        play.set_height(37);
         column.pack_start(&play, true);
         column.add_attribute(&play, "text", 1);
         self.controls.tree.append_column(&column);
@@ -700,22 +698,22 @@ impl PlayerWidget {
         let column = TreeViewColumn::new();
         column.set_sizing(gtk::TreeViewColumnSizing::Fixed);
         let title = CellRendererText::new();
-        play.set_property_xpad(18);
-        play.set_property_xalign(0.0);
-        title.set_property_ellipsize(EllipsizeMode::End);
+        play.set_xpad(18);
+        play.set_xalign(0.0);
+        title.set_ellipsize(EllipsizeMode::End);
         column.pack_start(&title, true);
         column.add_attribute(&title, "text", 2);
 
         let duration = CellRendererText::new();
-        duration.set_property_xpad(32);
-        duration.set_property_xalign(0.0);
+        duration.set_xpad(32);
+        duration.set_xalign(0.0);
         column.pack_start(&duration, true);
         column.add_attribute(&duration, "text", 3);
 
         let singer = CellRendererText::new();
-        singer.set_property_xpad(22);
-        singer.set_property_xalign(0.0);
-        singer.set_property_ellipsize(EllipsizeMode::End);
+        singer.set_xpad(22);
+        singer.set_xalign(0.0);
+        singer.set_ellipsize(EllipsizeMode::End);
         column.pack_start(&singer, true);
         column.add_attribute(&singer, "text", 4);
         self.controls.tree.append_column(&column);
@@ -725,8 +723,13 @@ impl PlayerWidget {
             let play_icon = if Some(song.id).eq(&song_id) { "▶" } else { "" };
             self.controls.store.insert_with_values(
                 None,
-                &[0, 1, 2, 3, 4],
-                &[&song.id, &play_icon, &song.name, &song.duration, &song.singer],
+                &[
+                    (0, &song.id),
+                    (1, &play_icon),
+                    (2, &song.name),
+                    (3, &song.duration),
+                    (4, &song.singer),
+                ],
             );
         });
     }
@@ -749,24 +752,23 @@ impl PlayerWidget {
     }
 
     // 添加快捷键
-    pub(crate) fn play_add_accel(&self, ag: &AccelGroup) {
-        self.controls
-            .play
-            .add_accelerator("clicked", ag, 32, gdk::ModifierType::empty(), gtk::AccelFlags::VISIBLE);
-        self.controls
-            .pause
-            .add_accelerator("clicked", ag, 32, gdk::ModifierType::empty(), gtk::AccelFlags::VISIBLE);
-    }
+    // pub(crate) fn play_add_accel(&self, ag: &AccelGroup) {
+    //     self.controls.play.add_binding(Key::space);
+    //     // .add_accelerator("clicked", ag, 32, gdk::ModifierType::empty(), gtk::AccelFlags::VISIBLE);
+    //     self.controls
+    //         .pause
+    //         .add_accelerator("clicked", ag, 32, gdk::ModifierType::empty(), gtk::AccelFlags::VISIBLE);
+    // }
 
     // 删除快捷键
-    pub(crate) fn play_remove_accel(&self, ag: &AccelGroup) {
-        self.controls
-            .play
-            .remove_accelerator(ag, 32, gdk::ModifierType::empty());
-        self.controls
-            .pause
-            .remove_accelerator(ag, 32, gdk::ModifierType::empty());
-    }
+    // pub(crate) fn play_remove_accel(&self, ag: &AccelGroup) {
+    //     self.controls
+    //         .play
+    //         .remove_accelerator(ag, 32, gdk::ModifierType::empty());
+    //     self.controls
+    //         .pause
+    //         .remove_accelerator(ag, 32, gdk::ModifierType::empty());
+    // }
 }
 
 #[derive(Clone)]
@@ -806,15 +808,16 @@ impl PlayerWrapper {
 
     fn connect_control_tree(&self) {
         let sender = self.sender.clone();
-        self.controls.tree.connect_button_press_event(move |tree, event| {
-            if event.get_event_type() == gdk::EventType::DoubleButtonPress {
-                if let Some(path) = tree.get_selection().get_selected_rows().0.get(0) {
-                    let index = path.get_indices()[0];
+        let gesture_click = GestureClick::new();
+        self.controls.tree.add_controller(&gesture_click);
+        gesture_click.connect_pressed(clone!(@weak self.controls.tree as tree => move |_, n, _, _| {
+            if n == 2 {
+                if let Some(path) = tree.selection().selected_rows().0.get(0) {
+                    let index = path.indices()[0];
                     sender.send(Action::PlaylistSong(index)).unwrap_or(());
                 }
             }
-            Inhibit(false)
-        });
+        }));
     }
 
     /// Connect the `PlayerControls` buttons to the `PlayerExt` methods.
@@ -849,10 +852,12 @@ impl PlayerWrapper {
                 weak.set_volume(value,false);
             }));
 
-        self.controls.more.connect_clicked(clone!(@weak weak => move |_| {
-            weak.get_lyrics_text();
-            weak.get_playlist();
-        }));
+        self.controls
+            .more
+            .connect_popover_notify(clone!(@weak weak => move |_| {
+                weak.get_lyrics_text();
+                weak.get_playlist();
+            }));
     }
 
     fn connect_gst_signals(&self, sender: &Sender<Action>) {
@@ -874,7 +879,9 @@ impl PlayerWrapper {
         let weak = Fragile::new(Rc::clone(self));
         // Update the duration label and the slider
         self.player.connect_duration_changed(move |_, clock| {
-            weak.get().timer.on_duration_changed(Duration(clock));
+            if let Some(clock) = clock {
+                weak.get().timer.on_duration_changed(Duration(clock));
+            }
         });
 
         let weak = Fragile::new(Rc::clone(self));
@@ -884,7 +891,9 @@ impl PlayerWrapper {
             //if let Some(t) = clock.useconds() {
             //weak.get().info.mpris.set_position(t as i64);
             //}
-            weak.get().timer.on_position_updated(Position(clock));
+            if let Some(clock) = clock {
+                weak.get().timer.on_position_updated(Position(clock));
+            }
         });
 
         let weak = Fragile::new(Rc::clone(self));
@@ -896,17 +905,16 @@ impl PlayerWrapper {
         let weak = Fragile::new(Rc::clone(self));
         // 连接音量变化
         self.player.connect_volume_changed(move |p| {
-            weak.get().controls.volume.set_value(p.get_volume());
+            weak.get().controls.volume.set_value(p.volume());
         });
 
         let weak = Fragile::new(Rc::clone(self));
         // 连接进度条变化
         self.player.connect_seek_done(move |_, time| {
-            if let Some(t) = time.useconds() {
-                let weak = weak.get();
-                weak.info.mpris.set_position(t as i64);
-                weak.info.mpris.seek(t as i64).unwrap_or(());
-            }
+            let t = time.useconds();
+            let weak = weak.get();
+            weak.info.mpris.set_position(t as i64);
+            weak.info.mpris.seek(t as i64).unwrap_or(());
         });
     }
 
@@ -915,7 +923,7 @@ impl PlayerWrapper {
 
         self.loops.shuffle.connect_toggled(clone!(@weak weak => move |_| {
             *weak.loops_state.borrow_mut() = LoopsState::SHUFFLE;
-            weak.loops.image.set_from_icon_name(Some("media-playlist-shuffle-symbolic"),gtk::IconSize::Menu);
+            weak.loops.image.set_from_icon_name(Some("media-playlist-shuffle-symbolic"));
             task::block_on(async {
                 if let Ok(mut conf) = get_config().await {
                     conf.loops = LoopsState::SHUFFLE;
@@ -926,7 +934,7 @@ impl PlayerWrapper {
 
         self.loops.playlist.connect_toggled(clone!(@weak weak => move |_| {
             *weak.loops_state.borrow_mut() = LoopsState::PLAYLIST;
-            weak.loops.image.set_from_icon_name(Some("media-playlist-repeat-symbolic"),gtk::IconSize::Menu);
+            weak.loops.image.set_from_icon_name(Some("media-playlist-repeat-symbolic"));
             task::block_on(async {
                 if let Ok(mut conf) = get_config().await {
                     conf.loops = LoopsState::PLAYLIST;
@@ -937,7 +945,7 @@ impl PlayerWrapper {
 
         self.loops.track.connect_toggled(clone!(@weak weak => move |_| {
             *weak.loops_state.borrow_mut() = LoopsState::TRACK;
-            weak.loops.image.set_from_icon_name(Some("media-playlist-repeat-song-symbolic"),gtk::IconSize::Menu);
+            weak.loops.image.set_from_icon_name(Some("media-playlist-repeat-song-symbolic"));
             task::block_on(async {
                 if let Ok(mut conf) = get_config().await {
                     conf.loops = LoopsState::TRACK;
@@ -947,7 +955,7 @@ impl PlayerWrapper {
         }));
         self.loops.none.connect_toggled(clone!(@weak weak => move |_| {
             *weak.loops_state.borrow_mut() = LoopsState::NONE;
-            weak.loops.image.set_from_icon_name(Some("media-playlist-consecutive-symbolic"),gtk::IconSize::Menu);
+            weak.loops.image.set_from_icon_name(Some("media-playlist-consecutive-symbolic"));
             task::block_on(async {
                 if let Ok(mut conf) = get_config().await {
                     if conf.loops != LoopsState::NONE{

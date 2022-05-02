@@ -14,9 +14,10 @@ use crate::{
 };
 use async_std::fs;
 use cairo::{Context, ImageSurface};
-use gdk::{pixbuf_get_from_surface, prelude::GdkContextExt};
 use gdk_pixbuf::Pixbuf;
-use glib::Sender;
+use gtk::gdk::pixbuf_get_from_surface;
+use gtk::gdk::prelude::GdkCairoContextExt;
+use gtk::glib::Sender;
 use isahc::{prelude::*, *};
 use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
@@ -48,7 +49,9 @@ where
                 tag.set_artist(&song_info.singer);
                 tag.set_album(&song_info.album);
                 tag.set_title(&song_info.name);
-                let _ = tag.write_to_path(&tmp_path).map_err(|e| error!("write m4a tag error {:?}", e));
+                let _ = tag
+                    .write_to_path(&tmp_path)
+                    .map_err(|e| error!("write m4a tag error {:?}", e));
             }
             fs::rename(&tmp_path, path).await?;
         }
@@ -205,7 +208,7 @@ pub(crate) async fn get_player_list_song(pd: PD, shuffle: bool, loops: bool) -> 
                         return Ok(si.to_owned());
                     }
                 }
-            }
+            },
             // 上一曲
             PD::BACKWARD => {
                 index_new -= 1;
@@ -243,7 +246,7 @@ pub(crate) async fn get_player_list_song(pd: PD, shuffle: bool, loops: bool) -> 
                 if let Some((si, _)) = player_list.get(player_index as usize) {
                     return Ok(si.to_owned());
                 }
-            }
+            },
         }
     }
     Err(Errors::NoneError)
@@ -264,12 +267,12 @@ pub(crate) fn create_round_avatar(src: &str) -> io::Result<Pixbuf> {
     let image = Pixbuf::from_file(src).map_err(|_| Error::last_os_error())?;
 
     // 获取宽高
-    let w = image.get_width();
-    let h = image.get_height();
+    let w = image.width();
+    let h = image.height();
 
     // 创建底图
     let surface = ImageSurface::create(cairo::Format::ARgb32, w, h).map_err(|_| Error::last_os_error())?;
-    let context = Context::new(&surface);
+    let context = Context::new(&surface).unwrap();
     // 画出圆弧
     context.arc(
         w as f64 / 2.,
@@ -338,7 +341,7 @@ pub(crate) async fn get_config() -> NCMResult<Configs> {
     if let Ok(buffer) = fs::read(path).await {
         if let Ok(mut conf) = bincode::deserialize::<Configs>(&buffer).map_err(|_| Errors::NoneError) {
             match conf.clear {
-                ClearCached::NONE => {}
+                ClearCached::NONE => {},
                 ClearCached::MONTH(month) => {
                     if month != *DATE_MONTH {
                         // 清理缓存文件
@@ -346,7 +349,7 @@ pub(crate) async fn get_config() -> NCMResult<Configs> {
                         conf.clear = ClearCached::MONTH(*DATE_MONTH);
                         save_config(&conf).await;
                     }
-                }
+                },
                 ClearCached::WEEK(week) => {
                     if week != *ISO_WEEK {
                         // 清理缓存文件
@@ -354,7 +357,7 @@ pub(crate) async fn get_config() -> NCMResult<Configs> {
                         conf.clear = ClearCached::WEEK(*ISO_WEEK);
                         save_config(&conf).await;
                     }
-                }
+                },
                 ClearCached::DAY(day) => {
                     if day != *DATE_DAY {
                         // 清理缓存文件
@@ -362,7 +365,7 @@ pub(crate) async fn get_config() -> NCMResult<Configs> {
                         conf.clear = ClearCached::DAY(*DATE_DAY);
                         save_config(&conf).await;
                     }
-                }
+                },
             }
             return Ok(conf);
         }
@@ -430,7 +433,7 @@ pub(crate) async fn get_playlist() -> NCMResult<PlayerListData> {
     let path = format!("{}player_list.db", NCM_DATA.to_string_lossy());
     let buffer = fs::read(&path).await?;
     // 反序列化播放列表
-    Ok(bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)?)
+    bincode::deserialize(&buffer).map_err(|_| Errors::NoneError)
 }
 
 // 按索引获取播放列表歌曲

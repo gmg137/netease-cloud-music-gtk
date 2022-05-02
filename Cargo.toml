@@ -8,16 +8,14 @@ edition = "2018"
 homepage = "https://github.com/gmg137/netease-cloud-music-gtk"
 
 [dependencies]
-gtk = "^0.9"
-gdk = "^0.13"
-gio = "^0.9"
-glib = "^0.10"
-pango = "^0.9"
-gdk-pixbuf ="^0.9"
-gstreamer = "^0.16"
-gstreamer-player = "^0.16"
-mp4ameta = "0.9"
-cairo-rs = { version = "^0.9", features = ["png"] }
+gtk = { version = "*", package = "gtk4" }
+libadwaita = "*"
+pango = "*"
+gdk-pixbuf ="*"
+gstreamer = "*"
+gstreamer-player = "*"
+mp4ameta = "*"
+cairo-rs = { version = "*", features = ["png"] }
 mpris-player = "*"
 
 dirs = "*"
@@ -36,18 +34,12 @@ chrono = "*"
 fragile = "*"
 xdg = "*"
 futures = "^0.3"
-async-std = "^1.6.1"
-isahc = { version = "^1.0.1", features = ["cookies"] }
+async-std = "^1"
+isahc = { version = "^1", features = ["cookies"] }
 custom_error = "*"
 
 log = "*"
 loggerv = "*"
-
-[features]
-default = ["gtk_3_24"]
-gtk_3_18 = ["gtk/v3_18", "gio/v2_46"]
-gtk_3_22_30 = ["gtk_3_18", "gtk/v3_22_30", "gio/v2_56"]
-gtk_3_24 = ["gtk_3_22_30", "gtk/v3_24", "gio/v2_58"]
 
 [package.metadata.rpm.cargo]
 buildflags = ["--release"]

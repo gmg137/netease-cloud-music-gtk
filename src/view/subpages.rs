@@ -11,7 +11,10 @@ use crate::{
 };
 use async_std::task;
 use gdk_pixbuf::{InterpType, Pixbuf};
-use glib::Sender;
+use glib::clone;
+use gtk::glib;
+use gtk::glib::Sender;
+use gtk::GestureClick;
 use gtk::{
     prelude::*, Builder, Button, CellRendererText, Grid, Image, Label, ListStore, ScrolledWindow, TreeView,
     TreeViewColumn,
@@ -41,24 +44,24 @@ pub(crate) struct Overview {
 
 impl Subpages {
     pub(crate) fn new(builder: &Builder, sender: Sender<Action>) -> Self {
-        let grid: Grid = builder.get_object("subpages_grid").expect("无法获取 subpages_grid .");
+        let grid: Grid = builder.object("subpages_grid").expect("无法获取 subpages_grid .");
         let pic: Image = builder
-            .get_object("subpages_album_image")
+            .object("subpages_album_image")
             .expect("无法获取 subpages_album_image .");
         let album: Label = builder
-            .get_object("subpages_album_name")
+            .object("subpages_album_name")
             .expect("无法获取 subpages_album_name .");
         let num: Label = builder
-            .get_object("subpages_song_num")
+            .object("subpages_song_num")
             .expect("无法获取 subpages_song_num .");
         let like: Button = builder
-            .get_object("subpages_like_button")
+            .object("subpages_like_button")
             .expect("无法获取 subpages_like_button .");
         let play: Button = builder
-            .get_object("subpages_play_button")
+            .object("subpages_play_button")
             .expect("无法获取 subpages_play_button .");
         let scrolled: ScrolledWindow = builder
-            .get_object("subpages_scrolled_window")
+            .object("subpages_scrolled_window")
             .expect("无法获取 subpages_scrolled_window.");
         let overview = Overview {
             grid,
@@ -69,7 +72,7 @@ impl Subpages {
             play,
         };
         let tree: TreeView = builder
-            .get_object("subpages_tree_view")
+            .object("subpages_tree_view")
             .expect("无法获取 subpages_tree_view .");
         let store: ListStore = ListStore::new(&[
             glib::Type::U64,
@@ -94,35 +97,32 @@ impl Subpages {
 
     fn init(s: &Self) {
         let sender = s.sender.clone();
-        s.tree.connect_button_press_event(move |tree, event| {
-            if event.get_event_type() == gdk::EventType::DoubleButtonPress {
-                if let Some((model, iter)) = tree.get_selection().get_selected() {
-                    let id = model.get_value(&iter, 0).get_some::<u64>().unwrap_or(0);
+        let gesture_click = GestureClick::new();
+        s.tree.add_controller(&gesture_click);
+        gesture_click.connect_released(clone!(@weak s.tree as tree => move |_, n, _, _| {
+            if n == 2 {
+                if let Some((model, iter)) = tree.selection().selected() {
+                    let id = model.get_value(&iter, 0).get::<u64>().unwrap_or(0);
                     let name = model
                         .get_value(&iter, 1)
                         .get::<String>()
-                        .unwrap_or(None)
-                        .unwrap_or_else(|| "".to_owned());
+                        .unwrap_or_else(|_| "".to_owned());
                     let duration = model
                         .get_value(&iter, 2)
                         .get::<String>()
-                        .unwrap_or(None)
-                        .unwrap_or_else(|| "".to_owned());
+                        .unwrap_or_else(|_| "".to_owned());
                     let singer = model
                         .get_value(&iter, 3)
                         .get::<String>()
-                        .unwrap_or(None)
-                        .unwrap_or_else(|| "".to_owned());
+                        .unwrap_or_else(|_| "".to_owned());
                     let album = model
                         .get_value(&iter, 4)
                         .get::<String>()
-                        .unwrap_or(None)
-                        .unwrap_or_else(|| "".to_owned());
+                        .unwrap_or_else(|_| "".to_owned());
                     let pic_url = model
                         .get_value(&iter, 5)
                         .get::<String>()
-                        .unwrap_or(None)
-                        .unwrap_or_else(|| "".to_owned());
+                        .unwrap_or_else(|_| "".to_owned());
                     sender
                         .send(Action::PlayerInit(
                             SongInfo {
@@ -139,8 +139,7 @@ impl Subpages {
                         .unwrap_or(());
                 }
             }
-            Inhibit(false)
-        });
+        }));
 
         let sender = s.sender.clone();
         s.overview.play.connect_clicked(move |_| {
@@ -166,7 +165,7 @@ impl Subpages {
         self.song_list_id = id;
         self.overview.grid.show();
         self.store.clear();
-        for c in self.tree.get_columns().iter() {
+        for c in self.tree.columns().iter() {
             self.tree.remove_column(c);
         }
         self.tree.set_model(Some(&self.store));
@@ -201,31 +200,31 @@ impl Subpages {
         let column = TreeViewColumn::new();
         column.set_sizing(gtk::TreeViewColumnSizing::Fixed);
         let title = CellRendererText::new();
-        title.set_property_xpad(20);
-        title.set_property_xalign(0.0);
-        title.set_property_yalign(0.5);
-        title.set_property_height(48);
-        title.set_property_ellipsize(EllipsizeMode::End);
+        title.set_xpad(20);
+        title.set_xalign(0.0);
+        title.set_yalign(0.5);
+        title.set_height(48);
+        title.set_ellipsize(EllipsizeMode::End);
         column.pack_start(&title, true);
         column.add_attribute(&title, "text", 1);
 
         let duration = CellRendererText::new();
-        duration.set_property_xpad(32);
-        duration.set_property_xalign(0.0);
+        duration.set_xpad(32);
+        duration.set_xalign(0.0);
         column.pack_start(&duration, true);
         column.add_attribute(&duration, "text", 2);
 
         let singer = CellRendererText::new();
-        singer.set_property_xpad(22);
-        singer.set_property_xalign(0.0);
-        singer.set_property_ellipsize(EllipsizeMode::End);
+        singer.set_xpad(22);
+        singer.set_xalign(0.0);
+        singer.set_ellipsize(EllipsizeMode::End);
         column.pack_start(&singer, true);
         column.add_attribute(&singer, "text", 3);
 
         let album = CellRendererText::new();
-        album.set_property_xpad(32);
-        album.set_property_xalign(0.0);
-        album.set_property_ellipsize(EllipsizeMode::End);
+        album.set_xpad(32);
+        album.set_xalign(0.0);
+        album.set_ellipsize(EllipsizeMode::End);
         column.pack_start(&album, true);
         column.add_attribute(&album, "text", 4);
         self.tree.append_column(&column);
@@ -244,14 +243,13 @@ impl Subpages {
         song_list.iter().for_each(|song| {
             self.store.insert_with_values(
                 None,
-                &[0, 1, 2, 3, 4, 5],
                 &[
-                    &song.id,
-                    &song.name,
-                    &song.duration,
-                    &song.singer,
-                    &song.album,
-                    &song.pic_url,
+                    (0, &song.id),
+                    (1, &song.name),
+                    (2, &song.duration),
+                    (3, &song.singer),
+                    (4, &song.album),
+                    (5, &song.pic_url),
                 ],
             );
         });
@@ -265,14 +263,13 @@ impl Subpages {
         song_list.iter().for_each(|song| {
             self.store.insert_with_values(
                 None,
-                &[0, 1, 2, 3, 4, 5],
                 &[
-                    &song.id,
-                    &song.name,
-                    &song.duration,
-                    &song.singer,
-                    &song.album,
-                    &song.pic_url,
+                    (0, &song.id),
+                    (1, &song.name),
+                    (2, &song.duration),
+                    (3, &song.singer),
+                    (4, &song.album),
+                    (5, &song.pic_url),
                 ],
             );
         });
@@ -294,7 +291,7 @@ impl Subpages {
         self.overview.like.hide();
         if show {
             self.overview.like.set_visible(true);
-            self.overview.like.show_all();
+            self.overview.like.show();
         }
     }
 
@@ -306,7 +303,7 @@ impl Subpages {
     // 获取搜索数据
     // return: (搜索关键词,已加载歌曲数)
     pub(crate) fn get_search_data(&self) -> Option<(String, usize)> {
-        let text = self.overview.album.get_text().to_string();
+        let text = self.overview.album.text().to_string();
         let num = self.song_list.len();
         if let Some(key) = text.strip_prefix("search:") {
             Some((key.to_owned(), num))

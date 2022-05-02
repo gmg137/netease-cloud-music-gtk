@@ -18,9 +18,10 @@ use async_std::{
     task,
 };
 use futures::channel::mpsc;
-use gio::{self, prelude::*};
-use glib::{Receiver, Sender};
-use gtk::{prelude::*, AccelGroup, ApplicationWindow, Builder, Overlay};
+use gtk::gio::prelude::*;
+use gtk::glib;
+use gtk::glib::{Receiver, Sender};
+use gtk::{prelude::*, ApplicationWindow, Builder, Overlay};
 use std::{cell::RefCell, rc::Rc};
 
 pub(crate) enum Action {
@@ -106,7 +107,6 @@ pub(crate) struct App {
     sender: Sender<Action>,
     receiver: RefCell<Option<Receiver<Action>>>,
     music_data: Arc<Mutex<MusicData>>,
-    accel_group: AccelGroup,
 }
 
 impl App {
@@ -117,12 +117,9 @@ impl App {
         let glade_src = include_str!("../ui/window.ui");
         let builder = Builder::from_string(glade_src);
 
-        let window: ApplicationWindow = builder.get_object("applicationwindow").expect("Couldn't get window");
+        let window: ApplicationWindow = builder.object("applicationwindow").expect("Couldn't get window");
         window.set_application(Some(application));
-        window.set_title("网易云音乐");
-
-        let accel_group = AccelGroup::new();
-        window.add_accel_group(&accel_group);
+        window.set_title(Some("网易云音乐"));
 
         let configs = task::block_on(get_config()).unwrap();
 
@@ -133,13 +130,13 @@ impl App {
         });
 
         // 捕获鼠标返回键
-        let sender_clone = sender.clone();
-        window.connect_button_press_event(move |_, event| {
-            if event.get_button() == 8 {
-                sender_clone.send(Action::BackEvent).unwrap_or(());
-            }
-            gtk::Inhibit(false)
-        });
+        // let sender_clone = sender.clone();
+        // window.connect_button_press_event(move |_, event| {
+        //     if event.get_button() == 8 {
+        //         sender_clone.send(Action::BackEvent).unwrap_or(());
+        //     }
+        //     gtk::Inhibit(false)
+        // });
 
         let music_data = Arc::new(Mutex::new(task::block_on(MusicData::new())));
         let data = music_data.clone();
@@ -152,12 +149,11 @@ impl App {
         let header = Header::new(&builder, &sender, &configs, Arc::clone(&music_data));
         let view = View::new(&builder, &sender, &sender_task, Arc::clone(&music_data));
         let player = PlayerWrapper::new(&builder, &sender, &sender_task, Arc::clone(&music_data));
-        player.play_add_accel(&accel_group);
 
-        window.show_all();
+        window.show();
 
         let weak_app = application.downgrade();
-        window.connect_delete_event(move |w, _| {
+        window.connect_destroy(move |w| {
             let tray = task::block_on(async {
                 if let Ok(conf) = get_config().await {
                     conf.tray
@@ -168,19 +164,17 @@ impl App {
             if !tray {
                 let app = match weak_app.upgrade() {
                     Some(a) => a,
-                    None => return Inhibit(false),
+                    None => return,
                 };
 
                 info!("Application is exiting");
                 app.quit();
-                Inhibit(false)
             } else {
-                w.hide_on_delete();
-                Inhibit(true)
+                w.hides_on_close();
             }
         });
 
-        let overlay: Overlay = builder.get_object("overlay").unwrap();
+        let overlay: Overlay = builder.object("overlay").unwrap();
 
         let notice = RefCell::new(None);
 
@@ -195,7 +189,6 @@ impl App {
             sender,
             receiver,
             music_data,
-            accel_group,
         };
         Rc::new(app)
     }
@@ -225,7 +218,7 @@ impl App {
             Action::SwitchStackFoundSpinner => self.view.found_content_switch_stack_right(),
             Action::SwitchStackSub((id, name, image_path), parse) => {
                 self.view.switch_stack_sub(id, name, image_path, parse)
-            }
+            },
             Action::LikeSong(song_id) => {
                 let data = self.music_data.clone();
                 let sender = self.sender.clone();
@@ -238,7 +231,7 @@ impl App {
                         sender.send(Action::ShowNotice("收藏失败!".to_owned())).unwrap();
                     }
                 });
-            }
+            },
             Action::LikeSongList => self.view.sub_like_song_list(),
             Action::DisLikeSongList => self.view.dis_like_song_list(),
             Action::RefreshFoundViewInit(id) => self.view.update_found_view_data(id),
@@ -257,7 +250,7 @@ impl App {
             Action::RefreshMineRecommendImage(l, t, s) => self.view.refresh_mine_recommend_image(l, t, s),
             Action::RefreshMineFmPlayerList => {
                 self.view.refresh_fm_player_list();
-            }
+            },
             Action::RefreshMineFmPlay => self.view.switch_fm_play(),
             Action::RefreshMineFmPause => self.view.switch_fm_pause(),
             Action::RefreshMineFmImage(path) => self.view.set_fm_image(path),
@@ -267,14 +260,14 @@ impl App {
             Action::FmDislike => {
                 self.player.forward();
                 self.view.dislike_fm();
-            }
+            },
             Action::CancelCollection => self.view.cancel_collection(),
             Action::Search(text) => self.view.switch_stack_search(text),
             Action::AppendSearch => {
                 if let Some((text, num)) = self.view.get_sub_page_data() {
                     self.view.append_search(text, num);
                 }
-            }
+            },
             Action::AppendSubLowView(song_list) => self.view.append_sub_low_view(song_list),
             Action::Login(name, pass) => self.header.login(name, pass),
             Action::Logout => self.header.logout(),
@@ -295,7 +288,7 @@ impl App {
                 if let Some(i) = self.notice.borrow().as_ref() {
                     i.show(&self.overlay)
                 }
-            }
+            },
             Action::PlayerOne => self.player.play_one(),
             Action::RefreshPlayerImage(path) => self.player.set_cover_image(path),
             Action::PlayerSubpages => self.view.play_subpages(),
@@ -309,7 +302,7 @@ impl App {
                         save_config(&conf).await.ok();
                     }
                 });
-            }
+            },
             Action::ConfigsSetLyrics(state) => {
                 self.configs.borrow_mut().lyrics = state;
                 task::spawn(async move {
@@ -318,50 +311,49 @@ impl App {
                         save_config(&conf).await.ok();
                     }
                 });
-            }
+            },
             Action::ConfigsSetClear(id) => {
                 task::spawn(async move {
                     if let Ok(mut conf) = get_config().await {
                         match id {
                             0 => {
                                 conf.clear = ClearCached::NONE;
-                            }
+                            },
                             1 => {
                                 conf.clear = ClearCached::MONTH(*DATE_MONTH);
-                            }
+                            },
                             2 => {
                                 conf.clear = ClearCached::WEEK(*ISO_WEEK);
-                            }
+                            },
                             3 => {
                                 conf.clear = ClearCached::DAY(*DATE_DAY);
-                            }
-                            _ => {}
+                            },
+                            _ => {},
                         }
                         save_config(&conf).await.ok();
                     }
                 });
-            }
+            },
             Action::ActivateApp => {
-                self.window.show_now();
+                self.window.show();
                 self.window.present();
-            }
+            },
             Action::PlayAddAccel => {
-                self.player.play_add_accel(&self.accel_group);
-            }
+                // self.player.play_add_accel(&self.accel_group);
+            },
             Action::PlayRemoveAccel => {
-                self.player.play_remove_accel(&self.accel_group);
-            }
+                // self.player.play_remove_accel(&self.accel_group);
+            },
             Action::BackEvent => {
                 self.header.click_back();
-            }
+            },
         }
 
         glib::Continue(true)
     }
 
     pub(crate) fn run() {
-        let application = gtk::Application::new(Some("com.github.gmg137.netease-cloud-music-gtk"), Default::default())
-            .expect("Application initialization failed...");
+        let application = gtk::Application::new(Some("com.github.gmg137.netease-cloud-music-gtk"), Default::default());
 
         let weak_app = application.downgrade();
         application.connect_startup(move |_| {
@@ -372,7 +364,7 @@ impl App {
                 let weak = Rc::downgrade(&app);
                 application.connect_activate(move |_| {
                     if let Some(app) = weak.upgrade() {
-                        app.window.show_now();
+                        app.window.show();
                         app.window.present();
                     } else {
                         debug_assert!(false, "I hate computers");
@@ -384,6 +376,6 @@ impl App {
         glib::set_application_name("netease-cloud-music-gtk");
         glib::set_prgname(Some("netease-cloud-music-gtk"));
         gtk::Window::set_default_icon_name("netease-cloud-music-gtk");
-        ApplicationExtManual::run(&application, &[]);
+        ApplicationExtManual::run(&application);
     }
 }

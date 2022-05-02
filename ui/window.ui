@@ -46,68 +46,43 @@
         <property name="can_focus">False</property>
         <property name="orientation">vertical</property>
         <child>
-          <object class="GtkRadioButton" id="shuffle_radio">
+          <object class="GtkCheckButton" id="shuffle_radio">
             <property name="label" translatable="yes">随机播放</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
-            <property name="image_position">right</property>
             <property name="active">True</property>
-            <property name="draw_indicator">True</property>
             <property name="group">none_radio</property>
           </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
         </child>
         <child>
-          <object class="GtkRadioButton" id="playlist_radio">
+          <object class="GtkCheckButton" id="playlist_radio">
             <property name="label" translatable="yes">循环播放</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
             <property name="active">True</property>
-            <property name="draw_indicator">True</property>
             <property name="group">none_radio</property>
           </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
         </child>
         <child>
-          <object class="GtkRadioButton" id="track_radio">
+          <object class="GtkCheckButton" id="track_radio">
             <property name="label" translatable="yes">单曲循环</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
             <property name="active">True</property>
-            <property name="draw_indicator">True</property>
             <property name="group">none_radio</property>
           </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">2</property>
-          </packing>
         </child>
         <child>
-          <object class="GtkRadioButton" id="none_radio">
+          <object class="GtkCheckButton" id="none_radio">
             <property name="label" translatable="yes">关闭循环</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
             <property name="active">True</property>
-            <property name="draw_indicator">True</property>
           </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">3</property>
-          </packing>
         </child>
       </object>
     </child>
@@ -122,7 +97,6 @@
   <object class="GtkAboutDialog" id="about_dialog">
     <property name="name">about_dialog</property>
     <property name="can_focus">False</property>
-    <property name="window_position">center</property>
     <property name="destroy_with_parent">True</property>
     <property name="type_hint">dialog</property>
     <property name="transient_for">applicationwindow</property>
@@ -175,7 +149,6 @@ MarvelousBlack
     <property name="height_request">700</property>
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="window_position">center</property>
     <child type="titlebar">
       <object class="GtkBox">
         <property name="visible">True</property>
@@ -763,9 +736,7 @@ audio-volume-medium-symbolic</property>
     <property name="can_focus">False</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
-    <property name="window_position">center-on-parent</property>
     <property name="destroy_with_parent">True</property>
-    <property name="type_hint">dialog</property>
     <property name="skip_taskbar_hint">True</property>
     <property name="urgency_hint">True</property>
     <property name="transient_for">applicationwindow</property>
@@ -1081,7 +1052,7 @@ audio-volume-medium-symbolic</property>
         <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child>
-          <object class="GtkModelButton" id="preferences_button">
+          <object class="GtkButton" id="preferences_button">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
@@ -1095,7 +1066,7 @@ audio-volume-medium-symbolic</property>
           </packing>
         </child>
         <child>
-          <object class="GtkModelButton" id="about_button">
+          <object class="GtkButton" id="about_button">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
@@ -1120,7 +1091,7 @@ audio-volume-medium-symbolic</property>
           </packing>
         </child>
         <child>
-          <object class="GtkModelButton" id="close_button">
+          <object class="GtkButton" id="close_button">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
@@ -1277,7 +1248,7 @@ audio-volume-medium-symbolic</property>
           </packing>
         </child>
         <child>
-          <object class="GtkModelButton" id="login_button">
+          <object class="GtkButton" id="login_button">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
@@ -1299,9 +1270,7 @@ audio-volume-medium-symbolic</property>
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">首选项</property>
     <property name="resizable">False</property>
-    <property name="window_position">center</property>
     <property name="destroy_with_parent">True</property>
-    <property name="type_hint">dialog</property>
     <property name="transient_for">applicationwindow</property>
     <child>
       <placeholder/>

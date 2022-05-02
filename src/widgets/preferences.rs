@@ -7,8 +7,8 @@ use crate::{
     app::Action,
     utils::{ClearCached, Configs},
 };
-use glib::Sender;
-use gtk::{prelude::*, Builder, ComboBoxText, Dialog, Switch};
+use gtk::glib::Sender;
+use gtk::{prelude::*, Builder, ComboBoxText, Dialog, Inhibit, Switch};
 
 #[derive(Clone)]
 pub(crate) struct Preferences {
@@ -20,31 +20,27 @@ pub(crate) struct Preferences {
 
 impl Preferences {
     pub(crate) fn new(builder: &Builder, sender: Sender<Action>, configs: &Configs) -> Self {
-        let dialog: Dialog = builder
-            .get_object("preferences_dialog")
-            .expect("没找到 preferences_dialog");
-        let tray: Switch = builder
-            .get_object("config_tray_switch")
-            .expect("没找到 config_tray_switch");
+        let dialog: Dialog = builder.object("preferences_dialog").expect("没找到 preferences_dialog");
+        let tray: Switch = builder.object("config_tray_switch").expect("没找到 config_tray_switch");
         let lyrics: Switch = builder
-            .get_object("config_lyrics_switch")
+            .object("config_lyrics_switch")
             .expect("没找到 config_lyrics_switch");
-        let clear: ComboBoxText = builder.get_object("auto_clear_cache").expect("没找到 auto_clear_cache");
+        let clear: ComboBoxText = builder.object("auto_clear_cache").expect("没找到 auto_clear_cache");
         tray.set_state(configs.tray);
         lyrics.set_state(configs.lyrics);
         match configs.clear {
             ClearCached::NONE => {
                 clear.set_active_id(Some("0"));
-            }
+            },
             ClearCached::MONTH(_) => {
                 clear.set_active_id(Some("1"));
-            }
+            },
             ClearCached::WEEK(_) => {
                 clear.set_active_id(Some("2"));
-            }
+            },
             ClearCached::DAY(_) => {
                 clear.set_active_id(Some("3"));
-            }
+            },
         };
 
         let sender_clone = sender.clone();
@@ -60,7 +56,7 @@ impl Preferences {
         });
 
         clear.connect_changed(move |s| {
-            if let Some(id) = s.get_active_id() {
+            if let Some(id) = s.active_id() {
                 sender
                     .send(Action::ConfigsSetClear(id.parse::<u8>().unwrap_or(0)))
                     .unwrap_or(());

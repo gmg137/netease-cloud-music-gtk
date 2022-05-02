@@ -6,7 +6,7 @@
 use crate::{app::Action, model::*, musicapi::model::*, utils::*};
 use async_std::{sync::Arc, task};
 use futures::{channel::mpsc::Receiver, future::join_all, stream::StreamExt};
-use glib::Sender;
+use gtk::glib::Sender;
 use std::path::PathBuf;
 
 type AsyncResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -58,7 +58,7 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                     sender.send(Action::RefreshMineFmImage(path.clone())).unwrap();
                 }
                 sender.send(Action::RefreshPlayerImage(path)).unwrap();
-            }
+            },
             Task::DownloadMineRecommendImage(rr) => {
                 let sender = sender.clone();
                 task::spawn(async move {
@@ -89,7 +89,7 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                     }
                     join_all(tasks).await;
                 });
-            }
+            },
             Task::DownloadHomeUpImage(tsl) => {
                 let sender = sender.clone();
                 task::spawn(async move {
@@ -120,7 +120,7 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                     }
                     join_all(tasks).await;
                 });
-            }
+            },
             Task::DownloadHomeLowImage(na) => {
                 let sender = sender.clone();
                 task::spawn(async move {
@@ -148,7 +148,7 @@ pub(crate) async fn actuator_loop(receiver: Receiver<Task>, sender: Sender<Actio
                     }
                     join_all(tasks).await;
                 });
-            }
+            },
         }
     }
     Ok(())

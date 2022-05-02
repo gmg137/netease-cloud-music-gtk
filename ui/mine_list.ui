@@ -173,11 +173,11 @@
     <property name="icon_name">view-refresh-symbolic</property>
     <property name="icon_size">1</property>
   </object>
-  <object class="GtkMenu" id="song_list_popup_menu">
+  <object class="GtkPopoverMenu" id="song_list_popup_menu">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <child>
-      <object class="GtkMenuItem" id="mine_cancel_collection">
+      <object class="GtkButton" id="mine_cancel_collection">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="label" translatable="yes">取消收藏</property>

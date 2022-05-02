@@ -11,9 +11,8 @@ use crate::{
 };
 use async_std::sync::Arc;
 use gdk_pixbuf::{InterpType, Pixbuf};
-use glib::clone;
-use glib::Sender;
-use gtk::{prelude::*, Builder, Button, EventBox, Frame, Grid, Image, Label, ShadowType};
+use glib::{clone, Sender};
+use gtk::{glib, prelude::*, Builder, Button, Frame, GestureClick, Grid, Image, Label};
 use std::{cell::RefCell, rc::Rc};
 
 #[derive(Clone)]
@@ -33,28 +32,28 @@ pub struct FmView {
 impl FmView {
     pub(crate) fn new(mine_login_fm_builder: &Builder, sender: Sender<Action>) -> Self {
         let image: Image = mine_login_fm_builder
-            .get_object("mine_fm_image")
+            .object("mine_fm_image")
             .expect("无法获取 mine_fm_image .");
         let like: Button = mine_login_fm_builder
-            .get_object("mine_fm_like_button")
+            .object("mine_fm_like_button")
             .expect("无法获取 mine_fm_like_button .");
         let dislike: Button = mine_login_fm_builder
-            .get_object("mine_fm_dislike_button")
+            .object("mine_fm_dislike_button")
             .expect("无法获取 mine_fm_dislike_button .");
         let play: Button = mine_login_fm_builder
-            .get_object("mine_fm_play_button")
+            .object("mine_fm_play_button")
             .expect("无法获取 mine_fm_play_button .");
         let pause: Button = mine_login_fm_builder
-            .get_object("mine_fm_pause_button")
+            .object("mine_fm_pause_button")
             .expect("无法获取 mine_fm_play_button .");
         let title: Label = mine_login_fm_builder
-            .get_object("mine_fm_title")
+            .object("mine_fm_title")
             .expect("无法获取 mine_fm_title .");
         let singer: Label = mine_login_fm_builder
-            .get_object("mine_fm_singer")
+            .object("mine_fm_singer")
             .expect("无法获取 mine_fm_singer .");
         let recommend: Grid = mine_login_fm_builder
-            .get_object("recommend_resource_grid")
+            .object("recommend_resource_grid")
             .expect("无法获取 recommend_resource_grid 窗口.");
         let fmview = FmView {
             image,
@@ -115,47 +114,45 @@ impl FmView {
 
     pub(crate) fn update_recommend_view(&self, rr: Arc<Vec<SongList>>) {
         // 更新个性推荐
-        self.recommend.foreach(|w| {
-            self.recommend.remove(w);
-        });
+        while let Some(w) = self.recommend.last_child() {
+            self.recommend.remove(&w);
+        }
         self.recommend.hide();
         if !rr.is_empty() {
             for (l, sl) in rr.iter().enumerate() {
-                let event_box = EventBox::new();
+                let gesture_click = GestureClick::new();
                 let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
                 let label = Label::new(Some(&sl.name[..]));
                 let frame = Frame::new(None);
-                frame.set_shadow_type(ShadowType::EtchedOut);
                 label.set_lines(2);
                 label.set_max_width_chars(16);
                 label.set_ellipsize(pango::EllipsizeMode::End);
-                label.set_line_wrap(true);
+                label.set_wrap(true);
                 let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &sl.id);
                 let image = if let Ok(image) = Pixbuf::from_file(&image_path) {
                     let image = image.scale_simple(140, 140, InterpType::Bilinear);
                     Image::from_pixbuf(image.as_ref())
                 } else {
-                    let image = Image::from_icon_name(Some("media-optical"), gtk::IconSize::Button);
+                    let image = Image::from_icon_name("media-optical");
                     image.set_pixel_size(140);
                     image
                 };
-                frame.add(&image);
-                boxs.add(&frame);
-                boxs.add(&label);
-                event_box.add(&boxs);
+                frame.set_child(Some(&image));
+                boxs.append(&frame);
+                boxs.append(&label);
+                boxs.add_controller(&gesture_click);
 
                 // 处理点击事件
                 let id = sl.id;
                 let name = sl.name.to_owned();
                 let sender = self.sender.clone();
-                event_box.connect_button_press_event(move |_, _| {
+                gesture_click.connect_pressed(move |_, _, _, _| {
                     sender
                         .send(Action::SwitchStackSub(
                             (id, name.to_owned(), image_path.to_owned()),
                             Parse::USL,
                         ))
                         .unwrap_or(());
-                    Inhibit(false)
                 });
                 let mut left = l;
                 let top = if l >= 4 {
@@ -166,54 +163,51 @@ impl FmView {
                 };
 
                 // 添加到容器
-                self.recommend.attach(&event_box, left as i32, top as i32, 1, 1);
+                self.recommend.attach(&boxs, left as i32, top as i32, 1, 1);
             }
-            self.recommend.set_no_show_all(false);
-            self.recommend.show_all();
+            self.recommend.show();
         }
     }
 
     pub(crate) fn set_recommend_image(&self, left: i32, top: i32, song_list: SongList) {
-        if let Some(w) = self.recommend.get_child_at(left, top) {
+        if let Some(w) = self.recommend.child_at(left, top) {
             self.recommend.remove(&w);
         }
-        let event_box = EventBox::new();
+        let gesture_click = GestureClick::new();
         let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let label = Label::new(Some(&song_list.name[..]));
         let frame = Frame::new(None);
-        frame.set_shadow_type(ShadowType::EtchedOut);
         label.set_lines(2);
         label.set_max_width_chars(16);
         label.set_ellipsize(pango::EllipsizeMode::End);
-        label.set_line_wrap(true);
+        label.set_wrap(true);
         let image_path = format!("{}{}.jpg", NCM_CACHE.to_string_lossy(), &song_list.id);
         let image = if let Ok(image) = Pixbuf::from_file(&image_path) {
             let image = image.scale_simple(140, 140, InterpType::Bilinear);
             Image::from_pixbuf(image.as_ref())
         } else {
-            let image = Image::from_icon_name(Some("media-optical"), gtk::IconSize::Button);
+            let image = Image::from_icon_name("media-optical");
             image.set_pixel_size(140);
             image
         };
-        frame.add(&image);
-        boxs.add(&frame);
-        boxs.add(&label);
-        event_box.add(&boxs);
-        self.recommend.attach(&event_box, left, top, 1, 1);
+        frame.set_child(Some(&image));
+        boxs.append(&frame);
+        boxs.append(&label);
+        boxs.add_controller(&gesture_click);
+        self.recommend.attach(&boxs, left, top, 1, 1);
 
         let id = song_list.id;
         let name = song_list.name;
         let sender = self.sender.clone();
-        event_box.connect_button_press_event(move |_, _| {
+        gesture_click.connect_pressed(move |_, _, _, _| {
             sender
                 .send(Action::SwitchStackSub(
                     (id, name.to_owned(), image_path.to_owned()),
                     Parse::USL,
                 ))
                 .unwrap_or(());
-            Inhibit(false)
         });
-        self.recommend.show_all();
+        self.recommend.show();
     }
 
     pub(crate) fn set_now_play(&self, si: SongInfo) {

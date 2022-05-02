@@ -16,6 +16,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildRequires: (gstreamer-devel or gstreamer1-devel)
 BuildRequires: (gstreamer-plugins-bad-devel or gstreamer1-plugins-bad-free-devel)
 BuildRequires: (gstreamer-plugins-base-devel or gstreamer1-plugins-base-devel)
+BuildRequires: adwaita-devel
 Requires: openssl
 Requires: (gstreamer or gstreamer1)
 Requires: (gstreamer-plugins-bad or gstreamer1-plugins-bad-free)

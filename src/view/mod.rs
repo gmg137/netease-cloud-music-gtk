@@ -23,7 +23,7 @@ use async_std::{
 };
 use found::*;
 use futures::{channel::mpsc, sink::SinkExt};
-use glib::Sender;
+use gtk::glib::Sender;
 use gtk::{prelude::*, Builder, Spinner, Stack};
 use home::*;
 use mine::*;
@@ -53,92 +53,90 @@ impl View {
         sender_task: &mpsc::Sender<Task>,
         music_data: Arc<Mutex<MusicData>>,
     ) -> Rc<Self> {
-        let stack: Stack = builder.get_object("stack").expect("无法获取 stack.");
-        let main_stack: Stack = builder
-            .get_object("main_pages_stack")
-            .expect("无法获取 main_pages_stack.");
-        let mine_stack: Stack = builder.get_object("mine_stack").expect("无法获取 mine_stack.");
+        let stack: Stack = builder.object("stack").expect("无法获取 stack.");
+        let main_stack: Stack = builder.object("main_pages_stack").expect("无法获取 main_pages_stack.");
+        let mine_stack: Stack = builder.object("mine_stack").expect("无法获取 mine_stack.");
 
         let glade_src = include_str!("../../ui/subpages.ui");
         let subpages_builder = Builder::from_string(glade_src);
         let subpages_stack: Stack = subpages_builder
-            .get_object("subpages_stack")
+            .object("subpages_stack")
             .expect("无法获取 subpages_stack.");
 
         let glade_src = include_str!("../../ui/home.ui");
         let home_builder = Builder::from_string(glade_src);
-        let home_stack: Stack = home_builder.get_object("home_stack").expect("无法获取 home_stack.");
+        let home_stack: Stack = home_builder.object("home_stack").expect("无法获取 home_stack.");
 
         let glade_src = include_str!("../../ui/found.ui");
         let found_builder = Builder::from_string(glade_src);
-        let found_stack: Stack = found_builder.get_object("found_stack").expect("无法获取 found_stack.");
+        let found_stack: Stack = found_builder.object("found_stack").expect("无法获取 found_stack.");
         let found_content_stack: Stack = found_builder
-            .get_object("found_content_stack")
+            .object("found_content_stack")
             .expect("无法获取 found_content_stack.");
 
         let spinner_stack = Stack::new();
         let spinner = Spinner::new();
         spinner.set_size_request(50, 50);
         spinner.start();
-        spinner_stack.add(&spinner);
-        found_content_stack.add_named(&spinner_stack, "spinner_stack");
+        spinner_stack.add_child(&spinner);
+        found_content_stack.add_named(&spinner_stack, Some(&"spinner_stack"));
         found_content_stack.set_visible_child_name("found_right_stack");
 
         let glade_src = include_str!("../../ui/mine_fm.ui");
         let mine_login_fm_builder = Builder::from_string(glade_src);
         let mine_fm_stack: Stack = mine_login_fm_builder
-            .get_object("mine_fm_stack")
+            .object("mine_fm_stack")
             .expect("无法获取 mine_fm_stack.");
 
         let glade_src = include_str!("../../ui/mine_list.ui");
         let mine_login_list_builder = Builder::from_string(glade_src);
         let mine_list_stack: Stack = mine_login_list_builder
-            .get_object("mine_list_stack")
+            .object("mine_list_stack")
             .expect("无法获取 mine_list_stack.");
 
         let glade_src = include_str!("../../ui/mine_login.ui");
         let mine_login_builder = Builder::from_string(glade_src);
         let mine_login_stack: Stack = mine_login_builder
-            .get_object("mine_login_stack")
+            .object("mine_login_stack")
             .expect("无法获取 mine_login_stack.");
         let mine_login_center_stack: Stack = mine_login_builder
-            .get_object("mine_login_center_stack")
+            .object("mine_login_center_stack")
             .expect("无法获取 mine_login_center_stack.");
 
         let spinner_stack = Stack::new();
         let spinner = Spinner::new();
         spinner.set_size_request(50, 50);
         spinner.start();
-        spinner_stack.add(&spinner);
+        spinner_stack.add_child(&spinner);
 
-        mine_login_center_stack.add_named(&mine_fm_stack, "mine_fm_stack");
-        mine_login_center_stack.add_named(&mine_list_stack, "mine_list_stack");
-        mine_login_center_stack.add_named(&spinner_stack, "spinner_stack");
+        mine_login_center_stack.add_named(&mine_fm_stack, Some(&"mine_fm_stack"));
+        mine_login_center_stack.add_named(&mine_list_stack, Some(&"mine_list_stack"));
+        mine_login_center_stack.add_named(&spinner_stack, Some(&"spinner_stack"));
         mine_login_center_stack.set_visible_child_name("mine_fm_stack");
 
         let glade_src = include_str!("../../ui/mine_not_login.ui");
         let mine_not_login_builder = Builder::from_string(glade_src);
         let mine_not_login_stack: Stack = mine_not_login_builder
-            .get_object("mine_not_login_stack")
+            .object("mine_not_login_stack")
             .expect("无法获取 mine_not_login_stack.");
 
-        mine_stack.add_named(&mine_login_stack, "mine_login_stack");
-        mine_stack.add_named(&mine_not_login_stack, "mine_not_login_stack");
+        mine_stack.add_named(&mine_login_stack, Some(&"mine_login_stack"));
+        mine_stack.add_named(&mine_not_login_stack, Some(&"mine_not_login_stack"));
         mine_stack.set_visible_child_name("mine_not_login_stack");
 
-        main_stack.add_titled(&home_stack, "home", "首页");
-        main_stack.add_titled(&found_stack, "found", "发现");
-        main_stack.add_titled(&mine_stack, "mine", "我的");
+        main_stack.add_titled(&home_stack, Some(&"home"), "首页");
+        main_stack.add_titled(&found_stack, Some(&"found"), "发现");
+        main_stack.add_titled(&mine_stack, Some(&"mine"), "我的");
 
         let spinner_stack = Stack::new();
         let spinner = Spinner::new();
         spinner.set_size_request(50, 50);
         spinner.start();
-        spinner_stack.add(&spinner);
+        spinner_stack.add_child(&spinner);
 
-        stack.add_named(&main_stack, "main_stack");
-        stack.add_named(&subpages_stack, "subpages_stack");
-        stack.add_named(&spinner_stack, "spinner_stack");
+        stack.add_named(&main_stack, Some(&"main_stack"));
+        stack.add_named(&subpages_stack, Some(&"subpages_stack"));
+        stack.add_named(&spinner_stack, Some(&"spinner_stack"));
         stack.set_visible_child_name("main_stack");
 
         let home = Rc::new(RefCell::new(Home::new(&home_builder, sender.clone())));
@@ -197,7 +195,7 @@ impl View {
                     } else {
                         sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                     }
-                }
+                },
                 Parse::ALBUM => {
                     if let Ok(song_list) = data.album(id).await {
                         // 发送更新子页概览
@@ -211,8 +209,8 @@ impl View {
                     } else {
                         sender.send(Action::ShowNotice("数据解析异常!".to_owned())).unwrap();
                     }
-                }
-                _ => {}
+                },
+                _ => {},
             }
         });
         self.sender.send(Action::SwitchHeaderBar(name)).unwrap_or(());

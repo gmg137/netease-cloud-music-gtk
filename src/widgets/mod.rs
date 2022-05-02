@@ -8,7 +8,7 @@ pub(crate) mod header;
 pub(crate) mod notice;
 pub(crate) mod player;
 pub(crate) mod preferences;
-use gtk::prelude::*;
+use gtk::glib;
 use notice::*;
 
 pub(crate) fn mark_all_notif(msg: String) -> InAppNotification {
