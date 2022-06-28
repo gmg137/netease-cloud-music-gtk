@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <template class="TopListView" parent="AdwBin">
+        <child>
+            <object class="GtkPaned">
+                <property name="shrink-start-child">0</property>
+                <child>
+                    <object class="GtkScrolledWindow">
+                        <property name="width-request">220</property>
+                        <child>
+                            <object class="GtkViewport">
+                                <property name="scroll-to-focus">True</property>
+                                <child>
+                                    <object class="GtkListBox" id="sidebar">
+                                        <property name="selection-mode">single</property>
+                                        <signal name="row-activated" handler="sidebar_cb" swapped="yes" />
+                                        <style>
+                                            <class name="navigation-sidebar" />
+                                        </style>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkBox">
+                        <property name="orientation">vertical</property>
+                        <property name="margin-top">20</property>
+                        <child>
+                            <object class="AdwClamp">
+                                <property name="maximum-size">1000</property>
+                                <property name="margin-bottom">20</property>
+                                <child>
+                                    <object class="GtkBox">
+                                        <property name="halign">fill</property>
+                                        <property name="valign">fill</property>
+                                        <property name="hexpand">true</property>
+                                        <property name="orientation">horizontal</property>
+                                        <property name="spacing">12</property>
+                                        <child>
+                                            <object class="GtkFrame">
+                                                <child>
+                                                    <object class="GtkImage" id="cover_image">
+                                                        <property name="halign">fill</property>
+                                                        <property name="valign">fill</property>
+                                                        <property name="pixel-size">140</property>
+                                                        <property name="icon-name">image-missing-symbolic</property>
+                                                    </object>
+                                                </child>
+                                            </object>
+                                        </child>
+                                        <child>
+                                            <object class="GtkBox">
+                                                <property name="orientation">vertical</property>
+                                                <property name="halign">fill</property>
+                                                <property name="valign">end</property>
+                                                <property name="spacing">2</property>
+                                                <child>
+                                                    <object class="GtkLabel" id="title_label">
+                                                        <property name="label">Title</property>
+                                                        <property name="halign">start</property>
+                                                        <property name="valign">end</property>
+                                                        <property name="max-width-chars">27</property>
+                                                        <property name="ellipsize">end</property>
+                                                        <style>
+                                                            <class name="title-1" />
+                                                        </style>
+                                                    </object>
+                                                </child>
+                                                <child>
+                                                    <object class="GtkBox">
+                                                        <property name="halign">fill</property>
+                                                        <property name="valign">end</property>
+                                                        <property name="spacing">7</property>
+                                                        <property name="orientation">horizontal</property>
+                                                        <child>
+                                                            <object class="GtkLabel" id="num_label">
+                                                                <property name="label">0 songs</property>
+                                                                <property name="halign">start</property>
+                                                                <property name="valign">end</property>
+                                                            </object>
+                                                        </child>
+                                                        <child>
+                                                            <object class="GtkButton" id="play_button">
+                                                                <property name="halign">end</property>
+                                                                <property name="valign">center</property>
+                                                                <property name="hexpand">true</property>
+                                                                <property name="icon-name">media-playback-start-symbolic</property>
+                                                                <signal name="clicked" handler="play_button_clicked_cb" swapped="true" />
+                                                                <property name="tooltip-text" translatable="yes">Play songs list</property>
+                                                                <style>
+                                                                    <class name="circular" />
+                                                                </style>
+                                                            </object>
+                                                        </child>
+                                                    </object>
+                                                </child>
+                                            </object>
+                                        </child>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkScrolledWindow" id="playlist-container">
+                                <property name="vexpand">True</property>
+                                <child>
+                                    <object class="AdwClamp">
+                                        <property name="maximum-size">1000</property>
+                                        <property name="valign">start</property>
+                                        <child>
+                                            <object class="GtkListBox" id="songs_list">
+                                                <property name="margin-bottom">20</property>
+                                                <property name="margin-top">20</property>
+                                                <style>
+                                                    <class name="boxed-list" />
+                                                </style>
+                                            </object>
+                                        </child>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+            </object>
+        </child>
+    </template>
+</interface>

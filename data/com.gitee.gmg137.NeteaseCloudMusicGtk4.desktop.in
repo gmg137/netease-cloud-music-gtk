@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=NetEase Cloud Music
+Name[zh_CN]=网易云音乐
+Name[zh_TW]=網易雲音樂
+Comment=NetEase Cloud Music
+Comment[zh_CN]=网易云音乐
+Comment[zh_TW]=網易雲音樂
+Exec=netease-cloud-music-gtk4
+Icon=com.gitee.gmg137.NeteaseCloudMusicGtk4
+Terminal=false
+Type=Application
+Categories=GTK;
+StartupNotify=true

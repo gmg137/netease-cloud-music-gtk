@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <object class="GtkShortcutsWindow" id="help_overlay">
+        <property name="modal">True</property>
+        <child>
+            <object class="GtkShortcutsSection">
+                <property name="section-name">shortcuts</property>
+                <property name="max-height">10</property>
+                <child>
+                    <object class="GtkShortcutsGroup">
+                        <property name="title" translatable="yes" context="shortcut window">General</property>
+                        <child>
+                            <object class="GtkShortcutsShortcut">
+                                <property name="title" translatable="yes" context="shortcut window">Show Shortcuts</property>
+                                <property name="action-name">win.show-help-overlay</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkShortcutsShortcut">
+                                <property name="title" translatable="yes" context="shortcut window">Quit</property>
+                                <property name="action-name">app.quit</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkShortcutsShortcut">
+                                <property name="title" translatable="yes" context="shortcut window">Search</property>
+                                <property name="action-name">win.search-button</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkShortcutsShortcut">
+                                <property name="title" translatable="yes" context="shortcut window">Back</property>
+                                <property name="action-name">win.back-button</property>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkShortcutsGroup">
+                        <property name="title" translatable="yes" context="shortcut window">Playback</property>
+                        <child>
+                            <object class="GtkShortcutsShortcut">
+                                <property name="title" translatable="yes" context="shortcut window">Play/Pause</property>
+                                <property name="accelerator">&lt;primary&gt;space</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkShortcutsShortcut">
+                                <property name="title" translatable="yes" context="shortcut window">Next song</property>
+                                <property name="accelerator">&lt;primary&gt;n</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkShortcutsShortcut">
+                                <property name="title" translatable="yes" context="shortcut window">Previous song</property>
+                                <property name="accelerator">&lt;primary&gt;b</property>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+            </object>
+        </child>
+    </object>
+</interface>

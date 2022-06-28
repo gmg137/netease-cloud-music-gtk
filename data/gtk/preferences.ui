@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <requires lib="gtk" version="4.0" />
+    <template class="NeteaseCloudMusicGtk4Preferences" parent="AdwPreferencesWindow">
+        <property name="can-navigate-back">True</property>
+        <property name="modal">True</property>
+        <property name="title" translatable="yes">Preferences</property>
+        <child>
+            <object class="AdwPreferencesPage">
+                <child>
+                    <object class="AdwPreferencesGroup">
+                        <property name="title" translatable="yes">General</property>
+                        <child>
+                            <object class="AdwActionRow">
+                                <property name="title" translatable="yes">Exit to the background</property>
+                                <property name="subtitle" translatable="yes">Set the main window close button behavior</property>
+                                <property name="use_underline">True</property>
+                                <property name="activatable-widget">exit_switch</property>
+                                <child>
+                                    <object class="GtkSwitch" id="exit_switch">
+                                        <property name="valign">center</property>
+                                        <property name="state">True</property>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="AdwActionRow">
+                                <property name="title" translatable="yes">Network Proxy</property>
+                                <property name="subtitle" translatable="yes">http/https/socks4/socks4a/socks5/socks5h</property>
+                                <property name="use_underline">True</property>
+                                <child>
+                                    <object class="GtkEntry" id="proxy_entry">
+                                        <property name="valign">center</property>
+                                        <property name="halign">fill</property>
+                                        <property name="hexpand">true</property>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+                <child>
+                    <object class="AdwPreferencesGroup">
+                        <property name="title" translatable="yes">Music</property>
+                        <child>
+                            <object class="AdwComboRow" id="switch_rate">
+                                <property name="title" translatable="yes">Sound quality</property>
+                                <property name="model">
+                                    <object class="GtkStringList">
+                                        <items>
+                                            <item>128k</item>
+                                            <item>192k</item>
+                                            <item>320k</item>
+                                            <item>SQ</item>
+                                            <item>HR</item>
+                                        </items>
+                                    </object>
+                                </property>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+            </object>
+        </child>
+    </template>
+</interface>

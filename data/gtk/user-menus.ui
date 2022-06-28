@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <requires lib="gtk" version="4.0" />
+    <object class="GtkBox" id="qrbox">
+        <property name="halign">fill</property>
+        <property name="valign">start</property>
+        <property name="orientation">vertical</property>
+        <child>
+            <object class="GtkOverlay">
+                <property name="margin-top">13</property>
+                <property name="halign">center</property>
+                <property name="valign">fill</property>
+                <property name="vexpand">true</property>
+                <child>
+                    <object class="GtkImage" id="qrimage">
+                        <property name="halign">center</property>
+                        <property name="icon-name">image-missing-symbolic</property>
+                        <property name="pixel-size">140</property>
+                    </object>
+                </child>
+                <child type="overlay">
+                    <object class="GtkButton" id="refresh_button">
+                        <property name="visible">false</property>
+                        <property name="halign">center</property>
+                        <property name="valign">center</property>
+                        <property name="width-request">50</property>
+                        <property name="height-request">50</property>
+                        <property name="icon-name">view-refresh-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">Click on Refresh</property>
+                        <style>
+                            <class name="circular" />
+                            <class name="flat" />
+                            <class name="image-button" />
+                        </style>
+                    </object>
+                </child>
+            </object>
+        </child>
+        <child>
+            <object class="GtkButton" id="change_button">
+                <property name="valign">fill</property>
+                <property name="label" translatable="yes">Mobile Number Login</property>
+                <style>
+                    <class name="flat" />
+                    <class name="caption" />
+                    <class name="pill" />
+                </style>
+            </object>
+        </child>
+    </object>
+    <object class="GtkBox" id="phonebox">
+        <property name="halign">fill</property>
+        <property name="valign">fill</property>
+        <property name="orientation">horizontal</property>
+        <property name="margin-top">5</property>
+        <property name="margin-bottom">5</property>
+        <property name="margin-end">5</property>
+        <child>
+            <object class="GtkButton" id="back_button">
+                <property name="halign">center</property>
+                <property name="valign">fill</property>
+                <property name="vexpand">true</property>
+                <property name="icon-name">go-previous-symbolic</property>
+                <style>
+                    <class name="flat" />
+                </style>
+            </object>
+        </child>
+        <child>
+            <object class="GtkBox">
+                <property name="valign">center</property>
+                <property name="orientation">vertical</property>
+                <property name="spacing">5</property>
+                <child>
+                    <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="valign">center</property>
+                        <property name="hexpand">true</property>
+                        <child>
+                            <object class="GtkEntry" id="ctcode_entry">
+                                <property name="halign">start</property>
+                                <property name="valign">center</property>
+                                <property name="max-width-chars">3</property>
+                                <property name="max-length">3</property>
+                                <property name="text">86</property>
+                                <property name="input-purpose">number</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkEntry" id="phone_entry">
+                                <property name="hexpand">true</property>
+                                <property name="max-length">11</property>
+                                <property name="placeholder-text" translatable="yes">Phone</property>
+                                <property name="input-purpose">number</property>
+                            </object>
+                        </child>
+                        <style>
+                            <class name="linked" />
+                        </style>
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <child>
+                            <object class="GtkEntry" id="captcha_entry">
+                                <property name="hexpand">true</property>
+                                <property name="max-width-chars">6</property>
+                                <property name="max-length">6</property>
+                                <property name="placeholder-text" translatable="yes">Captcha</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkButton" id="captcha_button">
+                                <property name="label" translatable="yes">Get Captcha</property>
+                                <property name="margin-start">3</property>
+                            </object>
+                        </child>
+                        <style>
+                            <class name="linked" />
+                        </style>
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkButton" id="login_button">
+                        <property name="label" translatable="yes">Login</property>
+                        <property name="margin-top">3</property>
+                        <style>
+                            <class name="suggested-action" />
+                        </style>
+                    </object>
+                </child>
+            </object>
+        </child>
+    </object>
+    <object class="GtkBox" id="userbox">
+        <property name="halign">fill</property>
+        <property name="valign">fill</property>
+        <property name="margin-top">5</property>
+        <property name="margin-bottom">5</property>
+        <property name="margin-start">5</property>
+        <property name="margin-end">5</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">5</property>
+        <child>
+            <object class="AdwAvatar" id="avatar">
+                <property name="halign">center</property>
+                <property name="valign">center</property>
+                <property name="size">48</property>
+                <property name="icon-name">avatar-default-symbolic</property>
+            </object>
+        </child>
+        <child>
+            <object class="GtkLabel" id="user_name">
+                <property name="halign">center</property>
+                <property name="valign">center</property>
+                <property name="label">User Name</property>
+                <property name="max-width-chars">12</property>
+                <property name="ellipsize">end</property>
+            </object>
+        </child>
+    </object>
+</interface>

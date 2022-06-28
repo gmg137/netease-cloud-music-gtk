@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="48px"
+   height="48px"
+   viewBox="0 0 48 48"
+   version="1.1"
+   id="svg25"
+   sodipodi:docname="com.gitee.gmg137.NeteaseCloudMusicGtk4.svg"
+   inkscape:version="1.2 (dc2aedaf03, 2022-05-15)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview27"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#505050"
+     showgrid="false"
+     inkscape:zoom="17.229167"
+     inkscape:cx="24.029021"
+     inkscape:cy="24.029021"
+     inkscape:window-width="1920"
+     inkscape:window-height="1011"
+     inkscape:window-x="0"
+     inkscape:window-y="32"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg25" />
+  <!-- Generator: Sketch 3.6.1 (26313) - http://www.bohemiancoding.com/sketch -->
+  <title
+     id="title2">Artboard 1</title>
+  <desc
+     id="desc4">Created with Sketch.</desc>
+  <defs
+     id="defs19">
+    <filter
+       x="-0.031578947"
+       y="-0.031578947"
+       width="1.0631579"
+       height="1.0894737"
+       filterUnits="objectBoundingBox"
+       id="filter-1">
+      <feOffset
+         dx="0"
+         dy="1"
+         in="SourceAlpha"
+         result="shadowOffsetOuter1"
+         id="feOffset6" />
+      <feGaussianBlur
+         stdDeviation="0.5"
+         in="shadowOffsetOuter1"
+         result="shadowBlurOuter1"
+         id="feGaussianBlur8" />
+      <feColorMatrix
+         values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.21 0"
+         in="shadowBlurOuter1"
+         type="matrix"
+         result="shadowMatrixOuter1"
+         id="feColorMatrix10" />
+      <feMerge
+         id="feMerge16">
+        <feMergeNode
+           in="shadowMatrixOuter1"
+           id="feMergeNode12" />
+        <feMergeNode
+           in="SourceGraphic"
+           id="feMergeNode14" />
+      </feMerge>
+    </filter>
+  </defs>
+  <rect
+     id="Rectangle-1"
+     fill="#da2916"
+     filter="url(#filter-1)"
+     x="5"
+     y="5"
+     width="38"
+     height="38"
+     rx="5.5"
+     style="fill:#ffffff;fill-rule:evenodd;stroke:none;stroke-width:1" />
+  <g
+     id="Artboard-1"
+     fill="#fefefe"
+     style="fill-rule:evenodd;stroke:none;stroke-width:1;fill:#ffcc00">
+    <path
+       d="m 26.6977,24.5449 c 0,1.288 -1.051,2.336 -2.342,2.336 -1.433,0 -2.223,-1.302 -2.351,-2.51 -0.244,-2.304 0.963,-3.558 2.019,-4.203 0.429,-0.261 0.899,-0.465 1.391,-0.614 0,0 1.138,3.612 1.227,4.173 0.098,0.618 0.056,0.818 0.056,0.818 m 5.594,-7.245 c -1.259,-0.816 -2.802,-1.264 -4.391,-1.344 l -0.355,-1.298 0.011,0.013 c -0.014,-0.039 -0.026,-0.077 -0.038,-0.114 l -0.105,-0.384 c -0.242,-1.11 0.198,-1.639 0.424,-1.829 0.039,-0.029 0.078,-0.059 0.121,-0.087 1.037,-0.688 2.512,0.415 2.595,0.48 0.655,0.63 1.853,0.786 2.5,0.141 0.653,-0.651 0.499,-1.87 -0.154,-2.521 -1.017,-1.014 -4.139,-2.641 -6.796,-0.875 -2.388,1.587 -2.436,3.821 -2.043,5.112 l 0.477,1.746 c -0.799,0.229 -1.563,0.557 -2.263,0.984 -2.614,1.597 -3.925,4.293 -3.598,7.396 0.339,3.184 2.725,5.497 5.679,5.497 3.135,0 5.687,-2.545 5.687,-5.672 -0.042,-0.746 -0.034,-0.738 -0.133,-1.405 -0.099,-0.651 -1.063,-3.711 -1.063,-3.711 0.592,0.136 1.145,0.359 1.623,0.668 5.393,3.495 3.148,9.059 3.048,9.301 -1.484,3.555 -4.725,5.677 -8.886,5.822 -2.712,0.096 -5.311,-0.915 -7.318,-2.847 -2.116,-2.037 -3.329,-4.89 -3.329,-7.828 0,-4.424 2.791,-8.443 6.944,-9.997 0.865,-0.323 1.563,-1.245 1.085,-2.316 -0.376,-0.842 -1.395,-1.131 -2.261,-0.806 -5.451,2.039 -9.114,7.312 -9.114,13.119 0,3.838 1.586,7.566 4.351,10.228 2.551,2.454 5.832,3.79 9.287,3.789 0.157,0 0.315,-0.002 0.472,-0.008 5.445,-0.191 9.877,-3.134 11.85,-7.857 1.234,-2.869 1.921,-9.361 -4.307,-13.397"
+       id="Fill-9"
+       style="fill:#ffcc00" />
+  </g>
+</svg>

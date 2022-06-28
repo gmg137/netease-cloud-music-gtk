@@ -1,0 +1,403 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-06-27 10:36+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.desktop.in:3
+msgid "netease-cloud-music-gtk4"
+msgstr ""
+
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.appdata.xml.in:7
+msgid "No description"
+msgstr ""
+
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:11
+msgid "Settings theme"
+msgstr ""
+
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:21
+msgid "Settings player loop"
+msgstr ""
+
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:25
+msgid "Set exit key behavior"
+msgstr ""
+
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:29
+msgid "Settings proxy address"
+msgstr ""
+
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:33
+msgid "Settings music rate"
+msgstr ""
+
+#: data/gtk/window.ui:101
+msgid "Discover"
+msgstr ""
+
+#: data/gtk/window.ui:120
+msgid "Toplist"
+msgstr ""
+
+#: data/gtk/window.ui:130
+msgid "My"
+msgstr ""
+
+#: data/gtk/window.ui:162
+msgid "Not yet logged"
+msgstr ""
+
+#: data/gtk/window.ui:174
+msgid "Login to view and manage your private music collection"
+msgstr ""
+
+#: data/gtk/window.ui:292
+msgid "_Preferences"
+msgstr ""
+
+#: data/gtk/window.ui:296
+msgid "_Keyboard Shortcuts"
+msgstr ""
+
+#: data/gtk/window.ui:300
+msgid "_About netease-cloud-music-gtk4"
+msgstr ""
+
+#: data/gtk/window.ui:331 data/gtk/window.ui:82
+msgid "Songs"
+msgstr ""
+
+#: data/gtk/window.ui:338
+msgid "Singer"
+msgstr ""
+
+#: data/gtk/window.ui:345
+msgid "Album"
+msgstr ""
+
+#: data/gtk/window.ui:352
+msgid "Lyrics"
+msgstr ""
+
+#: data/gtk/window.ui:359
+msgid "Song List"
+msgstr ""
+
+#: data/gtk/preferences.ui:7
+msgid "Preferences"
+msgstr ""
+
+#: data/gtk/preferences.ui:12
+msgid "General"
+msgstr ""
+
+#: data/gtk/preferences.ui:15
+msgid "Exit to the background"
+msgstr ""
+
+#: data/gtk/preferences.ui:16
+msgid "Set the main window close button behavior"
+msgstr ""
+
+#: data/gtk/preferences.ui:29
+msgid "Network Proxy"
+msgstr ""
+
+#: data/gtk/preferences.ui:30
+msgid "http/https/socks4/socks4a/socks5/socks5h"
+msgstr ""
+
+#: data/gtk/preferences.ui:45
+msgid "Music"
+msgstr ""
+
+#: data/gtk/preferences.ui:48
+msgid "Sound quality"
+msgstr ""
+
+#: data/gtk/theme-selector.ui:22
+msgid "Use system style"
+msgstr ""
+
+#: data/gtk/theme-selector.ui:35
+msgid "Light style"
+msgstr ""
+
+#: data/gtk/theme-selector.ui:49
+msgid "Dark style"
+msgstr ""
+
+#: data/gtk/discover.ui:120
+msgid "Top Picks"
+msgstr ""
+
+#: data/gtk/discover.ui:132 data/gtk/discover.ui:197
+msgid "View More"
+msgstr ""
+
+#: data/gtk/discover.ui:185
+msgid "New Albums"
+msgstr ""
+
+#: data/gtk/user-menus.ui:29
+msgid "Click on Refresh"
+msgstr ""
+
+#: data/gtk/user-menus.ui:42
+msgid "Mobile Number Login"
+msgstr ""
+
+#: data/gtk/user-menus.ui:93
+msgid "Phone"
+msgstr ""
+
+#: data/gtk/user-menus.ui:109
+msgid "Captcha"
+msgstr ""
+
+#: data/gtk/user-menus.ui:114
+msgid "Get Captcha"
+msgstr ""
+
+#: data/gtk/user-menus.ui:125
+msgid "Login"
+msgstr ""
+
+#: data/gtk/help-overlay.ui:11
+msgctxt "shortcut window"
+msgid "General"
+msgstr ""
+
+#: data/gtk/help-overlay.ui:14
+msgctxt "shortcut window"
+msgid "Show Shortcuts"
+msgstr ""
+
+#: data/gtk/help-overlay.ui:20
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr ""
+
+#: data/gtk/help-overlay.ui:26
+msgctxt "shortcut window"
+msgid "Search"
+msgstr ""
+
+#: data/gtk/help-overlay.ui:32
+msgctxt "shortcut window"
+msgid "Back"
+msgstr ""
+
+#: data/gtk/help-overlay.ui:40
+msgctxt "shortcut window"
+msgid "Playback"
+msgstr ""
+
+#: data/gtk/help-overlay.ui:43
+msgctxt "shortcut window"
+msgid "Play/Pause"
+msgstr ""
+
+#: data/gtk/help-overlay.ui:49
+msgctxt "shortcut window"
+msgid "Next song"
+msgstr ""
+
+#: data/gtk/help-overlay.ui:55
+msgctxt "shortcut window"
+msgid "Previous song"
+msgstr ""
+
+#: data/gtk/player-controls.ui:139
+msgid "Like"
+msgstr ""
+
+#: data/gtk/player-controls.ui:188
+msgid "Playlist/Lyrics"
+msgstr ""
+
+#: data/gtk/player-controls.ui:218
+msgid "Shuffle/Repeat Off"
+msgstr ""
+
+#: data/gtk/player-controls.ui:225
+msgid "Repeat Song"
+msgstr ""
+
+#: data/gtk/player-controls.ui:232
+msgid "Repeat All"
+msgstr ""
+
+#: data/gtk/player-controls.ui:239
+msgid "Shuffle"
+msgstr ""
+
+#: data/gtk/songlist-page.ui:61
+msgid "0 songs"
+msgstr ""
+
+#: data/gtk/songlist-page.ui:73 data/gtk/toplist.ui:91
+msgid "Play songs list"
+msgstr ""
+
+#: data/gtk/songlist-page.ui:85
+msgid "Like songs list"
+msgstr ""
+
+#: data/gtk/my-page.ui:40 src/application.rs:957
+msgid "Daily Recommendation"
+msgstr ""
+
+#: data/gtk/my-page.ui:67 src/application.rs:974
+msgid "Favorite Songs"
+msgstr ""
+
+#: data/gtk/my-page.ui:94 src/application.rs:1019
+msgid "Private FM"
+msgstr ""
+
+#: data/gtk/my-page.ui:121 src/application.rs:1002
+msgid "Cloud Music"
+msgstr ""
+
+#: data/gtk/my-page.ui:148 src/application.rs:1035
+msgid "Favorite Album"
+msgstr ""
+
+#: data/gtk/my-page.ui:175 src/application.rs:1044
+msgid "Favorite Song List"
+msgstr ""
+
+#: data/gtk/my-page.ui:212
+msgid "Recommended Song List"
+msgstr ""
+
+#: src/application.rs:247
+msgid "Have scanned the QR code, waiting for confirmation!"
+msgstr ""
+
+#: src/application.rs:264 src/application.rs:324
+msgid "Login successful!"
+msgstr ""
+
+#: src/application.rs:296
+msgid "Please pay attention to check the cell phone verification code!"
+msgstr ""
+
+#: src/application.rs:302
+msgid "Failed to get verification code!"
+msgstr ""
+
+#: src/application.rs:329
+msgid "Login failed!"
+msgstr ""
+
+#: src/application.rs:507 src/application.rs:515
+msgid "Get [{}] Playback link failed!"
+msgstr ""
+
+#: src/application.rs:579 src/application.rs:986
+msgid "Failed to get song list details!"
+msgstr ""
+
+#: src/application.rs:599
+msgid "Failed to get album details!"
+msgstr ""
+
+#: src/application.rs:624
+msgid "Song list have been collected!"
+msgstr ""
+
+#: src/application.rs:628
+msgid "Failed to collect song list!"
+msgstr ""
+
+#: src/application.rs:639
+msgid "Album have been collected!"
+msgstr ""
+
+#: src/application.rs:643
+msgid "Failed to collect album!"
+msgstr ""
+
+#: src/application.rs:654
+msgid "Songs have been collected!"
+msgstr ""
+
+#: src/application.rs:658
+msgid "Failed to collect songs!"
+msgstr ""
+
+#: src/application.rs:691 src/application.rs:716 src/application.rs:741 src/application.rs:765 src/application.rs:777 src/application.rs:803 src/application.rs:831 src/application.rs:855 src/application.rs:866 src/application.rs:890 src/application.rs:916 src/application.rs:948 src/application.rs:966 src/application.rs:994 src/application.rs:1011
+msgid "Request for interface failed, please try again!"
+msgstr ""
+
+#: src/application.rs:1097 src/ncmapi.rs:86
+msgid "No lyrics found!"
+msgstr ""
+
+#: src/audio/mpris.rs:29
+msgid "Netease Cloud Music"
+msgstr ""
+
+#: src/gui/player_controls.rs:134
+msgid "Start playback [{}] ..."
+msgstr ""
+
+#: src/gui/player_controls.rs:218
+msgid "Playback error:{}"
+msgstr ""
+
+#: src/gui/player_controls.rs:472 src/gui/player_controls.rs:505 src/window.rs:432
+msgid "No more songs！"
+msgstr ""
+
+#: src/gui/player_controls.rs:525
+msgid "Please login first！"
+msgstr ""
+
+#: src/gui/player_controls.rs:536
+msgid "Collection failure！"
+msgstr ""
+
+#: src/gui/playlist_lyrics.rs:46
+msgid "Loading lyrics..."
+msgstr ""
+
+#: src/gui/search_singer_page.rs:229 src/gui/search_song_page.rs:284 src/gui/search_songlist_page.rs:269
+msgid "Loading more content..."
+msgstr ""
+
+#: src/gui/search_song_page.rs:71 src/gui/songlist_page.rs:69 src/gui/toplist.rs:71
+msgid "{} songs"
+msgstr ""
+
+#: src/gui/search_song_page.rs:298 src/gui/songlist_page.rs:151 src/gui/toplist.rs:150
+msgid "This is an empty song list！"
+msgstr ""
+
+#: src/gui/user_menus.rs:110 src/gui/user_menus.rs:124
+msgid "Input format error!"
+msgstr ""
+
+#: src/window.rs:420
+msgid "No playable songs found！"
+msgstr ""
+
+#: src/window.rs:593
+msgid "Play List&Lyrics"
+msgstr ""

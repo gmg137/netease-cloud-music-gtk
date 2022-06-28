@@ -1,0 +1,14 @@
+data/com.gitee.gmg137.NeteaseCloudMusicGtk4.desktop.in
+data/com.gitee.gmg137.NeteaseCloudMusicGtk4.appdata.xml.in
+data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml
+data/gtk/window.ui
+data/gtk/preferences.ui
+data/gtk/theme-selector.ui
+data/gtk/discover.ui
+data/gtk/user-menus.ui
+data/gtk/help-overlay.ui
+data/gtk/player-controls.ui
+data/gtk/songlist-page.ui
+data/gtk/toplist.ui
+data/gtk/my-page.ui
+data/gtk/playlist-lyrics-page.ui

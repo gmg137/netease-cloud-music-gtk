@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <requires lib="gtk" version="4.0" />
+    <template class="ThemeSelector" parent="GtkWidget">
+        <child>
+            <object class="GtkBox" id="box">
+                <property name="halign">center</property>
+                <property name="orientation">horizontal</property>
+                <property name="margin-start">24</property>
+                <property name="margin-end">24</property>
+                <property name="spacing">18</property>
+
+                <child>
+                    <object class="GtkToggleButton" id="system">
+                        <style>
+                            <class name="system" />
+                        </style>
+                        <property name="group">light</property>
+                        <property name="focus-on-click">false</property>
+                        <property name="action-name">win.style-variant</property>
+                        <property name="action-target">'system'</property>
+                        <property name="tooltip-text" translatable="yes">Use system style</property>
+                        <property name="icon-name">object-select-symbolic</property>
+                    </object>
+                </child>
+
+                <child>
+                    <object class="GtkToggleButton" id="light">
+                        <style>
+                            <class name="light" />
+                        </style>
+                        <property name="focus-on-click">false</property>
+                        <property name="action-name">win.style-variant</property>
+                        <property name="action-target">'light'</property>
+                        <property name="tooltip-text" translatable="yes">Light style</property>
+                        <property name="icon-name">object-select-symbolic</property>
+                    </object>
+                </child>
+
+                <child>
+                    <object class="GtkToggleButton" id="dark">
+                        <style>
+                            <class name="dark" />
+                        </style>
+                        <property name="group">light</property>
+                        <property name="focus-on-click">false</property>
+                        <property name="action-name">win.style-variant</property>
+                        <property name="action-target">'dark'</property>
+                        <property name="tooltip-text" translatable="yes">Dark style</property>
+                        <property name="icon-name">object-select-symbolic</property>
+                    </object>
+                </child>
+
+            </object>
+        </child>
+
+    </template>
+</interface>

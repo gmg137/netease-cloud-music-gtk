@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <requires lib="gtk" version="4.0" />
+    <template class="SearchSingerPage" parent="GtkBox">
+        <property name="valign">fill</property>
+        <property name="halign">fill</property>
+        <property name="orientation">vertical</property>
+        <property name="margin-top">20</property>
+        <property name="margin-bottom">20</property>
+        <property name="spacing">20</property>
+        <child>
+            <object class="GtkScrolledWindow">
+                <signal name="edge-overshot" handler="scrolled_edge_cb" swapped="true" />
+                <child>
+                    <object class="GtkViewport">
+                        <child>
+                            <object class="AdwClamp">
+                                <property name="vexpand">true</property>
+                                <property name="hexpand">true</property>
+                                <property name="maximum-size">1000</property>
+                                <property name="margin-top">20</property>
+                                <property name="margin-bottom">20</property>
+                                <property name="tightening-threshold">730</property>
+                                <child>
+                                    <object class="GtkGrid" id="singer_grid">
+                                        <property name="can_focus">False</property>
+                                        <property name="halign">fill</property>
+                                        <property name="margin-top">9</property>
+                                        <property name="row_spacing">15</property>
+                                        <property name="column_homogeneous">True</property>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+            </object>
+        </child>
+    </template>
+</interface>

@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="utf-8"?>
+<interface>
+    <requires lib="gtk" version="4.0" />
+    <template class="NeteaseCloudMusicGtk4Window" parent="GtkApplicationWindow">
+        <property name="default-width">1160</property>
+        <property name="default-height">820</property>
+        <property name="width-request">750</property>
+        <property name="height-request">410</property>
+        <child type="titlebar">
+            <object class="AdwHeaderBar" id="header_bar">
+                <property name="centering-policy">strict</property>
+                <child type="start">
+                    <object class="GtkButton" id="back_button">
+                        <property name="visible">false</property>
+                        <property name="action-name">win.back-button</property>
+                        <property name="icon-name">go-previous-symbolic</property>
+                    </object>
+                </child>
+                <child type="end">
+                    <object class="GtkMenuButton" id="primary_menu_button">
+                        <property name="icon-name">open-menu-symbolic</property>
+                        <property name="menu-model">primary_menu</property>
+                    </object>
+                </child>
+                <child type="end">
+                    <object class="GtkMenuButton" id="user_button">
+                        <property name="icon-name">avatar-default-symbolic</property>
+                        <property name="menu-model">user_menu</property>
+                    </object>
+                </child>
+                <child type="end">
+                    <object class="GtkToggleButton" id="search_button">
+                        <property name="icon-name">system-search-symbolic</property>
+                        <!-- <property name="action-name">win.search-button</property> -->
+                    </object>
+                </child>
+                <child type="title">
+                    <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <child>
+                            <object class="AdwViewSwitcherTitle" id="switcher_title">
+                                <property name="stack">stack</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkLabel" id="label_title">
+                                <property name="visible">false</property>
+                                <property name="label">Hello World!</property>
+                                <property name="single-line-mode">True</property>
+                                <property name="ellipsize">end</property>
+                                <property name="width-chars">5</property>
+                                <style>
+                                    <class name="title" />
+                                </style>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+            </object>
+        </child>
+        <child>
+            <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <child>
+                    <object class="AdwToastOverlay" id="toast_overlay">
+                        <property name="child">
+                            <object class="GtkBox" id="gbox">
+                                <property name="orientation">vertical</property>
+                                <child>
+                                    <object class="GtkSearchBar" id="search_bar">
+                                        <child>
+                                            <object class="GtkBox">
+                                                <child>
+                                                    <object class="GtkSearchEntry" id="search_entry">
+                                                        <property name="focusable">True</property>
+                                                        <property name="halign">center</property>
+                                                        <signal name="activate" handler="search_entry_cb" swapped="true" />
+                                                    </object>
+                                                </child>
+                                                <child>
+                                                    <object class="GtkMenuButton" id="search_menu">
+                                                        <property name="label" translatable="yes">Songs</property>
+                                                        <property name="popover">search_popover</property>
+                                                    </object>
+                                                </child>
+                                                <style>
+                                                    <class name="linked" />
+                                                </style>
+                                            </object>
+                                        </child>
+                                        <!-- 绑定属性 -->
+                                        <property name="search-mode-enabled" bind-source="search_button" bind-property="active" bind-flags="bidirectional" />
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="AdwViewStack" id="stack">
+                                        <signal name="notify::visible-child-name" handler="stack_visible_child_cb" swapped="true" />
+                                        <child>
+                                            <object class="AdwViewStackPage">
+                                                <property name="name">discover</property>
+                                                <property name="title" translatable="yes">Discover</property>
+                                                <property name="icon-name">logo-symbolic</property>
+                                                <property name="child">
+                                                    <object class="GtkScrolledWindow">
+                                                        <child>
+                                                            <object class="GtkViewport" id="discover_view">
+                                                                <property name="scroll-to-focus">False</property>
+                                                                <child>
+                                                                    <object class="Discover" id="discover" />
+                                                                </child>
+                                                            </object>
+                                                        </child>
+                                                    </object>
+                                                </property>
+                                            </object>
+                                        </child>
+                                        <child>
+                                            <object class="AdwViewStackPage">
+                                                <property name="name">toplist</property>
+                                                <property name="title" translatable="yes">Toplist</property>
+                                                <property name="icon-name">view-sort-ascending-symbolic</property>
+                                                <property name="child">
+                                                    <object class="TopListView" id="toplist" />
+                                                </property>
+                                            </object>
+                                        </child>
+                                        <child>
+                                            <object class="AdwViewStackPage">
+                                                <property name="name">my</property>
+                                                <property name="title" translatable="yes">My</property>
+                                                <property name="icon-name">folder-music-symbolic</property>
+                                                <property name="child">
+                                                    <object class="AdwViewStack" id="my_stack">
+                                                        <child>
+                                                            <object class="AdwViewStackPage">
+                                                                <property name="name">my_no_login</property>
+                                                                <property name="child">
+                                                                    <object class="AdwStatusPage">
+                                                                        <child>
+                                                                            <object class="GtkGrid">
+                                                                                <property name="can_focus">False</property>
+                                                                                <property name="halign">center</property>
+                                                                                <property name="valign">center</property>
+                                                                                <property name="margin-bottom">100</property>
+                                                                                <property name="orientation">vertical</property>
+                                                                                <child>
+                                                                                    <object class="GtkImage">
+                                                                                        <property name="visible">True</property>
+                                                                                        <property name="can_focus">False</property>
+                                                                                        <property name="opacity">0.36862745098039218</property>
+                                                                                        <property name="halign">center</property>
+                                                                                        <property name="pixel_size">128</property>
+                                                                                        <property name="icon_name">action-unavailable-symbolic</property>
+                                                                                    </object>
+                                                                                </child>
+                                                                                <child>
+                                                                                    <object class="GtkLabel">
+                                                                                        <property name="visible">True</property>
+                                                                                        <property name="can_focus">False</property>
+                                                                                        <property name="opacity">0.37</property>
+                                                                                        <property name="halign">center</property>
+                                                                                        <property name="label" translatable="yes">Not yet logged</property>
+                                                                                        <attributes>
+                                                                                            <attribute name="size" value="17000" />
+                                                                                        </attributes>
+                                                                                    </object>
+                                                                                </child>
+                                                                                <child>
+                                                                                    <object class="GtkLabel">
+                                                                                        <property name="visible">True</property>
+                                                                                        <property name="can_focus">False</property>
+                                                                                        <property name="opacity">0.37</property>
+                                                                                        <property name="halign">center</property>
+                                                                                        <property name="label" translatable="yes">Login to view and manage your private music collection</property>
+                                                                                        <attributes>
+                                                                                            <attribute name="size" value="12000" />
+                                                                                        </attributes>
+                                                                                    </object>
+                                                                                </child>
+                                                                            </object>
+                                                                        </child>
+                                                                    </object>
+                                                                </property>
+                                                            </object>
+                                                        </child>
+                                                        <child>
+                                                            <object class="AdwViewStackPage">
+                                                                <property name="name">my_login</property>
+                                                                <property name="child">
+                                                                    <object class="MyPage" id="my_page" />
+                                                                </property>
+                                                            </object>
+                                                        </child>
+                                                    </object>
+                                                </property>
+                                            </object>
+                                        </child>
+                                        <child>
+                                            <object class="AdwViewStackPage">
+                                                <property name="name">search</property>
+                                                <property name="visible">false</property>
+                                                <property name="child">
+                                                    <object class="AdwStatusPage">
+                                                        <property name="title">Search!</property>
+                                                    </object>
+                                                </property>
+                                            </object>
+                                        </child>
+                                        <child>
+                                            <object class="AdwViewStackPage">
+                                                <property name="name">songlist</property>
+                                                <property name="visible">false</property>
+                                                <property name="child">
+                                                    <object class="SonglistPage" id="songlist_page" />
+                                                </property>
+                                            </object>
+                                        </child>
+                                        <child>
+                                            <object class="AdwViewStackPage">
+                                                <property name="name">search_song_page</property>
+                                                <property name="visible">false</property>
+                                                <property name="child">
+                                                    <object class="SearchSongPage" id="search_song_page" />
+                                                </property>
+                                            </object>
+                                        </child>
+                                        <child>
+                                            <object class="AdwViewStackPage">
+                                                <property name="name">search_songlist_page</property>
+                                                <property name="visible">false</property>
+                                                <property name="child">
+                                                    <object class="SearchSongListPage" id="search_songlist_page" />
+                                                </property>
+                                            </object>
+                                        </child>
+                                        <child>
+                                            <object class="AdwViewStackPage">
+                                                <property name="name">search_singer_page</property>
+                                                <property name="visible">false</property>
+                                                <property name="child">
+                                                    <object class="SearchSingerPage" id="search_singer_page" />
+                                                </property>
+                                            </object>
+                                        </child>
+                                        <child>
+                                            <object class="AdwViewStackPage">
+                                                <property name="name">playlist_lyrics_page</property>
+                                                <property name="visible">false</property>
+                                                <property name="child">
+                                                    <object class="PlayListLyricsPage" id="playlist_lyrics_page" />
+                                                </property>
+                                            </object>
+                                        </child>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="AdwViewSwitcherBar">
+                                        <property name="stack">stack</property>
+                                        <binding name="reveal">
+                                            <lookup name="title-visible">switcher_title</lookup>
+                                        </binding>
+                                    </object>
+                                </child>
+                            </object>
+                        </property>
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkRevealer" id="player_revealer">
+                        <property name="height-request">60</property>
+                        <property name="visible">false</property>
+                        <property name="transition-duration">888</property>
+                        <property name="transition-type">swing-up</property>
+                        <child>
+                            <object class="PlayerControls" id="player_controls" />
+                        </child>
+                    </object>
+                </child>
+            </object>
+        </child>
+    </template>
+
+    <menu id="primary_menu">
+        <section>
+            <item>
+                <attribute name="custom">theme</attribute>
+            </item>
+        </section>
+
+        <section>
+            <item>
+                <attribute name="label" translatable="yes">_Preferences</attribute>
+                <attribute name="action">app.preferences</attribute>
+            </item>
+            <item>
+                <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
+                <attribute name="action">win.show-help-overlay</attribute>
+            </item>
+            <item>
+                <attribute name="label" translatable="yes">_About netease-cloud-music-gtk4</attribute>
+                <attribute name="action">app.about</attribute>
+            </item>
+        </section>
+    </menu>
+    <menu id="user_menu">
+        <section>
+            <!-- <attribute name="display-hint">circular-buttons</attribute> -->
+            <item>
+                <attribute name="custom">user_popover</attribute>
+            </item>
+        </section>
+        <!-- <section> -->
+        <!--     <attribute name="display-hint">horizontal-buttons</attribute> -->
+        <!--     <item> -->
+        <!--         <attribute name="label">签到</attribute> -->
+        <!--         <attribute name="action">app.copy</attribute> -->
+        <!--         <attribute name="verb-icon">emblem-ok-symbolic</attribute> -->
+        <!--     </item> -->
+        <!--     <item> -->
+        <!--         <attribute name="label">退出</attribute> -->
+        <!--         <attribute name="verb-icon">system-log-out-symbolic</attribute> -->
+        <!--     </item> -->
+        <!-- </section> -->
+    </menu>
+    <object class="GtkPopover" id="search_popover">
+        <child>
+            <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <child>
+                    <object class="GtkCheckButton" id="song">
+                        <property name="label" translatable="yes">Songs</property>
+                        <property name="active">true</property>
+                        <signal name="toggled" handler="search_song_cb" swapped="true" />
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkCheckButton" id="singer">
+                        <property name="label" translatable="yes">Singer</property>
+                        <property name="group">song</property>
+                        <signal name="toggled" handler="search_singer_cb" swapped="true" />
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkCheckButton" id="album">
+                        <property name="label" translatable="yes">Album</property>
+                        <property name="group">song</property>
+                        <signal name="toggled" handler="search_album_cb" swapped="true" />
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkCheckButton" id="lyrics">
+                        <property name="label" translatable="yes">Lyrics</property>
+                        <property name="group">song</property>
+                        <signal name="toggled" handler="search_lyrics_cb" swapped="true" />
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkCheckButton" id="songlist">
+                        <property name="label" translatable="yes">Song List</property>
+                        <property name="group">song</property>
+                        <signal name="toggled" handler="search_songlist_cb" swapped="true" />
+                    </object>
+                </child>
+            </object>
+        </child>
+    </object>
+</interface>

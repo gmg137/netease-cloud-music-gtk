@@ -1,0 +1,53 @@
+/*
+ * themesselector.css
+ * Copyright (C) 2022 gmg137
+ *
+ * Distributed under terms of the GPL-3.0-or-later license.
+ */
+
+themeselector button {
+  -gtk-icon-source: none;
+  background: none;
+  box-shadow: none;
+  padding: 12px;
+  margin: 2px;
+  border-radius: 100%;
+  border: solid 1px @light_4;
+}
+
+themeselector button image {
+  margin: 0;
+  padding: 2px;
+  background-color: @accent_bg_color;
+  color: @accent_fg_color;
+  border-radius: 100%;
+  opacity: 0;
+  transform: scale(0.75) translate(24px, 24px);
+}
+
+/* Checked */
+themeselector button:checked {
+  margin: 0;
+  border-width: 3px;
+  border-color: @accent_bg_color;
+}
+
+themeselector button:checked image {
+  opacity: 1;
+}
+
+/* Individual styles */
+themeselector button.system {
+  color: #1e1e1e;
+  background: linear-gradient(135deg, @light_1 0%, @light_1 49%, @dark_3 51%, @dark_3 100%);
+}
+
+themeselector button.light {
+  color: @dark_3;
+  background-color: @light_1;
+}
+
+themeselector button.dark {
+  color: @light_1;
+  background-color: @dark_3;
+}

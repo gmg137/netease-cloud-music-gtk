@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="netease-cloud-music-gtk4">
+    <schema id="com.gitee.gmg137.NeteaseCloudMusicGtk4" path="/com/gitee/gmg137/NeteaseCloudMusicGtk4/">
+        <key name="style-variant" type="s">
+            <choices>
+                <choice value='system' />
+                <choice value='light' />
+                <choice value='dark' />
+            </choices>
+            <default>'system'</default>
+            <summary>Settings theme</summary>
+        </key>
+        <key name="repeat-variant" type="s">
+            <choices>
+                <choice value='none' />
+                <choice value='one' />
+                <choice value='loop' />
+                <choice value='shuffle' />
+            </choices>
+            <default>'none'</default>
+            <summary>Settings player loop</summary>
+        </key>
+        <key name="exit-switch" type="b">
+            <default>false</default>
+            <summary>Set exit key behavior</summary>
+        </key>
+        <key name="proxy-address" type="s">
+            <default>''</default>
+            <summary>Settings proxy address</summary>
+        </key>
+        <key name="music-rate" type="u">
+            <default>0</default>
+            <summary>Settings music rate</summary>
+        </key>
+    </schema>
+</schemalist>

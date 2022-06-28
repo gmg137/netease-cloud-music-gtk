@@ -1,0 +1,13 @@
+[default]
+name=Default
+runtime=host
+toolchain=default
+config-opts=
+run-opts=
+prefix=/home/gmg/.cache/gnome-builder/install/netease-cloud-music-gtk4/host
+app-id=
+postbuild=
+prebuild=
+default=true
+
+[default.environment]
