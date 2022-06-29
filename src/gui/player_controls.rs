@@ -465,6 +465,12 @@ mod imp {
             if let Ok(mut playlist) = self.playlist.lock() {
                 if let Some(song_info) = playlist.prev_song() {
                     sender.send(Action::Play(song_info.to_owned())).unwrap();
+                    sender
+                        .send(Action::GetLyrics(song_info.to_owned()))
+                        .unwrap();
+                    sender
+                        .send(Action::UpdatePlayListStatus(playlist.get_position()))
+                        .unwrap();
                     return;
                 }
             }
@@ -498,6 +504,12 @@ mod imp {
             if let Ok(mut playlist) = self.playlist.lock() {
                 if let Some(song_info) = playlist.next_song() {
                     sender.send(Action::Play(song_info.to_owned())).unwrap();
+                    sender
+                        .send(Action::GetLyrics(song_info.to_owned()))
+                        .unwrap();
+                    sender
+                        .send(Action::UpdatePlayListStatus(playlist.get_position()))
+                        .unwrap();
                     return;
                 }
             }

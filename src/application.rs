@@ -71,6 +71,8 @@ pub enum Action {
     InitMyPageRecSongList(Vec<SongList>),
     ToPlayListLyricsPage(Vec<SongInfo>, SongInfo),
     UpdateLyrics(String),
+    UpdatePlayListStatus(usize),
+    GetLyrics(SongInfo),
 }
 
 mod imp {
@@ -1088,6 +1090,10 @@ impl NeteaseCloudMusicGtk4Application {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.init_playlist_lyrics_page(sis, si.to_owned());
                 let sender = imp.sender.clone();
+                sender.send(Action::GetLyrics(si)).unwrap();
+            }
+            Action::GetLyrics(si) => {
+                let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
                     if let Ok(lrc) = ncmapi.get_lyrics(si.id).await {
@@ -1102,6 +1108,10 @@ impl NeteaseCloudMusicGtk4Application {
             Action::UpdateLyrics(lrc) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.update_lyrics(lrc);
+            }
+            Action::UpdatePlayListStatus(index) => {
+                let window = imp.window.get().unwrap().upgrade().unwrap();
+                window.updat_playlist_status(index);
             }
         }
         glib::Continue(true)

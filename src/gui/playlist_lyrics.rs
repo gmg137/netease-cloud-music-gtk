@@ -71,6 +71,7 @@ impl PlayListLyricsPage {
             row.connect_activate(move |row| {
                 row.switch_image(true);
                 sender.send(Action::AddPlay(si.clone())).unwrap();
+                sender.send(Action::GetLyrics(si.clone())).unwrap();
             });
             listbox.append(&row);
             index += 1;
@@ -82,6 +83,22 @@ impl PlayListLyricsPage {
         let buffer = lyrics_text_view.buffer();
         buffer.set_text(&lyrics);
         lyrics_text_view.set_buffer(Some(&buffer));
+    }
+
+    pub fn switch_row(&self, index: i32) {
+        let imp = self.imp();
+        let listbox = imp.playlist_box.get();
+        let current_row_index: i32 = self.property("select-row");
+        if let Some(row) = listbox.row_at_index(current_row_index) {
+            let row = row.downcast::<SonglistRow>().unwrap();
+            row.switch_image(false);
+        }
+
+        self.set_property("select-row", index);
+        if let Some(row) = listbox.row_at_index(index) {
+            let row = row.downcast::<SonglistRow>().unwrap();
+            row.switch_image(true);
+        }
     }
 }
 
@@ -102,8 +119,6 @@ mod imp {
         pub playlist_box: TemplateChild<ListBox>,
         #[template_child]
         pub lyrics_text_view: TemplateChild<TextView>,
-        // #[template_child]
-        // pub daily_rec_avatar: TemplateChild<adw::Avatar>,
         pub playlist: Rc<RefCell<Vec<SongInfo>>>,
         pub sender: OnceCell<Sender<Action>>,
         select_row: Cell<i32>,
@@ -117,22 +132,12 @@ mod imp {
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
-            // klass.bind_template_callbacks();
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
             obj.init_template();
         }
     }
-
-    // #[gtk::template_callbacks]
-    // impl PlayListLyricsPage {
-    //     #[template_callback]
-    //     fn daily_rec_cb(&self) {
-    //         let sender = self.sender.get().unwrap();
-    //         sender.send(Action::ToPlayListLyricsPageDailyRec).unwrap();
-    //     }
-    // }
 
     impl ObjectImpl for PlayListLyricsPage {
         fn constructed(&self, obj: &Self::Type) {
@@ -152,8 +157,6 @@ mod imp {
                     }
                 }),
             );
-            // let select_row = Rc::new(RefCell::new(-1));
-            // self.playlist_box.connect_row_activated(move |list, row| {});
         }
 
         fn properties() -> &'static [ParamSpec] {

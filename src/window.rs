@@ -422,15 +422,8 @@ impl NeteaseCloudMusicGtk4Window {
     }
 
     pub fn play_next(&self) {
-        let sender = self.imp().sender.get().unwrap();
         let player_controls = self.imp().player_controls.get();
-        if let Some(song_info) = player_controls.get_next_song() {
-            sender.send(Action::Play(song_info)).unwrap();
-            return;
-        }
-        sender
-            .send(Action::AddToast(gettext("No more songs！")))
-            .unwrap();
+        player_controls.next_song();
     }
 
     pub fn play(&self, song_info: SongInfo) {
@@ -599,7 +592,20 @@ impl NeteaseCloudMusicGtk4Window {
 
     pub fn update_lyrics(&self, lrc: String) {
         let imp = self.imp();
-        imp.playlist_lyrics_page.update_lyrics(lrc);
+        if let Some(name) = imp.stack.visible_child_name() {
+            if name == "playlist_lyrics_page" {
+                imp.playlist_lyrics_page.update_lyrics(lrc);
+            }
+        }
+    }
+
+    pub fn updat_playlist_status(&self, index: usize) {
+        let imp = self.imp();
+        if let Some(name) = imp.stack.visible_child_name() {
+            if name == "playlist_lyrics_page" {
+                imp.playlist_lyrics_page.switch_row(index as i32);
+            }
+        }
     }
 }
 
