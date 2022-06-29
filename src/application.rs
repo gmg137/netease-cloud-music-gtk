@@ -1140,10 +1140,12 @@ impl NeteaseCloudMusicGtk4Application {
         let dialog = gtk::AboutDialog::builder()
             .transient_for(&window)
             .modal(true)
-            .program_name("netease-cloud-music-gtk4")
+            .program_name(&gettext("Netease Cloud Music Gtk4"))
             .logo_icon_name("logo")
             .version(VERSION)
             .authors(vec!["gmg137".into()])
+            .website("https://github.com/gmg137/netease-cloud-music-gtk")
+            .license_type(gtk::License::Gpl30)
             .build();
 
         dialog.present();
