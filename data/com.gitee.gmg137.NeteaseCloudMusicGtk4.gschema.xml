@@ -32,5 +32,13 @@
             <default>0</default>
             <summary>Settings music rate</summary>
         </key>
+        <key name="cache-clear" type="u">
+            <default>0</default>
+            <summary>Settings cache clear rules, 0: Never, 1: Daily, 2: Weekly, 3: Monthly</summary>
+        </key>
+        <key name="cache-clear-flag" type="b">
+            <default>false</default>
+            <summary>Cache clear flag</summary>
+        </key>
     </schema>
 </schemalist>

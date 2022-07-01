@@ -38,6 +38,21 @@
                                 </child>
                             </object>
                         </child>
+                        <child>
+                            <object class="AdwComboRow" id="cache_clear">
+                                <property name="title" translatable="yes">Cache cleaning</property>
+                                <property name="model">
+                                    <object class="GtkStringList">
+                                        <items>
+                                            <item translatable="yes">Never</item>
+                                            <item translatable="yes">Daily</item>
+                                            <item translatable="yes">Weekly</item>
+                                            <item translatable="yes">Monthly</item>
+                                        </items>
+                                    </object>
+                                </property>
+                            </object>
+                        </child>
                     </object>
                 </child>
                 <child>

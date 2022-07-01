@@ -1,10 +1,12 @@
 use adw::subclass::prelude::*;
 use gettextrs::gettext;
+use gio::Settings;
 use glib::{clone, timeout_future_seconds, MainContext, Receiver, Sender, WeakRef};
 use gtk::{gio, glib, prelude::*, subclass::prelude::*};
 use ncm_api::{BannersInfo, LoginInfo, SingerInfo, SongInfo, SongList, TopList};
 use once_cell::sync::OnceCell;
 use std::cell::RefCell;
+use std::fs;
 use std::path::PathBuf;
 
 use crate::{
@@ -113,6 +115,7 @@ mod imp {
             self.parent_constructed(obj);
 
             obj.setup_gactions();
+            obj.setup_cache_clear();
             obj.set_accels_for_action("app.quit", &["<primary>q"]);
             obj.set_accels_for_action("app.about", &["<primary>a"]);
             obj.set_accels_for_action("win.search-button", &["<primary>f", "slash"]);
@@ -1160,6 +1163,57 @@ impl NeteaseCloudMusicGtk4Application {
 
         dialog.present();
     }
+
+    fn setup_cache_clear(&self) {
+        let sender = self.imp().sender.clone();
+        let settings = Settings::new(crate::APP_ID);
+        let cache_clear = settings.uint("cache-clear");
+        let flag = settings.boolean("cache-clear-flag");
+        let cache_path = CACHE.clone();
+        let ctx = glib::MainContext::default();
+        ctx.spawn_local(async move {
+            match cache_clear {
+                1 => {
+                    if remove_all_file(cache_path).is_ok() {
+                        sender
+                            .send(Action::AddToast(gettext("Cache cleared.")))
+                            .unwrap();
+                    }
+                }
+                2 => {
+                    if let Ok(datetime) = glib::DateTime::now_local() {
+                        if datetime.day_of_week() == 1 && !flag {
+                            if remove_all_file(cache_path).is_ok() {
+                                sender
+                                    .send(Action::AddToast(gettext("Cache cleared.")))
+                                    .unwrap();
+                            }
+                            settings.set_boolean("cache-clear-flag", true).unwrap();
+                        } else if datetime.day_of_week() != 1 {
+                            settings.set_boolean("cache-clear-flag", false).unwrap();
+                        }
+                    }
+                }
+                3 => {
+                    if let Ok(datetime) = glib::DateTime::now_local() {
+                        if datetime.day_of_month() == 1 && !flag {
+                            if remove_all_file(cache_path).is_ok() {
+                                sender
+                                    .send(Action::AddToast(gettext("Cache cleared.")))
+                                    .unwrap();
+                            }
+                            settings.set_boolean("cache-clear-flag", true).unwrap();
+                        } else if datetime.day_of_month() != 1 {
+                            settings.set_boolean("cache-clear-flag", false).unwrap();
+                        }
+                    }
+                }
+                _ => {
+                    settings.set_boolean("cache-clear-flag", false).unwrap();
+                }
+            }
+        });
+    }
 }
 
 impl Default for NeteaseCloudMusicGtk4Application {
@@ -1169,4 +1223,15 @@ impl Default for NeteaseCloudMusicGtk4Application {
             .downcast()
             .unwrap()
     }
+}
+
+fn remove_all_file(path: PathBuf) -> anyhow::Result<()> {
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() {
+            fs::remove_file(path)?;
+        }
+    }
+    Ok(())
 }

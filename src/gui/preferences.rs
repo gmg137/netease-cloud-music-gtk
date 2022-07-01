@@ -51,6 +51,12 @@ impl NeteaseCloudMusicGtk4Preferences {
             .bind("music-rate", &rate, "selected")
             .flags(SettingsBindFlags::DEFAULT)
             .build();
+
+        let cache_clear = self.imp().cache_clear.get();
+        self.settings()
+            .bind("cache-clear", &cache_clear, "selected")
+            .flags(SettingsBindFlags::DEFAULT)
+            .build();
     }
 }
 
@@ -76,6 +82,8 @@ mod imp {
         pub proxy_entry: TemplateChild<Entry>,
         #[template_child]
         pub switch_rate: TemplateChild<adw::ComboRow>,
+        #[template_child]
+        pub cache_clear: TemplateChild<adw::ComboRow>,
     }
 
     #[glib::object_subclass]
@@ -86,64 +94,12 @@ mod imp {
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
-            // klass.bind_template_callbacks();
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
             obj.init_template();
         }
     }
-
-    // #[gtk::template_callbacks]
-    // impl NeteaseCloudMusicGtk4Preferences {
-    //     #[template_callback]
-    //     fn daily_rec_cb(&self) {
-    //         let sender = self.sender.get().unwrap();
-    //         sender
-    //             .send(Action::ToNeteaseCloudMusicGtk4PreferencesDailyRec)
-    //             .unwrap();
-    //     }
-    //
-    //     #[template_callback]
-    //     fn heartbeat_cb(&self) {
-    //         let sender = self.sender.get().unwrap();
-    //         sender
-    //             .send(Action::ToNeteaseCloudMusicGtk4PreferencesHeartbeat)
-    //             .unwrap();
-    //     }
-    //
-    //     #[template_callback]
-    //     fn fm_cb(&self) {
-    //         let sender = self.sender.get().unwrap();
-    //         sender
-    //             .send(Action::ToNeteaseCloudMusicGtk4PreferencesFm)
-    //             .unwrap();
-    //     }
-    //
-    //     #[template_callback]
-    //     fn cloud_disk_cb(&self) {
-    //         let sender = self.sender.get().unwrap();
-    //         sender
-    //             .send(Action::ToNeteaseCloudMusicGtk4PreferencesCloudDisk)
-    //             .unwrap();
-    //     }
-    //
-    //     #[template_callback]
-    //     fn collection_album_cb(&self) {
-    //         let sender = self.sender.get().unwrap();
-    //         sender
-    //             .send(Action::ToNeteaseCloudMusicGtk4PreferencesAlbums)
-    //             .unwrap();
-    //     }
-    //
-    //     #[template_callback]
-    //     fn collection_songlist_cb(&self) {
-    //         let sender = self.sender.get().unwrap();
-    //         sender
-    //             .send(Action::ToNeteaseCloudMusicGtk4PreferencesSonglist)
-    //             .unwrap();
-    //     }
-    // }
 
     impl ObjectImpl for NeteaseCloudMusicGtk4Preferences {
         fn constructed(&self, obj: &Self::Type) {
