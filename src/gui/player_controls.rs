@@ -11,7 +11,7 @@ use gst::ClockTime;
 use gstreamer_player::*;
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use mpris_player::{LoopStatus, PlaybackStatus};
-use ncm_api::SongInfo;
+use ncm_api::{SongInfo, SongList};
 use once_cell::sync::*;
 
 use crate::{application::Action, audio::*, ncmapi::COOKIE_JAR, path::CACHE};
@@ -19,6 +19,7 @@ use std::{
     cell::Cell,
     rc::Rc,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
 glib::wrapper! {
@@ -388,6 +389,40 @@ impl PlayerControls {
             mpris.set_volume(adj.value());
         }
         self.set_property("volume", adj.value());
+    }
+
+    #[template_callback]
+    fn cover_clicked_cb(&self) {
+        let sender = self.imp().sender.get().unwrap().clone();
+        if let Some(songinfo) = self.get_current_song() {
+            let mut path = CACHE.clone();
+            path.push(format!("{}-songlist.jpg", songinfo.album_id));
+            if sender
+                .send(Action::DownloadImage(
+                    songinfo.pic_url.to_owned(),
+                    path.to_owned(),
+                    140,
+                    140,
+                ))
+                .is_ok()
+            {
+                let songlist = SongList {
+                    id: songinfo.album_id,
+                    name: songinfo.album,
+                    cover_img_url: songinfo.pic_url,
+                };
+                let path = path.to_owned();
+                glib::timeout_add_local(Duration::from_millis(100), move || {
+                    if path.exists() {
+                        sender
+                            .send(Action::ToAlbumPage(songlist.to_owned()))
+                            .unwrap();
+                        return Continue(false);
+                    }
+                    Continue(true)
+                });
+            }
+        }
     }
 }
 

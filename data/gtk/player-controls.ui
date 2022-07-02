@@ -60,6 +60,11 @@
                 <property name="valign">center</property>
                 <property name="icon-name">image-missing-symbolic</property>
                 <property name="pixel-size">50</property>
+                <child>
+                    <object class="GtkGestureClick">
+                        <signal name="pressed" handler="cover_clicked_cb" swapped="true" />
+                    </object>
+                </child>
             </object>
         </child>
         <child>
