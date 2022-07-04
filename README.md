@@ -27,7 +27,50 @@
 - [x] 歌词
 - [ ] 桌面歌词
 
-### FAQ
+## 运行依赖
+> openssl, gstreamer, gstreamer-plugins-base, gstreamer-plugins-good, gstreamer-plugins-bad, gstreamer-plugins-ugly
+
+## 安装
+### openSUSE Tumbleweed
+```bash
+sudo zypper in netease-cloud-music-gtk
+```
+### openSUSE Leap
+```bash
+// 添加源
+sudo zypper ar -f obs://multimedia:apps multimedia
+// 安装
+sudo zypper in netease-cloud-music-gtk
+```
+
+### Arch Linux
+```bash
+sudo pacman -Syu netease-cloud-music-gtk4
+```
+
+### flatpak
+```
+// 先下载 flatpak 安装包
+sudo flatpak install com.gitee.gmg137.NeteaseCloudMusicGtk4-*.flatpak
+```
+
+### 从源码安装(不推荐)
+> 编译依赖: opensssl、dbus、gtk4、gdk-pixbuf、libadwaita-1、gstreamer、gstreamer-base
+```
+// 下载源码
+git clone https://github.com/gmg137/netease-cloud-music-gtk.git
+cd netease-cloud-music-gtk
+
+// 编译
+meson _build
+cd _build
+ninja
+
+// 安装
+sudo ninja install
+```
+
+## FAQ
 1. 为什么后台运行时没有托盘图标?
 > 由于 GTK3 开始取消了托盘接口，所以目前不打算实现托盘功能。<br>
 > **替代方案:**
@@ -37,6 +80,8 @@
 > 对于未缓存歌曲会先缓存到本地后再进行播放，取决于音乐文件大小与网速，会有不同的播放延迟。
 3. 音乐缓存目录在什么位置?
 > 缓存位于用户主目录下 .cache/netease-cloud-music-gtk4 文件夹内。
+4. 为什么每次启动时会变成静音?
+> 参考了一些视频应用的做法，主要是为了防止突然播放时造成尴尬。
 
 ## 截图
 ![](./screenshots/discover.png)
