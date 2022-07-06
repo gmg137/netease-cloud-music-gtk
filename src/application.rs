@@ -498,6 +498,8 @@ impl NeteaseCloudMusicGtk4Application {
                 if !path_mp3.exists() && !path_flac.exists() && !path_m4a.exists() {
                     let ctx = glib::MainContext::default();
                     ctx.spawn_local(async move {
+                        let music_rate = window.settings().uint("music-rate");
+                        ncmapi.set_rate(music_rate);
                         if song_info.song_url.is_empty() {
                             if let Ok(song_url) = ncmapi.songs_url(&[song_info.id]).await {
                                 if let Some(song_url) = song_url.get(0) {
@@ -551,8 +553,6 @@ impl NeteaseCloudMusicGtk4Application {
                 } else {
                     path.push(format!("{}.m4a", song_info.id));
                 }
-                let music_rate = window.settings().uint("music-rate");
-                ncmapi.set_rate(music_rate);
                 ctx.spawn_local(async move {
                     if ncmapi
                         .client
