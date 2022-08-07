@@ -9,5 +9,5 @@ Exec=netease-cloud-music-gtk4
 Icon=com.gitee.gmg137.NeteaseCloudMusicGtk4
 Terminal=false
 Type=Application
-Categories=GTK;
+Categories=GTK;Audio;AudioVideo
 StartupNotify=true
