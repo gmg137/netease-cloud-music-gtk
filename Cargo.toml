@@ -16,6 +16,8 @@ fragile = "*"
 fastrand = "*"
 mpris-player = "0.6.1"
 regex = "*"
+log = "*"
+env_logger = "*"
 
 [dependencies.adw]
 package = "libadwaita"

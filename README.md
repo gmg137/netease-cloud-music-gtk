@@ -82,6 +82,8 @@ sudo ninja install
 > 缓存位于用户主目录下 .cache/netease-cloud-music-gtk4 文件夹内。
 4. 为什么每次启动时会变成静音?
 > 参考了一些视频应用的做法，主要是为了防止突然播放时造成尴尬。
+5. 如何查看日志
+> 从终端启动程序，添加环境变量 RUST_LOG=debug 或 RUST_LOG=netease_cloud_music_gtk4。
 
 ## 截图
 ![](./screenshots/discover.png)

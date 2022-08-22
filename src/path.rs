@@ -8,6 +8,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use gtk::glib;
+use log::*;
 use once_cell::sync::Lazy;
 
 use crate::config;
@@ -15,18 +16,21 @@ use crate::config;
 pub static DATA: Lazy<PathBuf> = Lazy::new(|| {
     let mut path = glib::user_data_dir();
     path.push(config::GETTEXT_PACKAGE);
+    debug!("初始化数据目录: {:?}", path);
     path
 });
 
 pub static CONFIG: Lazy<PathBuf> = Lazy::new(|| {
     let mut path = glib::user_config_dir();
     path.push(config::GETTEXT_PACKAGE);
+    debug!("初始化配置目录: {:?}", path);
     path
 });
 
 pub static CACHE: Lazy<PathBuf> = Lazy::new(|| {
     let mut path = glib::user_cache_dir();
     path.push(config::GETTEXT_PACKAGE);
+    debug!("初始化缓存目录: {:?}", path);
     path
 });
 

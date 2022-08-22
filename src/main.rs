@@ -16,9 +16,14 @@ use gtk::gio;
 use gtk::glib;
 use gtk::prelude::*;
 
+use env_logger::Env;
+
 const APP_ID: &str = "com.gitee.gmg137.NeteaseCloudMusicGtk4";
 
 fn main() {
+    // Initialize log
+    env_logger::Builder::from_env(Env::default().default_filter_or("off")).init();
+
     // Initialize gstreamer
     gstreamer::init().expect("Error initializing gstreamer");
 
