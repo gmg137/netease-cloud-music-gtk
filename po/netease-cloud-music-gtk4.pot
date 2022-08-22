@@ -287,27 +287,27 @@ msgstr ""
 msgid "Like songs list"
 msgstr ""
 
-#: data/gtk/my-page.ui:40 src/application.rs:962
+#: data/gtk/my-page.ui:40 src/application.rs:1013
 msgid "Daily Recommendation"
 msgstr ""
 
-#: data/gtk/my-page.ui:67 src/application.rs:979
+#: data/gtk/my-page.ui:67 src/application.rs:1031
 msgid "Favorite Songs"
 msgstr ""
 
-#: data/gtk/my-page.ui:94 src/application.rs:1024
+#: data/gtk/my-page.ui:94 src/application.rs:1078
 msgid "Private FM"
 msgstr ""
 
-#: data/gtk/my-page.ui:121 src/application.rs:1007
+#: data/gtk/my-page.ui:121 src/application.rs:1060
 msgid "Cloud Music"
 msgstr ""
 
-#: data/gtk/my-page.ui:148 src/application.rs:1040
+#: data/gtk/my-page.ui:148 src/application.rs:1095
 msgid "Favorite Album"
 msgstr ""
 
-#: data/gtk/my-page.ui:175 src/application.rs:1049
+#: data/gtk/my-page.ui:175 src/application.rs:1104
 msgid "Favorite Song List"
 msgstr ""
 
@@ -315,75 +315,75 @@ msgstr ""
 msgid "Recommended Song List"
 msgstr ""
 
-#: src/application.rs:252
+#: src/application.rs:258
 msgid "Have scanned the QR code, waiting for confirmation!"
 msgstr ""
 
-#: src/application.rs:269 src/application.rs:329
+#: src/application.rs:277 src/application.rs:343
 msgid "Login successful!"
 msgstr ""
 
-#: src/application.rs:301
+#: src/application.rs:312
 msgid "Please pay attention to check the cell phone verification code!"
 msgstr ""
 
-#: src/application.rs:307
+#: src/application.rs:319
 msgid "Failed to get verification code!"
 msgstr ""
 
-#: src/application.rs:334
+#: src/application.rs:349
 msgid "Login failed!"
 msgstr ""
 
-#: src/application.rs:512 src/application.rs:520
+#: src/application.rs:536 src/application.rs:545
 msgid "Get [{}] Playback link failed!"
 msgstr ""
 
-#: src/application.rs:584 src/application.rs:991
+#: src/application.rs:613 src/application.rs:1044
 msgid "Failed to get song list details!"
 msgstr ""
 
-#: src/application.rs:604
+#: src/application.rs:636
 msgid "Failed to get album details!"
 msgstr ""
 
-#: src/application.rs:629
+#: src/application.rs:660
 msgid "Song list have been collected!"
 msgstr ""
 
-#: src/application.rs:633
+#: src/application.rs:665
 msgid "Failed to collect song list!"
 msgstr ""
 
-#: src/application.rs:644
+#: src/application.rs:677
 msgid "Album have been collected!"
 msgstr ""
 
-#: src/application.rs:648
+#: src/application.rs:682
 msgid "Failed to collect album!"
 msgstr ""
 
-#: src/application.rs:659
+#: src/application.rs:694
 msgid "Songs have been collected!"
 msgstr ""
 
-#: src/application.rs:663
+#: src/application.rs:699
 msgid "Failed to collect songs!"
 msgstr ""
 
-#: src/application.rs:696 src/application.rs:721 src/application.rs:746 src/application.rs:770 src/application.rs:782 src/application.rs:808 src/application.rs:836 src/application.rs:860 src/application.rs:871 src/application.rs:895 src/application.rs:921 src/application.rs:953 src/application.rs:971 src/application.rs:999 src/application.rs:1016
+#: src/application.rs:736 src/application.rs:762 src/application.rs:788 src/application.rs:813 src/application.rs:826 src/application.rs:853 src/application.rs:882 src/application.rs:907 src/application.rs:919 src/application.rs:944 src/application.rs:971 src/application.rs:1004 src/application.rs:1023 src/application.rs:1052 src/application.rs:1070
 msgid "Request for interface failed, please try again!"
 msgstr ""
 
-#: src/application.rs:1106 src/ncmapi.rs:86
+#: src/application.rs:1163 src/ncmapi.rs:86
 msgid "No lyrics found!"
 msgstr ""
 
-#: src/application.rs:1156
+#: src/application.rs:1213
 msgid "Netease Cloud Music Gtk4"
 msgstr ""
 
-#: src/application.rs:1179 src/application.rs:1188 src/application.rs:1202
+#: src/application.rs:1236 src/application.rs:1245 src/application.rs:1259
 msgid "Cache cleared."
 msgstr ""
 
@@ -391,23 +391,23 @@ msgstr ""
 msgid "Netease Cloud Music"
 msgstr ""
 
-#: src/gui/player_controls.rs:134
+#: src/gui/player_controls.rs:135
 msgid "Start playback [{}] ..."
 msgstr ""
 
-#: src/gui/player_controls.rs:218
+#: src/gui/player_controls.rs:219
 msgid "Playback error:{}"
 msgstr ""
 
-#: src/gui/player_controls.rs:478 src/gui/player_controls.rs:517
+#: src/gui/player_controls.rs:513 src/gui/player_controls.rs:552
 msgid "No more songs！"
 msgstr ""
 
-#: src/gui/player_controls.rs:537
+#: src/gui/player_controls.rs:572
 msgid "Please login first！"
 msgstr ""
 
-#: src/gui/player_controls.rs:548
+#: src/gui/player_controls.rs:583
 msgid "Collection failure！"
 msgstr ""
 
