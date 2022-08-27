@@ -220,7 +220,7 @@ impl NeteaseCloudMusicGtk4Application {
                 }
             }
             Action::CheckQrTimeoutCb(unikey) => {
-                debug!("检查登陆二维码状态，unikey={}", unikey);
+                debug!("检查登录二维码状态，unikey={}", unikey);
                 {
                     let mut key = imp.unikey.write().unwrap();
                     *key = unikey.clone();
@@ -260,7 +260,7 @@ impl NeteaseCloudMusicGtk4Application {
                                         send_toast = false;
                                     }
                                 }
-                                // 登陆成功
+                                // 登录成功
                                 803 => {
                                     debug!("登录成功，unikey={}", unikey);
                                     if let Ok(login_info) = ncmapi.client.login_status().await {
@@ -326,7 +326,7 @@ impl NeteaseCloudMusicGtk4Application {
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
-                    debug!("使用验证码登陆：{}", captcha);
+                    debug!("使用验证码登录：{}", captcha);
                     if let Ok(login_info) =
                         ncmapi.client.login_cellphone(ctcode, phone, captcha).await
                     {
@@ -344,7 +344,7 @@ impl NeteaseCloudMusicGtk4Application {
                             .unwrap();
                         sender.send(Action::InitMyPage).unwrap();
                     } else {
-                        error!("登陆失败！");
+                        error!("登录失败！");
                         sender
                             .send(Action::AddToast(gettext("Login failed!")))
                             .unwrap();
