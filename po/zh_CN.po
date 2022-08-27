@@ -189,7 +189,7 @@ msgstr "点击刷新"
 
 #: data/gtk/user-menus.ui:42
 msgid "Mobile Number Login"
-msgstr "手机号登陆"
+msgstr "手机号登录"
 
 #: data/gtk/user-menus.ui:93
 msgid "Phone"
