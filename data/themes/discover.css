@@ -1,0 +1,10 @@
+/*
+ * discover.css
+ * Copyright (C) 2022 gmg137
+ *
+ * Distributed under terms of the GPL-3.0-or-later license.
+ */
+
+button.hover-button:hover {
+  background-color: rgba(255,255,255,0.5);
+}
