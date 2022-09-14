@@ -37,9 +37,9 @@ sudo zypper in netease-cloud-music-gtk
 ```
 ### openSUSE Leap
 ```bash
-// 添加源
+# 添加源
 sudo zypper ar -f obs://multimedia:apps multimedia
-// 安装
+# 安装
 sudo zypper in netease-cloud-music-gtk
 ```
 
@@ -53,9 +53,9 @@ sudo pacman -Syu netease-cloud-music-gtk4
 
 ### Flatpak
 ```
-// 从 Flathub 安装
+# 从 Flathub 安装
 flatpak install flathub com.github.gmg137.netease-cloud-music-gtk
-// 离线安装，先下载 Flatpak 安装包
+# 离线安装，先下载 Flatpak 安装包
 sudo flatpak install com.gitee.gmg137.NeteaseCloudMusicGtk4-*.flatpak
 ```
 
@@ -67,16 +67,16 @@ nix-env -iA nixpkgs.netease-cloud-music-gtk
 ### 从源码安装(不推荐)
 > 编译依赖: opensssl、dbus、gtk4、gdk-pixbuf、libadwaita-1、gstreamer、gstreamer-base
 ```
-// 下载源码
+# 下载源码
 git clone https://github.com/gmg137/netease-cloud-music-gtk.git
 cd netease-cloud-music-gtk
 
-// 编译
+# 编译
 meson _build
 cd _build
 ninja
 
-// 安装
+# 安装
 sudo ninja install
 ```
 
