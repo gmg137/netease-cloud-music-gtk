@@ -54,6 +54,11 @@ sudo pacman -Syu netease-cloud-music-gtk4
 sudo flatpak install com.gitee.gmg137.NeteaseCloudMusicGtk4-*.flatpak
 ```
 
+### Nix
+```bash
+nix-env -iA nixpkgs.netease-cloud-music-gtk
+```
+
 ### 从源码安装(不推荐)
 > 编译依赖: opensssl、dbus、gtk4、gdk-pixbuf、libadwaita-1、gstreamer、gstreamer-base
 ```
