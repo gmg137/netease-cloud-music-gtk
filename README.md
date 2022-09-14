@@ -51,9 +51,11 @@ paru -S netease-cloud-music-gtk4
 sudo pacman -Syu netease-cloud-music-gtk4
 ```
 
-### flatpak
+### Flatpak
 ```
-// 先下载 flatpak 安装包
+// 从 Flathub 安装
+flatpak install flathub com.github.gmg137.netease-cloud-music-gtk
+// 离线安装，先下载 Flatpak 安装包
 sudo flatpak install com.gitee.gmg137.NeteaseCloudMusicGtk4-*.flatpak
 ```
 
