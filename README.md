@@ -59,6 +59,14 @@ flatpak install flathub com.github.gmg137.netease-cloud-music-gtk
 sudo flatpak install com.gitee.gmg137.NeteaseCloudMusicGtk4-*.flatpak
 ```
 
+### Ubuntu(>=22.04)
+```bash
+echo 'deb http://download.opensuse.org/repositories/home:/nyepi:/deb/xUbuntu_22.04/ /' | sudo tee /etc/apt/sources.list.d/home:nyepi:deb.list
+curl -fsSL https://download.opensuse.org/repositories/home:nyepi:deb/xUbuntu_22.04/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/home_nyepi_deb.gpg > /dev/null
+sudo apt update
+sudo apt install netease-cloud-music-gtk
+```
+
 ### Nix
 ```bash
 nix-env -iA nixpkgs.netease-cloud-music-gtk
