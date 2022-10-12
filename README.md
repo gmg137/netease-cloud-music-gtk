@@ -43,6 +43,12 @@ sudo zypper ar -f obs://multimedia:apps multimedia
 sudo zypper in netease-cloud-music-gtk
 ```
 
+### Fedora(>=36)
+```bash
+sudo dnf copr enable nyepi/nyepi
+sudo dnf install netease-cloud-music-gtk
+```
+
 ### Arch Linux
 ```bash
 # AUR
