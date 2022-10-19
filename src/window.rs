@@ -16,6 +16,7 @@ use ncm_api::{BannersInfo, LoginInfo, SingerInfo, SongInfo, SongList, TopList};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
+    cmp::Ordering,
     collections::LinkedList,
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -259,19 +260,23 @@ impl NeteaseCloudMusicGtk4Window {
             clone!(@weak switcher_title, @weak label_title, @weak stack, @weak back_button => move |_,_|{
                 let mut child_name = String::new();
                 if let Ok(mut sc) = stack_child.lock() {
-                    if sc.len() == 2 {
-                        switcher_title.set_visible(true);
-                        label_title.set_visible(false);
-                        back_button.set_visible(false);
-                        if let Some(s) = sc.front() {
-                            child_name = s.0.to_owned();
-                        }
-                    } else {
-                        sc.pop_back();
-                        if let Some(s) = sc.pop_back() {
-                            child_name = s.0;
-                            label_title.set_text(&s.1);
-                        }
+                    match sc.len().cmp(&2) {
+                        Ordering::Less => (),
+                        Ordering::Equal => {
+                            switcher_title.set_visible(true);
+                            label_title.set_visible(false);
+                            back_button.set_visible(false);
+                            if let Some(s) = sc.front() {
+                                child_name = s.0.to_owned();
+                            }
+                        },
+                        Ordering::Greater => {
+                            sc.pop_back();
+                            if let Some(s) = sc.pop_back() {
+                                child_name = s.0;
+                                label_title.set_text(&s.1);
+                            }
+                        },
                     }
                 }
                 if !child_name.is_empty() {
