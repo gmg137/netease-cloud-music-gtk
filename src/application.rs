@@ -18,7 +18,9 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Action {
-    UpdateQrCode,
+    CheckLogin(UserMenuChild),
+    Logout,
+    TryUpdateQrCode,
     SetQrImage(PathBuf),
     CheckQrTimeout(String),
     CheckQrTimeoutCb(String),
@@ -180,6 +182,18 @@ impl NeteaseCloudMusicGtk4Application {
     }
 
     fn process_action(&self, action: Action) -> glib::Continue {
+        fn new_ncmapi(proxy_address: String) -> NcmClient {
+            if !proxy_address.is_empty() {
+                let mut ncmapi = NcmClient::new();
+                if ncmapi.set_proxy(proxy_address).is_ok() {
+                    ncmapi
+                } else {
+                    NcmClient::new()
+                }
+            } else {
+                NcmClient::new()
+            }
+        }
         let imp = self.imp();
         if self.active_window().is_none() {
             return glib::Continue(true);
@@ -187,30 +201,69 @@ impl NeteaseCloudMusicGtk4Application {
 
         let window = imp.window.get().unwrap().upgrade().unwrap();
         let proxy_address = window.settings().string("proxy-address").to_string();
-        let mut ncmapi = if !proxy_address.is_empty() {
-            let mut ncmapi = NcmClient::new();
-            if ncmapi.set_proxy(proxy_address).is_ok() {
-                ncmapi
-            } else {
-                NcmClient::new()
-            }
-        } else {
-            NcmClient::new()
-        };
+        let mut ncmapi = new_ncmapi(proxy_address.clone());
 
         match action {
-            Action::UpdateQrCode => {
+            Action::CheckLogin(user_menu) => {
+                NcmClient::try_load_cookie_jar_from_file();
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
+                ncmapi = new_ncmapi(proxy_address.clone());
+
                 ctx.spawn_local(async move {
-                    if let Ok(res) = ncmapi.create_qrcode().await {
-                        sender.send(Action::SetQrImage(res.0)).unwrap();
-                        sender.send(Action::CheckQrTimeout(res.1)).unwrap();
+                    if !window.is_logined() {
+                        if let Ok(login_info) = ncmapi.client.login_status().await {
+                            debug!("获取用户信息成功: {:?}", login_info);
+                            window.set_uid(login_info.uid);
+                            ncmapi.set_cookie_jar_to_global();
+                            NcmClient::save_cookie_jar_to_file();
+
+                            sender
+                                .send(Action::SwitchUserMenuToUser(login_info, user_menu))
+                                .unwrap();
+                            sender.send(Action::InitMyPage).unwrap();
+
+                            sender
+                                .send(Action::AddToast(gettext("Login successful!")))
+                                .unwrap();
+                        } else {
+                            error!("获取用户信息失败！");
+                            if NcmClient::cookie_file_path().exists() {
+                                sender
+                                    .send(Action::AddToast(gettext("Login failed!")))
+                                    .unwrap();
+                            }
+                            NcmClient::clean_cookie_jar_and_file();
+                        }
                     }
                 });
             }
+            Action::Logout => {
+                let sender = imp.sender.clone();
+                let ctx = glib::MainContext::default();
+                ctx.spawn_local(async move {
+                    ncmapi.client.logout().await;
+                    NcmClient::clean_cookie_jar_and_file();
+
+                    window.logout();
+                    window.switch_my_page_to_logout();
+                    sender.send(Action::SwitchUserMenuToQr).unwrap();
+                    sender.send(Action::AddToast(gettext("Logout!"))).unwrap();
+                });
+            }
+            Action::TryUpdateQrCode => {
+                if !window.is_logined() && window.is_user_menu_active(UserMenuChild::Qr) {
+                    let sender = imp.sender.clone();
+                    let ctx = glib::MainContext::default();
+                    ctx.spawn_local(async move {
+                        if let Ok(res) = ncmapi.create_qrcode().await {
+                            sender.send(Action::SetQrImage(res.0)).unwrap();
+                            sender.send(Action::CheckQrTimeout(res.1)).unwrap();
+                        }
+                    });
+                }
+            }
             Action::SetQrImage(path) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.set_user_qrimage(path);
             }
             Action::CheckQrTimeout(unikey) => {
@@ -265,23 +318,8 @@ impl NeteaseCloudMusicGtk4Application {
                                 // 登录成功
                                 803 => {
                                     debug!("登录成功，unikey={}", unikey);
-                                    if let Ok(login_info) = ncmapi.client.login_status().await {
-                                        debug!("获取用户信息成功: {:?}", login_info);
-                                        UID.set(login_info.uid).unwrap();
-                                        ncmapi.set_cookie_jar();
-                                        sender
-                                            .send(Action::SwitchUserMenuToUser(
-                                                login_info,
-                                                UserMenuChild::Qr,
-                                            ))
-                                            .unwrap();
-                                        sender
-                                            .send(Action::AddToast(gettext("Login successful!")))
-                                            .unwrap();
-                                        sender.send(Action::InitMyPage).unwrap();
-                                    } else {
-                                        error!("获取用户信息失败！");
-                                    }
+                                    ncmapi.set_cookie_jar_to_global();
+                                    sender.send(Action::CheckLogin(UserMenuChild::Qr)).unwrap();
                                     break;
                                 }
                                 _ => break,
@@ -329,22 +367,13 @@ impl NeteaseCloudMusicGtk4Application {
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
                     debug!("使用验证码登录：{}", captcha);
-                    if let Ok(login_info) =
+                    if let Ok(_login_info) =
                         ncmapi.client.login_cellphone(ctcode, phone, captcha).await
                     {
-                        debug!("获取用户信息成功: {:?}", login_info);
-                        UID.set(login_info.uid).unwrap();
-                        ncmapi.set_cookie_jar();
+                        ncmapi.set_cookie_jar_to_global();
                         sender
-                            .send(Action::SwitchUserMenuToUser(
-                                login_info,
-                                UserMenuChild::Phone,
-                            ))
+                            .send(Action::CheckLogin(UserMenuChild::Phone))
                             .unwrap();
-                        sender
-                            .send(Action::AddToast(gettext("Login successful!")))
-                            .unwrap();
-                        sender.send(Action::InitMyPage).unwrap();
                     } else {
                         error!("登录失败！");
                         sender
@@ -389,6 +418,10 @@ impl NeteaseCloudMusicGtk4Application {
                         for banner in banners {
                             sender.send(Action::DownloadBanners(banner)).unwrap();
                         }
+
+                        // auto check login after banners
+                        // https://github.com/Binaryify/NeteaseCloudMusicApi/issues/1217
+                        sender.send(Action::CheckLogin(UserMenuChild::Qr)).unwrap();
                     } else {
                         error!("获取首页轮播信息失败！");
                         timeout_future(Duration::from_millis(500)).await;
@@ -953,8 +986,8 @@ impl NeteaseCloudMusicGtk4Application {
                             }
                         }
                         SearchType::LikeSongList => {
-                            let uid = UID.get().unwrap();
-                            if let Ok(sls) = ncmapi.client.user_song_list(*uid, offset, limit).await
+                            let uid = window.get_uid();
+                            if let Ok(sls) = ncmapi.client.user_song_list(uid, offset, limit).await
                             {
                                 debug!("获取收藏的歌单：{:?}", sls);
                                 for t in &sls {
@@ -1038,8 +1071,8 @@ impl NeteaseCloudMusicGtk4Application {
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
-                    let uid = UID.get().unwrap();
-                    if let Ok(sls) = ncmapi.client.user_song_list(*uid, 0, 30).await {
+                    let uid = window.get_uid();
+                    if let Ok(sls) = ncmapi.client.user_song_list(uid, 0, 30).await {
                         debug!("获取心动歌单：{:?}", sls);
                         if !sls.is_empty() {
                             if let Ok(sis) = ncmapi.client.song_list_detail(sls[0].id).await {

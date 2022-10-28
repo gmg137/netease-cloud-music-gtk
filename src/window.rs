@@ -2,12 +2,13 @@ use crate::{
     application::{Action, NeteaseCloudMusicGtk4Application},
     gui::*,
     model::*,
-    ncmapi::COOKIE_JAR,
 };
 use adw::{ColorScheme, StyleManager, Toast};
 use gettextrs::gettext;
 use gio::{Settings, SimpleAction};
-use glib::{clone, ParamFlags, ParamSpec, ParamSpecEnum, ParamSpecObject, Sender, Value};
+use glib::{
+    clone, ParamFlags, ParamSpec, ParamSpecEnum, ParamSpecObject, ParamSpecUInt64, Sender, Value,
+};
 use gtk::{
     gio::{self, SettingsBindFlags},
     glib, CompositeTemplate,
@@ -85,6 +86,7 @@ mod imp {
         pub stack_child: Arc<Mutex<LinkedList<(String, String)>>>,
         search_type: Cell<SearchType>,
         toast: RefCell<Option<Toast>>,
+        uid: Cell<u64>,
     }
 
     #[glib::object_subclass]
@@ -142,6 +144,15 @@ mod imp {
                         Toast::static_type(),
                         glib::ParamFlags::READWRITE | glib::ParamFlags::CONSTRUCT_ONLY,
                     ),
+                    ParamSpecUInt64::new(
+                        "uid",
+                        "uid",
+                        "uid",
+                        u64::MIN,
+                        u64::MAX,
+                        0u64,
+                        glib::ParamFlags::READWRITE,
+                    ),
                 ]
             });
             PROPERTIES.as_ref()
@@ -159,6 +170,10 @@ mod imp {
                         .expect("The value needs to be of type `SearchType`.");
                     self.search_type.replace(input_type);
                 }
+                "uid" => {
+                    let uid = value.get().unwrap();
+                    self.uid.replace(uid);
+                }
                 _ => unimplemented!(),
             }
         }
@@ -167,6 +182,7 @@ mod imp {
             match pspec.name() {
                 "toast" => self.toast.borrow().to_value(),
                 "search-type" => self.search_type.get().to_value(),
+                "uid" => self.uid.get().to_value(),
                 _ => unimplemented!(),
             }
         }
@@ -211,10 +227,12 @@ impl NeteaseCloudMusicGtk4Window {
         // 监测用户菜单弹出
         let popover = imp.popover_menu.get().unwrap();
         let sender = imp.sender.get().unwrap().clone();
+        popover.connect_child_notify(move |_| {
+            sender.send(Action::TryUpdateQrCode).unwrap();
+        });
+        let sender = imp.sender.get().unwrap().clone();
         popover.connect_show(move |_| {
-            if COOKIE_JAR.get().is_none() {
-                sender.send(Action::UpdateQrCode).unwrap();
-            }
+            sender.send(Action::TryUpdateQrCode).unwrap();
         });
 
         // 绑定设置与主题
@@ -336,6 +354,22 @@ impl NeteaseCloudMusicGtk4Window {
         imp.popover_menu.set(popover).unwrap();
     }
 
+    pub fn get_uid(&self) -> u64 {
+        self.property::<u64>("uid")
+    }
+
+    pub fn set_uid(&self, val: u64) {
+        self.set_property("uid", val);
+    }
+
+    pub fn is_logined(&self) -> bool {
+        self.get_uid() != 0u64
+    }
+
+    pub fn logout(&self) {
+        self.set_uid(0u64);
+    }
+
     pub fn set_user_qrimage(&self, path: PathBuf) {
         let user_menus = self.imp().user_menus.get().unwrap();
         user_menus.set_qrimage(path);
@@ -346,29 +380,26 @@ impl NeteaseCloudMusicGtk4Window {
         user_menus.set_qrimage_timeout();
     }
 
+    pub fn is_user_menu_active(&self, menu: UserMenuChild) -> bool {
+        self.imp().user_menus.get().unwrap().is_menu_active(menu)
+    }
+
     pub fn switch_user_menu_to_phone(&self) {
         let popover = self.imp().popover_menu.get().unwrap();
         let user_menus = self.imp().user_menus.get().unwrap();
-        popover.remove_child(&user_menus.qrbox);
-        popover.add_child(&user_menus.phonebox, "user_popover");
+        user_menus.switch_menu(UserMenuChild::Phone, popover);
     }
 
     pub fn switch_user_menu_to_qr(&self) {
         let popover = self.imp().popover_menu.get().unwrap();
         let user_menus = self.imp().user_menus.get().unwrap();
-        popover.remove_child(&user_menus.phonebox);
-        popover.add_child(&user_menus.qrbox, "user_popover");
+        user_menus.switch_menu(UserMenuChild::Qr, popover);
     }
 
-    pub fn switch_user_menu_to_user(&self, login_info: LoginInfo, menu: UserMenuChild) {
+    pub fn switch_user_menu_to_user(&self, login_info: LoginInfo, _menu: UserMenuChild) {
         let popover = self.imp().popover_menu.get().unwrap();
         let user_menus = self.imp().user_menus.get().unwrap();
-        match menu {
-            UserMenuChild::Qr => popover.remove_child(&user_menus.qrbox),
-            UserMenuChild::Phone => popover.remove_child(&user_menus.phonebox),
-            UserMenuChild::User => return,
-        };
-        popover.add_child(&user_menus.userbox, "user_popover");
+        user_menus.switch_menu(UserMenuChild::User, popover);
         user_menus.set_user_name(login_info.nickname);
     }
 
@@ -458,7 +489,7 @@ impl NeteaseCloudMusicGtk4Window {
         back_button.set_visible(true);
 
         let songlist_page = imp.songlist_page.get();
-        songlist_page.init_songlist_info(songlist);
+        songlist_page.init_songlist_info(songlist, self.is_logined());
     }
 
     pub fn init_songlist_page(&self, sis: Vec<SongInfo>, page_type: DiscoverSubPage) {
@@ -580,6 +611,13 @@ impl NeteaseCloudMusicGtk4Window {
     pub fn switch_my_page_to_login(&self) {
         let imp = self.imp();
         imp.my_stack.set_visible_child_name("my_login");
+    }
+
+    pub fn switch_my_page_to_logout(&self) {
+        let imp = self.imp();
+        if let Some(my_login) = imp.my_stack.child_by_name("my_login") {
+            my_login.set_visible(false);
+        }
     }
 
     pub fn init_my_page(&self, sls: Vec<SongList>) {

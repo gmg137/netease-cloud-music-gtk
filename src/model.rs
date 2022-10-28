@@ -5,7 +5,7 @@
 //
 use gtk::glib;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum UserMenuChild {
     Qr,
     Phone,
@@ -55,5 +55,11 @@ pub enum SearchType {
 impl Default for SearchType {
     fn default() -> Self {
         SearchType::Song
+    }
+}
+
+impl Default for UserMenuChild {
+    fn default() -> Self {
+        UserMenuChild::Qr
     }
 }

@@ -159,5 +159,14 @@
                 <property name="ellipsize">end</property>
             </object>
         </child>
+        <child>
+            <object class="GtkButton" id="logout_button">
+                <property name="label" translatable="yes">Logout</property>
+                <property name="margin-top">3</property>
+                <style>
+                    <class name="suggested-action" />
+                </style>
+            </object>
+        </child>
     </object>
 </interface>
