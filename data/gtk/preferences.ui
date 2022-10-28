@@ -26,6 +26,20 @@
                         </child>
                         <child>
                             <object class="AdwActionRow">
+                                <property name="title" translatable="yes">Mute when startup</property>
+                                <property name="subtitle" translatable="yes">Set volume to 0 when startup</property>
+                                <property name="use_underline">True</property>
+                                <property name="activatable-widget">mute_start_switch</property>
+                                <child>
+                                    <object class="GtkSwitch" id="mute_start_switch">
+                                        <property name="valign">center</property>
+                                        <property name="state">False</property>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="AdwActionRow">
                                 <property name="title" translatable="yes">Network Proxy</property>
                                 <property name="subtitle" translatable="yes">http/https/socks4/socks4a/socks5/socks5h</property>
                                 <property name="use_underline">True</property>

@@ -24,6 +24,10 @@
             <default>false</default>
             <summary>Set exit key behavior</summary>
         </key>
+        <key name="mute-start" type="b">
+            <default>false</default>
+            <summary>Mute when startup</summary>
+        </key>
         <key name="proxy-address" type="s">
             <default>''</default>
             <summary>Settings proxy address</summary>
@@ -39,6 +43,10 @@
         <key name="cache-clear-flag" type="b">
             <default>false</default>
             <summary>Cache clear flag</summary>
+        </key>
+        <key name="volume" type="d">
+            <default>1.0</default>
+            <summary>Volume</summary>
         </key>
     </schema>
 </schemalist>
