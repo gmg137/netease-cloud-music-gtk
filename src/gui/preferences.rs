@@ -18,7 +18,7 @@ glib::wrapper! {
 
 impl NeteaseCloudMusicGtk4Preferences {
     pub fn new() -> Self {
-        glib::Object::new(&[]).expect("Failed to create NeteaseCloudMusicGtk4Preferences")
+        glib::Object::new(&[])
     }
 
     fn setup_settings(&self) {
@@ -110,8 +110,9 @@ mod imp {
     }
 
     impl ObjectImpl for NeteaseCloudMusicGtk4Preferences {
-        fn constructed(&self, obj: &Self::Type) {
-            self.parent_constructed(obj);
+        fn constructed(&self) {
+            let obj = self.obj();
+            self.parent_constructed();
 
             obj.setup_settings();
             obj.bind_settings();

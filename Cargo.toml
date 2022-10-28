@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 gettext-rs = { version = "0.7", features = ["gettext-system"] }
-gtk = { version = "0.4.7", package = "gtk4" }
+gtk = { version = "0.5", package = "gtk4" }
 once_cell = "*"
 qrcode-generator = "^4.1"
 ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", version = "*", package = "netease-cloud-music-api" }
@@ -14,11 +14,11 @@ gstreamer = "*"
 gstreamer-player = "*"
 fragile = "*"
 fastrand = "*"
-mpris-player = "0.6.1"
+mpris-player = "0.6.2"
 regex = "*"
 log = "*"
 env_logger = "*"
 
 [dependencies.adw]
 package = "libadwaita"
-version = "0.1.1"
+version = "0.2"

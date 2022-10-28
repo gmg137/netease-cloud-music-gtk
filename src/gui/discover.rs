@@ -19,7 +19,7 @@ glib::wrapper! {
 
 impl Discover {
     pub fn new() -> Self {
-        let discover: Discover = glib::Object::new(&[]).expect("Failed to create Discover");
+        let discover: Discover = glib::Object::new(&[]);
         discover
     }
 
@@ -304,8 +304,8 @@ mod imp {
     }
 
     impl ObjectImpl for Discover {
-        fn constructed(&self, obj: &Self::Type) {
-            self.parent_constructed(obj);
+        fn constructed(&self) {
+            self.parent_constructed();
 
             self.banners.replace(Vec::new());
 

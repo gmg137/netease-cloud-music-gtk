@@ -32,7 +32,7 @@ impl Default for TopListView {
 
 impl TopListView {
     pub fn new() -> Self {
-        glib::Object::new(&[]).expect("Failed to create TopListView")
+        glib::Object::new(&[])
     }
 
     pub fn set_sender(&self, sender: Sender<Action>) {
@@ -176,8 +176,8 @@ mod imp {
     }
 
     impl ObjectImpl for TopListView {
-        fn constructed(&self, obj: &Self::Type) {
-            self.parent_constructed(obj);
+        fn constructed(&self) {
+            self.parent_constructed();
             let select_row = Rc::new(RefCell::new(-1));
             self.songs_list.connect_row_activated(move |list, row| {
                 let index;

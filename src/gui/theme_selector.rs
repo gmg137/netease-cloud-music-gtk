@@ -21,7 +21,7 @@ impl Default for ThemeSelector {
 
 impl ThemeSelector {
     pub fn new() -> Self {
-        glib::Object::new(&[]).expect("Failed to create Button")
+        glib::Object::new(&[])
     }
 }
 
@@ -61,7 +61,7 @@ mod imp {
     }
 
     impl ObjectImpl for ThemeSelector {
-        fn dispose(&self, _obj: &Self::Type) {
+        fn dispose(&self) {
             self.gbox.unparent();
         }
     }

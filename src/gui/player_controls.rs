@@ -30,8 +30,7 @@ glib::wrapper! {
 
 impl PlayerControls {
     pub fn new() -> Self {
-        let player_controls: PlayerControls =
-            glib::Object::new(&[]).expect("Failed to create PlayerControls");
+        let player_controls: PlayerControls = glib::Object::new(&[]);
         player_controls
     }
 
@@ -122,8 +121,10 @@ impl PlayerControls {
     pub fn setup_player(&self) {
         let imp = self.imp();
         let dispatcher = PlayerGMainContextSignalDispatcher::new(None);
-        let player = Player::new(None, Some(&dispatcher.upcast::<PlayerSignalDispatcher>()));
-
+        let player = Player::new(
+            PlayerVideoRenderer::NONE,
+            Some(&dispatcher.upcast::<PlayerSignalDispatcher>()),
+        );
         let mut config = player.config();
         config.set_user_agent(
             "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:100.0) Gecko/20100101 Firefox/100.0",
@@ -678,8 +679,9 @@ mod imp {
     }
 
     impl ObjectImpl for PlayerControls {
-        fn constructed(&self, obj: &Self::Type) {
-            self.parent_constructed(obj);
+        fn constructed(&self) {
+            let obj = self.obj();
+            self.parent_constructed();
             *self.playlist.lock().unwrap() = PlayList::new();
 
             obj.setup_settings();
@@ -711,7 +713,7 @@ mod imp {
             PROPERTIES.as_ref()
         }
 
-        fn set_property(&self, _obj: &Self::Type, _id: usize, value: &Value, pspec: &ParamSpec) {
+        fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
             match pspec.name() {
                 "volume" => {
                     let input_number = value.get().expect("The value needs to be of type `f64`.");
@@ -721,14 +723,15 @@ mod imp {
             }
         }
 
-        fn property(&self, _obj: &Self::Type, _id: usize, pspec: &ParamSpec) -> Value {
+        fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
                 "volume" => self.volume.get().to_value(),
                 _ => unimplemented!(),
             }
         }
 
-        fn dispose(&self, obj: &Self::Type) {
+        fn dispose(&self) {
+            let obj = self.obj();
             obj.settings()
                 .set_double("volume", obj.property("volume"))
                 .unwrap();

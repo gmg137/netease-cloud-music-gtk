@@ -29,7 +29,7 @@ glib::wrapper! {
 
 impl SearchSongPage {
     pub fn new() -> Self {
-        glib::Object::new(&[]).expect("Failed to create SearchSongPage")
+        glib::Object::new(&[])
     }
 
     pub fn set_sender(&self, sender: Sender<Action>) {
@@ -137,8 +137,8 @@ mod imp {
     }
 
     impl ObjectImpl for SearchSongPage {
-        fn constructed(&self, obj: &Self::Type) {
-            self.parent_constructed(obj);
+        fn constructed(&self) {
+            self.parent_constructed();
 
             let select_row = Rc::new(RefCell::new(-1));
             self.listbox.connect_row_activated(move |list, row| {
@@ -220,7 +220,7 @@ mod imp {
             PROPERTIES.as_ref()
         }
 
-        fn set_property(&self, _obj: &Self::Type, _id: usize, value: &Value, pspec: &ParamSpec) {
+        fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
             match pspec.name() {
                 "update" => {
                     let update = value.get().expect("The value needs to be of type `bool`.");
@@ -244,7 +244,7 @@ mod imp {
             }
         }
 
-        fn property(&self, _obj: &Self::Type, _id: usize, pspec: &ParamSpec) -> Value {
+        fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
                 "update" => self.update.get().to_value(),
                 "offset" => self.offset.get().to_value(),

@@ -104,8 +104,9 @@ mod imp {
     }
 
     impl ObjectImpl for NeteaseCloudMusicGtk4Window {
-        fn constructed(&self, obj: &Self::Type) {
-            self.parent_constructed(obj);
+        fn constructed(&self) {
+            let obj = self.obj();
+            self.parent_constructed();
 
             if let Ok(mut stack_child) = self.stack_child.lock() {
                 stack_child.push_back(("discover".to_owned(), "".to_owned()));
@@ -146,7 +147,7 @@ mod imp {
             PROPERTIES.as_ref()
         }
 
-        fn set_property(&self, _obj: &Self::Type, _id: usize, value: &Value, pspec: &ParamSpec) {
+        fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
             match pspec.name() {
                 "toast" => {
                     let toast = value.get().unwrap();
@@ -162,7 +163,7 @@ mod imp {
             }
         }
 
-        fn property(&self, _obj: &Self::Type, _id: usize, pspec: &ParamSpec) -> Value {
+        fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
                 "toast" => self.toast.borrow().to_value(),
                 "search-type" => self.search_type.get().to_value(),
@@ -184,8 +185,8 @@ glib::wrapper! {
 impl NeteaseCloudMusicGtk4Window {
     pub fn new<P: glib::IsA<gtk::Application>>(application: &P, sender: Sender<Action>) -> Self {
         let window: NeteaseCloudMusicGtk4Window =
-            glib::Object::new(&[("application", application)])
-                .expect("Failed to create NeteaseCloudMusicGtk4Window");
+            glib::Object::new(&[("application", application)]);
+
         window.imp().sender.set(sender).unwrap();
         window.setup_widget();
         window.setup_action();
@@ -377,8 +378,8 @@ impl NeteaseCloudMusicGtk4Window {
 
     pub fn add_toast(&self, mes: String) {
         let toast = self.property::<Toast>("toast");
-        if !toast.title().is_empty() {
-            if toast.title() == mes {
+        if let Some(title) = toast.title() {
+            if title == mes {
                 return;
             }
             toast.dismiss();

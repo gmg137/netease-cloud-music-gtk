@@ -25,7 +25,7 @@ glib::wrapper! {
 
 impl PlayListLyricsPage {
     pub fn new() -> Self {
-        glib::Object::new(&[]).expect("Failed to create PlayListLyricsPage")
+        glib::Object::new(&[])
     }
 
     pub fn set_sender(&self, sender: Sender<Action>) {
@@ -140,8 +140,9 @@ mod imp {
     }
 
     impl ObjectImpl for PlayListLyricsPage {
-        fn constructed(&self, obj: &Self::Type) {
-            self.parent_constructed(obj);
+        fn constructed(&self) {
+            let obj = self.obj();
+            self.parent_constructed();
 
             self.playlist_box.connect_row_activated(
                 glib::clone!(@weak obj as s => move |list, row| {
@@ -181,7 +182,7 @@ mod imp {
             PROPERTIES.as_ref()
         }
 
-        fn set_property(&self, _obj: &Self::Type, _id: usize, value: &Value, pspec: &ParamSpec) {
+        fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
             match pspec.name() {
                 "select-row" => {
                     let input_number = value.get().expect("The value needs to be of type `i32`.");
@@ -191,7 +192,7 @@ mod imp {
             }
         }
 
-        fn property(&self, _obj: &Self::Type, _id: usize, pspec: &ParamSpec) -> Value {
+        fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
                 "select-row" => self.select_row.get().to_value(),
                 _ => unimplemented!(),

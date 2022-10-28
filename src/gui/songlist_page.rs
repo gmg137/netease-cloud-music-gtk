@@ -22,8 +22,7 @@ glib::wrapper! {
 
 impl SonglistPage {
     pub fn new() -> Self {
-        let songlist_page: SonglistPage =
-            glib::Object::new(&[]).expect("Failed to create SonglistPage");
+        let songlist_page: SonglistPage = glib::Object::new(&[]);
         songlist_page
     }
 
@@ -173,8 +172,8 @@ mod imp {
     }
 
     impl ObjectImpl for SonglistPage {
-        fn constructed(&self, obj: &Self::Type) {
-            self.parent_constructed(obj);
+        fn constructed(&self) {
+            self.parent_constructed();
 
             let select_row = Rc::new(RefCell::new(-1));
             self.listbox.connect_row_activated(move |list, row| {

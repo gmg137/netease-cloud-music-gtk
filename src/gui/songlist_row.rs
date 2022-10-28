@@ -21,7 +21,7 @@ impl Default for SonglistRow {
 
 impl SonglistRow {
     pub fn new() -> Self {
-        glib::Object::new(&[]).expect("Failed to create SonglistRow")
+        glib::Object::new(&[])
     }
 
     pub fn switch_image(&self, visible: bool) {

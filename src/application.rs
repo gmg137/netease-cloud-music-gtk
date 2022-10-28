@@ -2,7 +2,7 @@ use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gio::Settings;
 use glib::{clone, timeout_future, timeout_future_seconds, MainContext, Receiver, Sender, WeakRef};
-use gtk::{gio, glib, prelude::*, subclass::prelude::*};
+use gtk::{gio, glib, prelude::*};
 use log::*;
 use ncm_api::{BannersInfo, LoginInfo, SingerInfo, SongInfo, SongList, TopList};
 use once_cell::sync::OnceCell;
@@ -113,8 +113,9 @@ mod imp {
     }
 
     impl ObjectImpl for NeteaseCloudMusicGtk4Application {
-        fn constructed(&self, obj: &Self::Type) {
-            self.parent_constructed(obj);
+        fn constructed(&self) {
+            let obj = self.obj();
+            self.parent_constructed();
 
             obj.setup_gactions();
             obj.setup_cache_clear();
@@ -129,8 +130,9 @@ mod imp {
         // has been launched. Additionally, this callback notifies us when the user
         // tries to launch a "second instance" of the application. When they try
         // to do that, we'll just present any existing window.
-        fn activate(&self, application: &Self::Type) {
-            let app = application
+        fn activate(&self) {
+            let obj = self.obj();
+            let app = obj
                 .downcast_ref::<super::NeteaseCloudMusicGtk4Application>()
                 .unwrap();
 
@@ -167,7 +169,6 @@ glib::wrapper! {
 impl NeteaseCloudMusicGtk4Application {
     pub fn new(application_id: &str, flags: &gio::ApplicationFlags) -> Self {
         glib::Object::new(&[("application-id", &application_id), ("flags", flags)])
-            .expect("Failed to create NeteaseCloudMusicGtk4Application")
     }
 
     fn create_window(&self) -> NeteaseCloudMusicGtk4Window {

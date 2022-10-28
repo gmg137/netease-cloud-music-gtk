@@ -19,7 +19,7 @@ glib::wrapper! {
 
 impl MyPage {
     pub fn new() -> Self {
-        glib::Object::new(&[]).expect("Failed to create MyPage")
+        glib::Object::new(&[])
     }
 
     pub fn set_sender(&self, sender: Sender<Action>) {
@@ -157,8 +157,8 @@ mod imp {
     }
 
     impl ObjectImpl for MyPage {
-        fn constructed(&self, obj: &Self::Type) {
-            self.parent_constructed(obj);
+        fn constructed(&self) {
+            self.parent_constructed();
             if let Ok(datetime) = glib::DateTime::now_local() {
                 self.daily_rec_avatar.set_show_initials(true);
                 self.daily_rec_avatar.set_text(Some(&format!(
