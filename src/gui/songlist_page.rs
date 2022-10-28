@@ -9,7 +9,7 @@ pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, 
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::OnceCell;
 
-use crate::{application::Action, model::DiscoverSubPage, ncmapi::COOKIE_JAR, path::CACHE};
+use crate::{application::Action, model::DiscoverSubPage, path::CACHE};
 use std::{cell::RefCell, rc::Rc};
 
 use super::SonglistRow;
@@ -30,13 +30,13 @@ impl SonglistPage {
         self.imp().sender.set(sender).unwrap();
     }
 
-    pub fn init_songlist_info(&self, songlist: &SongList) {
+    pub fn init_songlist_info(&self, songlist: &SongList, is_logined :bool) {
         let imp = self.imp();
         imp.songlist.replace(Some(songlist.to_owned()));
 
         // 判断是否显示收藏按钮
         let like_button = imp.like_button.get();
-        if COOKIE_JAR.get().is_some() {
+        if is_logined {
             like_button.set_visible(true);
         } else {
             like_button.set_visible(false);

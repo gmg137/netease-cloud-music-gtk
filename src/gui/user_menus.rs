@@ -3,7 +3,7 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use crate::application::Action;
+use crate::{application::Action, model::UserMenuChild};
 use adw::*;
 use gettextrs::gettext;
 use glib::{clone, Sender};
@@ -13,6 +13,7 @@ use gtk::{
     *,
 };
 use once_cell::sync::OnceCell;
+use std::cell::Cell;
 use std::path::PathBuf;
 
 #[derive(Debug, Default)]
@@ -34,6 +35,9 @@ pub struct UserMenus {
     pub userbox: Box,
     pub avatar: Avatar,
     pub user_name: Label,
+    pub logout_button: Button,
+
+    current_menu: Cell<UserMenuChild>,
 }
 
 impl UserMenus {
@@ -57,6 +61,9 @@ impl UserMenus {
         let userbox: Box = builder.object("userbox").unwrap();
         let avatar: Avatar = builder.object("avatar").unwrap();
         let user_name: Label = builder.object("user_name").unwrap();
+        let logout_button: Button = builder.object("logout_button").unwrap();
+
+        let current_menu: Cell<UserMenuChild> = Cell::new(UserMenuChild::default());
 
         let sender = OnceCell::new();
         sender.set(send).unwrap();
@@ -78,6 +85,9 @@ impl UserMenus {
             userbox,
             avatar,
             user_name,
+            logout_button,
+
+            current_menu,
         };
         s.setup_signal();
         s
@@ -86,7 +96,7 @@ impl UserMenus {
     fn setup_signal(&self) {
         let sender = self.sender.get().unwrap().clone();
         self.refresh_button.connect_clicked(move |_| {
-            sender.send(Action::UpdateQrCode).unwrap();
+            sender.send(Action::TryUpdateQrCode).unwrap();
         });
 
         let sender = self.sender.get().unwrap().clone();
@@ -125,6 +135,11 @@ impl UserMenus {
                 }
             }),
         );
+
+        let sender = self.sender.get().unwrap().clone();
+        self.logout_button.connect_clicked(move |_| {
+            sender.send(Action::Logout).unwrap();
+        });
     }
 
     pub fn set_qrimage(&self, path: PathBuf) {
@@ -149,5 +164,27 @@ impl UserMenus {
 
     pub fn set_user_name(&self, name: String) {
         self.user_name.set_text(&name);
+    }
+
+    pub fn is_menu_active(&self, menu: UserMenuChild) -> bool {
+        self.current_menu.get() == menu
+    }
+
+    pub fn switch_menu(&self, new_menu: UserMenuChild, popover: &PopoverMenu) {
+        fn get_box(_self: &UserMenus, menu: UserMenuChild) -> &impl IsA<Widget> {
+            match menu {
+                UserMenuChild::Qr => &_self.qrbox,
+                UserMenuChild::Phone => &_self.phonebox,
+                UserMenuChild::User => &_self.userbox,
+            }
+        }
+        let current = self.current_menu.get().clone();
+        if current != new_menu {
+            popover.remove_child(get_box(self, current.clone()));
+            popover.add_child(get_box(self, new_menu.clone()), "user_popover");
+            popover.notify("child");
+
+            self.current_menu.replace(new_menu);
+        }
     }
 }

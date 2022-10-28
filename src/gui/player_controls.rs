@@ -14,7 +14,7 @@ use mpris_player::{LoopStatus, PlaybackStatus};
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::*;
 
-use crate::{application::Action, audio::*, ncmapi::COOKIE_JAR, path::CACHE};
+use crate::{application::Action, audio::*, path::CACHE};
 use std::{
     cell::Cell,
     rc::Rc,
@@ -578,12 +578,6 @@ mod imp {
         #[template_callback]
         fn like_button_cb(&self) {
             let sender = self.sender.get().unwrap().clone();
-            if COOKIE_JAR.get().is_none() {
-                sender
-                    .send(Action::AddToast(gettext("Please login first！")))
-                    .unwrap();
-                return;
-            }
             if let Ok(playlist) = self.playlist.lock() {
                 if let Some(song_info) = playlist.current_song() {
                     sender.send(Action::LikeSong(song_info.id)).unwrap();

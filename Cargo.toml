@@ -18,6 +18,8 @@ mpris-player = "0.6.2"
 regex = "*"
 log = "*"
 env_logger = "*"
+cookie_store = "*"
+isahc = "*"
 
 [dependencies.adw]
 package = "libadwaita"
