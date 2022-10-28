@@ -42,6 +42,16 @@ impl PlayerControls {
 
     fn setup_settings(&self) {
         let settings = Settings::new(crate::APP_ID);
+
+        self.set_property(
+            "volume",
+            if settings.boolean("mute-start") {
+                0.0
+            } else {
+                settings.double("volume")
+            },
+        );
+
         self.imp()
             .settings
             .set(settings)
@@ -716,6 +726,12 @@ mod imp {
                 "volume" => self.volume.get().to_value(),
                 _ => unimplemented!(),
             }
+        }
+
+        fn dispose(&self, obj: &Self::Type) {
+            obj.settings()
+                .set_double("volume", obj.property("volume"))
+                .unwrap();
         }
     }
     impl WidgetImpl for PlayerControls {}

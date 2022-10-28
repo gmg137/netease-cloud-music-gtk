@@ -40,6 +40,12 @@ impl NeteaseCloudMusicGtk4Preferences {
             .flags(SettingsBindFlags::DEFAULT)
             .build();
 
+        let mute_start_switch = self.imp().mute_start_switch.get();
+        self.settings()
+            .bind("mute-start", &mute_start_switch, "state")
+            .flags(SettingsBindFlags::DEFAULT)
+            .build();
+
         let entry = self.imp().proxy_entry.get();
         self.settings()
             .bind("proxy-address", &entry, "text")
@@ -78,6 +84,8 @@ mod imp {
         pub settings: OnceCell<Settings>,
         #[template_child]
         pub exit_switch: TemplateChild<Switch>,
+        #[template_child]
+        pub mute_start_switch: TemplateChild<Switch>,
         #[template_child]
         pub proxy_entry: TemplateChild<Entry>,
         #[template_child]
