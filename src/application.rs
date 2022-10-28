@@ -1,7 +1,7 @@
 use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gio::Settings;
-use glib::{clone, timeout_future_seconds, MainContext, Receiver, Sender, WeakRef};
+use glib::{clone, timeout_future, timeout_future_seconds, MainContext, Receiver, Sender, WeakRef};
 use gtk::{gio, glib, prelude::*, subclass::prelude::*};
 use log::*;
 use ncm_api::{BannersInfo, LoginInfo, SingerInfo, SongInfo, SongList, TopList};
@@ -9,6 +9,7 @@ use once_cell::sync::OnceCell;
 use std::cell::RefCell;
 use std::fs;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use crate::{
     config::VERSION, gui::NeteaseCloudMusicGtk4Preferences, model::*, ncmapi::*, path::CACHE,
@@ -389,6 +390,7 @@ impl NeteaseCloudMusicGtk4Application {
                         }
                     } else {
                         error!("获取首页轮播信息失败！");
+                        timeout_future(Duration::from_millis(500)).await;
                         sender.send(Action::InitCarousel).unwrap();
                     }
                 });
@@ -430,6 +432,7 @@ impl NeteaseCloudMusicGtk4Application {
                         sender.send(Action::SetupTopPicks(song_list)).unwrap();
                     } else {
                         error!("获取热门推荐信息失败！");
+                        timeout_future(Duration::from_millis(500)).await;
                         sender.send(Action::InitTopPicks).unwrap();
                     }
                 });
@@ -472,6 +475,7 @@ impl NeteaseCloudMusicGtk4Application {
                         sender.send(Action::SetupNewAlbums(song_list)).unwrap();
                     } else {
                         error!("获取新碟上架信息失败！");
+                        timeout_future(Duration::from_millis(500)).await;
                         sender.send(Action::InitNewAlbums).unwrap();
                     }
                 });
@@ -718,6 +722,7 @@ impl NeteaseCloudMusicGtk4Application {
                         sender.send(Action::InitTopList(toplist)).unwrap();
                     } else {
                         error!("获取排行榜失败!");
+                        timeout_future(Duration::from_millis(500)).await;
                         sender.send(Action::GetToplist).unwrap();
                     }
                 });
