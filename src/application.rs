@@ -706,7 +706,7 @@ impl NeteaseCloudMusicGtk4Application {
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
                     if let Ok(toplist) = ncmapi.client.toplist().await {
-                        error!("获取排行榜: {:?}", toplist);
+                        debug!("获取排行榜: {:?}", toplist);
                         for t in &toplist {
                             let mut path = CACHE.clone();
                             path.push(format!("{}-toplist.jpg", t.id));
