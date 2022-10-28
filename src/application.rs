@@ -1215,7 +1215,7 @@ impl NeteaseCloudMusicGtk4Application {
         let dialog = gtk::AboutDialog::builder()
             .transient_for(&window)
             .modal(true)
-            .program_name(&gettext("Netease Cloud Music Gtk4"))
+            .program_name(&gettext(crate::APP_NAME))
             .logo_icon_name("logo")
             .version(VERSION)
             .authors(vec!["gmg137".into()])
