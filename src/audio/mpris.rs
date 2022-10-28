@@ -26,7 +26,7 @@ impl MprisController {
     pub fn new() -> Self {
         let mpris = MprisPlayer::new(
             crate::APP_ID.to_string(),
-            gettextrs::gettext("Netease Cloud Music"),
+            gettextrs::gettext(crate::APP_NAME),
             crate::APP_ID.to_string(),
         );
         mpris.set_can_raise(true);

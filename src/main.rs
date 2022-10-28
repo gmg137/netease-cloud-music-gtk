@@ -19,6 +19,7 @@ use gtk::prelude::*;
 use env_logger::Env;
 
 const APP_ID: &str = "com.gitee.gmg137.NeteaseCloudMusicGtk4";
+const APP_NAME: &str = "NetEase Cloud Music Gtk4";
 
 fn main() {
     // Initialize log
@@ -40,6 +41,8 @@ fn main() {
         gio::Resource::load(PKGDATADIR.to_owned() + "/netease-cloud-music-gtk4.gresource")
             .expect("Could not load resources");
     gio::resources_register(&resources);
+
+    glib::set_application_name(&gettextrs::gettext(APP_NAME));
 
     // Create a new GtkApplication. The application manages our main loop,
     // application windows, integration with the window manager/compositor, and
