@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-27 10:36+0800\n"
+"POT-Creation-Date: 2022-10-28 10:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -39,19 +39,28 @@ msgid "Set exit key behavior"
 msgstr ""
 
 #: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:29
-msgid "Settings proxy address"
+#: data/gtk/preferences.ui:29
+msgid "Mute when startup"
 msgstr ""
 
 #: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:33
-msgid "Settings music rate"
+msgid "Settings proxy address"
 msgstr ""
 
 #: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:37
-msgid "Settings cache clear rules, 0: Never, 1: Daily, 2: Weekly, 3: Monthly"
+msgid "Settings music rate"
 msgstr ""
 
 #: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:41
+msgid "Settings cache clear rules, 0: Never, 1: Daily, 2: Weekly, 3: Monthly"
+msgstr ""
+
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:45
 msgid "Cache clear flag"
+msgstr ""
+
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:49
+msgid "Volume"
 msgstr ""
 
 #: data/gtk/window.ui:82 data/gtk/window.ui:331
@@ -122,39 +131,43 @@ msgstr ""
 msgid "Set the main window close button behavior"
 msgstr ""
 
-#: data/gtk/preferences.ui:29
-msgid "Network Proxy"
-msgstr ""
-
 #: data/gtk/preferences.ui:30
-msgid "http/https/socks4/socks4a/socks5/socks5h"
+msgid "Set volume to 0 when startup"
 msgstr ""
 
 #: data/gtk/preferences.ui:43
+msgid "Network Proxy"
+msgstr ""
+
+#: data/gtk/preferences.ui:44
+msgid "http/https/socks4/socks4a/socks5/socks5h"
+msgstr ""
+
+#: data/gtk/preferences.ui:57
 msgid "Cache cleaning"
 msgstr ""
 
-#: data/gtk/preferences.ui:47
+#: data/gtk/preferences.ui:61
 msgid "Never"
 msgstr ""
 
-#: data/gtk/preferences.ui:48
+#: data/gtk/preferences.ui:62
 msgid "Daily"
 msgstr ""
 
-#: data/gtk/preferences.ui:49
+#: data/gtk/preferences.ui:63
 msgid "Weekly"
 msgstr ""
 
-#: data/gtk/preferences.ui:50
+#: data/gtk/preferences.ui:64
 msgid "Monthly"
 msgstr ""
 
-#: data/gtk/preferences.ui:60
+#: data/gtk/preferences.ui:74
 msgid "Music"
 msgstr ""
 
-#: data/gtk/preferences.ui:63
+#: data/gtk/preferences.ui:77
 msgid "Sound quality"
 msgstr ""
 
@@ -170,15 +183,15 @@ msgstr ""
 msgid "Dark style"
 msgstr ""
 
-#: data/gtk/discover.ui:120
+#: data/gtk/discover.ui:122
 msgid "Top Picks"
 msgstr ""
 
-#: data/gtk/discover.ui:132 data/gtk/discover.ui:197
+#: data/gtk/discover.ui:134 data/gtk/discover.ui:199
 msgid "View More"
 msgstr ""
 
-#: data/gtk/discover.ui:185
+#: data/gtk/discover.ui:187
 msgid "New Albums"
 msgstr ""
 
@@ -251,27 +264,27 @@ msgctxt "shortcut window"
 msgid "Previous song"
 msgstr ""
 
-#: data/gtk/player-controls.ui:139
+#: data/gtk/player-controls.ui:144
 msgid "Like"
 msgstr ""
 
-#: data/gtk/player-controls.ui:188
+#: data/gtk/player-controls.ui:193
 msgid "Playlist/Lyrics"
 msgstr ""
 
-#: data/gtk/player-controls.ui:218
+#: data/gtk/player-controls.ui:223
 msgid "Shuffle/Repeat Off"
 msgstr ""
 
-#: data/gtk/player-controls.ui:225
+#: data/gtk/player-controls.ui:230
 msgid "Repeat Song"
 msgstr ""
 
-#: data/gtk/player-controls.ui:232
+#: data/gtk/player-controls.ui:237
 msgid "Repeat All"
 msgstr ""
 
-#: data/gtk/player-controls.ui:239
+#: data/gtk/player-controls.ui:244
 msgid "Shuffle"
 msgstr ""
 
@@ -287,27 +300,27 @@ msgstr ""
 msgid "Like songs list"
 msgstr ""
 
-#: data/gtk/my-page.ui:40 src/application.rs:1013
+#: data/gtk/my-page.ui:40 src/application.rs:1018
 msgid "Daily Recommendation"
 msgstr ""
 
-#: data/gtk/my-page.ui:67 src/application.rs:1031
+#: data/gtk/my-page.ui:67 src/application.rs:1036
 msgid "Favorite Songs"
 msgstr ""
 
-#: data/gtk/my-page.ui:94 src/application.rs:1078
+#: data/gtk/my-page.ui:94 src/application.rs:1083
 msgid "Private FM"
 msgstr ""
 
-#: data/gtk/my-page.ui:121 src/application.rs:1060
+#: data/gtk/my-page.ui:121 src/application.rs:1065
 msgid "Cloud Music"
 msgstr ""
 
-#: data/gtk/my-page.ui:148 src/application.rs:1095
+#: data/gtk/my-page.ui:148 src/application.rs:1100
 msgid "Favorite Album"
 msgstr ""
 
-#: data/gtk/my-page.ui:175 src/application.rs:1104
+#: data/gtk/my-page.ui:175 src/application.rs:1109
 msgid "Favorite Song List"
 msgstr ""
 
@@ -315,99 +328,91 @@ msgstr ""
 msgid "Recommended Song List"
 msgstr ""
 
-#: src/application.rs:258
+#: src/application.rs:259
 msgid "Have scanned the QR code, waiting for confirmation!"
 msgstr ""
 
-#: src/application.rs:277 src/application.rs:343
+#: src/application.rs:278 src/application.rs:344
 msgid "Login successful!"
 msgstr ""
 
-#: src/application.rs:312
+#: src/application.rs:313
 msgid "Please pay attention to check the cell phone verification code!"
 msgstr ""
 
-#: src/application.rs:319
+#: src/application.rs:320
 msgid "Failed to get verification code!"
 msgstr ""
 
-#: src/application.rs:349
+#: src/application.rs:350
 msgid "Login failed!"
 msgstr ""
 
-#: src/application.rs:536 src/application.rs:545
+#: src/application.rs:540 src/application.rs:549
 msgid "Get [{}] Playback link failed!"
 msgstr ""
 
-#: src/application.rs:613 src/application.rs:1044
+#: src/application.rs:617 src/application.rs:1049
 msgid "Failed to get song list details!"
 msgstr ""
 
-#: src/application.rs:636
+#: src/application.rs:640
 msgid "Failed to get album details!"
 msgstr ""
 
-#: src/application.rs:660
+#: src/application.rs:664
 msgid "Song list have been collected!"
 msgstr ""
 
-#: src/application.rs:665
+#: src/application.rs:669
 msgid "Failed to collect song list!"
 msgstr ""
 
-#: src/application.rs:677
+#: src/application.rs:681
 msgid "Album have been collected!"
 msgstr ""
 
-#: src/application.rs:682
+#: src/application.rs:686
 msgid "Failed to collect album!"
 msgstr ""
 
-#: src/application.rs:694
+#: src/application.rs:698
 msgid "Songs have been collected!"
 msgstr ""
 
-#: src/application.rs:699
+#: src/application.rs:703
 msgid "Failed to collect songs!"
 msgstr ""
 
-#: src/application.rs:736 src/application.rs:762 src/application.rs:788 src/application.rs:813 src/application.rs:826 src/application.rs:853 src/application.rs:882 src/application.rs:907 src/application.rs:919 src/application.rs:944 src/application.rs:971 src/application.rs:1004 src/application.rs:1023 src/application.rs:1052 src/application.rs:1070
+#: src/application.rs:741 src/application.rs:767 src/application.rs:793 src/application.rs:818 src/application.rs:831 src/application.rs:858 src/application.rs:887 src/application.rs:912 src/application.rs:924 src/application.rs:949 src/application.rs:976 src/application.rs:1009 src/application.rs:1028 src/application.rs:1057 src/application.rs:1075
 msgid "Request for interface failed, please try again!"
 msgstr ""
 
-#: src/application.rs:1163 src/ncmapi.rs:86
+#: src/application.rs:1168 src/ncmapi.rs:86
 msgid "No lyrics found!"
 msgstr ""
 
-#: src/application.rs:1213
-msgid "Netease Cloud Music Gtk4"
-msgstr ""
-
-#: src/application.rs:1236 src/application.rs:1245 src/application.rs:1259
+#: src/application.rs:1241 src/application.rs:1250 src/application.rs:1264
 msgid "Cache cleared."
 msgstr ""
 
-#: src/audio/mpris.rs:29
-msgid "Netease Cloud Music"
-msgstr ""
-
-#: src/gui/player_controls.rs:135
+#: src/gui/player_controls.rs:145
 msgid "Start playback [{}] ..."
 msgstr ""
 
-#: src/gui/player_controls.rs:219
+#: src/gui/player_controls.rs:229
 msgid "Playback error:{}"
 msgstr ""
 
-#: src/gui/player_controls.rs:513 src/gui/player_controls.rs:552
+#: src/gui/player_controls.rs:523 src/gui/player_controls.rs:562
 msgid "No more songs！"
 msgstr ""
 
-#: src/gui/player_controls.rs:572
+#: src/gui/player_controls.rs:582
 msgid "Please login first！"
 msgstr ""
 
-#: src/gui/player_controls.rs:583
+#: src/gui/player_controls.rs:593
 msgid "Collection failure！"
 msgstr ""
 
@@ -431,10 +436,10 @@ msgstr ""
 msgid "Input format error!"
 msgstr ""
 
-#: src/window.rs:420
+#: src/window.rs:425
 msgid "No playable songs found！"
 msgstr ""
 
-#: src/window.rs:586
+#: src/window.rs:591
 msgid "Play List&Lyrics"
 msgstr ""
