@@ -23,17 +23,23 @@ pub struct NcmClient {
 }
 
 impl NcmClient {
+    const DEFAULT_RATE: u32 = 320000;
+
     pub fn new() -> Self {
-        if let Some(cookie_jar) = COOKIE_JAR.get() {
-            let client = MusicApi::from_cookie_jar(cookie_jar.to_owned());
-            return Self {
-                client,
-                rate: 320000,
-            };
+        if let Some(global_cookie_jar) = COOKIE_JAR.get() {
+            Self::from_cookie_jar(global_cookie_jar.to_owned())
+        } else {
+            Self {
+                client: MusicApi::new(),
+                rate: Self::DEFAULT_RATE,
+            }
         }
+    }
+
+    pub fn from_cookie_jar(cookie_jar: CookieJar) -> Self {
         Self {
-            client: MusicApi::new(),
-            rate: 320000,
+            client: MusicApi::from_cookie_jar(cookie_jar),
+            rate: Self::DEFAULT_RATE,
         }
     }
 
@@ -73,33 +79,30 @@ impl NcmClient {
         crate::path::DATA.clone().join(COOKIE_FILE)
     }
 
-    pub fn try_load_cookie_jar_from_file() -> bool {
-        if COOKIE_JAR.get().is_none() {
-            match fs::File::open(&Self::cookie_file_path()) {
-                Err(err) => match err.kind() {
-                    io::ErrorKind::NotFound => (),
-                    other => error!("{:?}", other),
-                },
-                Ok(file) => match CookieStore::load_json(io::BufReader::new(file)) {
-                    Err(err) => error!("{:?}", err),
-                    Ok(cookie_store) => {
-                        let cookie_jar = CookieJar::default();
-                        let url = BASE_URL.parse().unwrap();
+    pub fn load_cookie_jar_from_file() -> Option<CookieJar> {
+        match fs::File::open(&Self::cookie_file_path()) {
+            Err(err) => match err.kind() {
+                io::ErrorKind::NotFound => (),
+                other => error!("{:?}", other),
+            },
+            Ok(file) => match CookieStore::load_json(io::BufReader::new(file)) {
+                Err(err) => error!("{:?}", err),
+                Ok(cookie_store) => {
+                    let cookie_jar = CookieJar::default();
+                    let url = BASE_URL.parse().unwrap();
 
-                        for c in cookie_store.matches(&url) {
-                            let cookie = CookieBuilder::new(c.name(), c.value()).build().unwrap();
-                            cookie_jar.set(cookie, &BASE_URL.parse().unwrap()).unwrap();
-                        }
-                        COOKIE_JAR.set(cookie_jar).unwrap();
-                        return true;
+                    for c in cookie_store.matches(&url) {
+                        let cookie = CookieBuilder::new(c.name(), c.value()).build().unwrap();
+                        cookie_jar.set(cookie, &BASE_URL.parse().unwrap()).unwrap();
                     }
-                },
-            };
-        }
-        false
+                    return Some(cookie_jar);
+                }
+            },
+        };
+        None
     }
 
-    pub fn save_cookie_jar_to_file() {
+    pub fn save_global_cookie_jar_to_file() {
         if let Some(cookie_jar) = COOKIE_JAR.get() {
             match fs::File::create(&Self::cookie_file_path()) {
                 Err(err) => error!("{:?}", err),
@@ -120,14 +123,14 @@ impl NcmClient {
         }
     }
 
-    pub fn clean_cookie_jar_and_file() {
+    pub fn clean_global_cookie_jar_and_file() {
         if let Some(cookie_jar) = COOKIE_JAR.get() {
             cookie_jar.clear();
-            if let Err(err) = fs::remove_file(&crate::path::DATA.clone().join(COOKIE_FILE)) {
-                match err.kind() {
-                    io::ErrorKind::NotFound => (),
-                    other => error!("{:?}", other),
-                }
+        }
+        if let Err(err) = fs::remove_file(&crate::path::DATA.clone().join(COOKIE_FILE)) {
+            match err.kind() {
+                io::ErrorKind::NotFound => (),
+                other => error!("{:?}", other),
             }
         }
     }
