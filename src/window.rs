@@ -615,9 +615,7 @@ impl NeteaseCloudMusicGtk4Window {
 
     pub fn switch_my_page_to_logout(&self) {
         let imp = self.imp();
-        if let Some(my_login) = imp.my_stack.child_by_name("my_login") {
-            my_login.set_visible(false);
-        }
+        imp.my_stack.set_visible_child_name("my_no_login");
     }
 
     pub fn init_my_page(&self, sls: Vec<SongList>) {
