@@ -161,10 +161,17 @@
         </child>
         <child>
             <object class="GtkButton" id="logout_button">
-                <property name="label" translatable="yes">Logout</property>
+                <property name="tooltip-text" translatable="yes">Logout</property>
                 <property name="margin-top">3</property>
+                <child>
+                    <object class="GtkImage">
+                        <property name="halign">center</property>
+                        <property name="icon-name">system-log-out-symbolic</property>
+                    </object>
+                </child>
                 <style>
-                    <class name="suggested-action" />
+                    <class name="destructive-action" />
+                    <class name="image-button" />
                 </style>
             </object>
         </child>
