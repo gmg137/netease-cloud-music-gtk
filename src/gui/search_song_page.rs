@@ -67,7 +67,7 @@ impl SearchSongPage {
         self.set_property("offset", offset);
         let imp = self.imp();
         let mut playlist = sis.clone();
-        (&*imp.playlist).borrow_mut().append(&mut playlist);
+        (*imp.playlist).borrow_mut().append(&mut playlist);
         imp.num_label.get().set_label(&gettext!("{} songs", offset));
         let sender = imp.sender.get().unwrap();
         let listbox = imp.listbox.get();

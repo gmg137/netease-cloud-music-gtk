@@ -1371,7 +1371,6 @@ dependencies = [
  "gstreamer",
  "gstreamer-player",
  "gtk4",
- "isahc",
  "libadwaita",
  "log",
  "mpris-player",

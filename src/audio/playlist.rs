@@ -202,6 +202,7 @@ impl PlayList {
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug)]
 pub enum LoopsState {
     // 随机

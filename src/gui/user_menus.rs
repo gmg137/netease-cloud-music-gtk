@@ -178,10 +178,10 @@ impl UserMenus {
                 UserMenuChild::User => &_self.userbox,
             }
         }
-        let current = self.current_menu.get().clone();
+        let current = self.current_menu.get();
         if current != new_menu {
-            popover.remove_child(get_box(self, current.clone()));
-            popover.add_child(get_box(self, new_menu.clone()), "user_popover");
+            popover.remove_child(get_box(self, current));
+            popover.add_child(get_box(self, new_menu), "user_popover");
             popover.notify("child");
 
             self.current_menu.replace(new_menu);

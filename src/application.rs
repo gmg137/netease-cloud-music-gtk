@@ -208,7 +208,7 @@ impl NeteaseCloudMusicGtk4Application {
                 NcmClient::try_load_cookie_jar_from_file();
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
-                ncmapi = new_ncmapi(proxy_address.clone());
+                ncmapi = new_ncmapi(proxy_address);
 
                 ctx.spawn_local(async move {
                     if !window.is_logined() {
