@@ -4,7 +4,7 @@ use gio::Settings;
 use glib::{clone, timeout_future, timeout_future_seconds, MainContext, Receiver, Sender, WeakRef};
 use gtk::{gio, glib, prelude::*};
 use log::*;
-use ncm_api::{BannersInfo, LoginInfo, SingerInfo, SongInfo, SongList, TopList};
+use ncm_api::{BannersInfo, CookieJar, LoginInfo, SingerInfo, SongInfo, SongList, TopList};
 use once_cell::sync::OnceCell;
 use std::cell::RefCell;
 use std::fs;
@@ -18,7 +18,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Action {
-    CheckLogin(UserMenuChild),
+    CheckLogin(UserMenuChild, CookieJar),
     Logout,
     TryUpdateQrCode,
     SetQrImage(PathBuf),
@@ -181,42 +181,41 @@ impl NeteaseCloudMusicGtk4Application {
         window
     }
 
-    fn process_action(&self, action: Action) -> glib::Continue {
-        fn new_ncmapi(proxy_address: String) -> NcmClient {
-            if !proxy_address.is_empty() {
-                let mut ncmapi = NcmClient::new();
-                if ncmapi.set_proxy(proxy_address).is_ok() {
-                    ncmapi
-                } else {
-                    NcmClient::new()
-                }
-            } else {
-                NcmClient::new()
+    fn init_ncmapi(&self, cli: NcmClient) -> NcmClient {
+        let window = self.imp().window.get().unwrap().upgrade().unwrap();
+        let mut ncmapi = cli;
+        let proxy_address = window.settings().string("proxy-address").to_string();
+        if !proxy_address.is_empty() {
+            if ncmapi.set_proxy(proxy_address).is_err() {
+                // do nothing
             }
         }
+        ncmapi
+    }
+
+    fn process_action(&self, action: Action) -> glib::Continue {
         let imp = self.imp();
         if self.active_window().is_none() {
             return glib::Continue(true);
         }
 
         let window = imp.window.get().unwrap().upgrade().unwrap();
-        let proxy_address = window.settings().string("proxy-address").to_string();
-        let mut ncmapi = new_ncmapi(proxy_address.clone());
+        let mut ncmapi = self.init_ncmapi(NcmClient::new());
 
         match action {
-            Action::CheckLogin(user_menu) => {
-                NcmClient::try_load_cookie_jar_from_file();
+            Action::CheckLogin(user_menu, logined_cookie_jar) => {
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
-                ncmapi = new_ncmapi(proxy_address);
+                ncmapi = self.init_ncmapi(NcmClient::from_cookie_jar(logined_cookie_jar));
 
                 ctx.spawn_local(async move {
                     if !window.is_logined() {
                         if let Ok(login_info) = ncmapi.client.login_status().await {
                             debug!("获取用户信息成功: {:?}", login_info);
                             window.set_uid(login_info.uid);
+
                             ncmapi.set_cookie_jar_to_global();
-                            NcmClient::save_cookie_jar_to_file();
+                            NcmClient::save_global_cookie_jar_to_file();
 
                             sender
                                 .send(Action::SwitchUserMenuToUser(login_info, user_menu))
@@ -228,12 +227,10 @@ impl NeteaseCloudMusicGtk4Application {
                                 .unwrap();
                         } else {
                             error!("获取用户信息失败！");
-                            if NcmClient::cookie_file_path().exists() {
-                                sender
-                                    .send(Action::AddToast(gettext("Login failed!")))
-                                    .unwrap();
-                            }
-                            NcmClient::clean_cookie_jar_and_file();
+                            sender
+                                .send(Action::AddToast(gettext("Login failed!")))
+                                .unwrap();
+                            NcmClient::clean_global_cookie_jar_and_file();
                         }
                     }
                 });
@@ -243,7 +240,7 @@ impl NeteaseCloudMusicGtk4Application {
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
                     ncmapi.client.logout().await;
-                    NcmClient::clean_cookie_jar_and_file();
+                    NcmClient::clean_global_cookie_jar_and_file();
 
                     window.logout();
                     window.switch_my_page_to_logout();
@@ -317,9 +314,12 @@ impl NeteaseCloudMusicGtk4Application {
                                 }
                                 // 登录成功
                                 803 => {
-                                    debug!("登录成功，unikey={}", unikey);
-                                    ncmapi.set_cookie_jar_to_global();
-                                    sender.send(Action::CheckLogin(UserMenuChild::Qr)).unwrap();
+                                    debug!("扫码登录成功，unikey={}", unikey);
+                                    let cookie_jar = ncmapi.client.cookie_jar().cloned().unwrap_or_else(|| {
+                                        error!("No login cookie found");
+                                        CookieJar::new()
+                                    });
+                                    sender.send(Action::CheckLogin(UserMenuChild::Qr, cookie_jar.to_owned())).unwrap();
                                     break;
                                 }
                                 _ => break,
@@ -370,9 +370,15 @@ impl NeteaseCloudMusicGtk4Application {
                     if let Ok(_login_info) =
                         ncmapi.client.login_cellphone(ctcode, phone, captcha).await
                     {
-                        ncmapi.set_cookie_jar_to_global();
+                        let cookie_jar = ncmapi.client.cookie_jar().cloned().unwrap_or_else(|| {
+                            error!("No login cookie found");
+                            CookieJar::new()
+                        });
                         sender
-                            .send(Action::CheckLogin(UserMenuChild::Phone))
+                            .send(Action::CheckLogin(
+                                UserMenuChild::Phone,
+                                cookie_jar.to_owned(),
+                            ))
                             .unwrap();
                     } else {
                         error!("登录失败！");
@@ -421,7 +427,11 @@ impl NeteaseCloudMusicGtk4Application {
 
                         // auto check login after banners
                         // https://github.com/Binaryify/NeteaseCloudMusicApi/issues/1217
-                        sender.send(Action::CheckLogin(UserMenuChild::Qr)).unwrap();
+                        if let Some(cookie_jar) = NcmClient::load_cookie_jar_from_file() {
+                            sender
+                                .send(Action::CheckLogin(UserMenuChild::Qr, cookie_jar))
+                                .unwrap();
+                        }
                     } else {
                         error!("获取首页轮播信息失败！");
                         timeout_future(Duration::from_millis(500)).await;
@@ -1154,7 +1164,6 @@ impl NeteaseCloudMusicGtk4Application {
                     .unwrap();
             }
             Action::InitMyPage => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.switch_my_page_to_login();
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
