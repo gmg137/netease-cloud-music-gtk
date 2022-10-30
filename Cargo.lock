@@ -144,9 +144,9 @@ checksum = "a2698f953def977c68f935bb0dfa959375ad4638570e969e2f1e9f433cbf1af6"
 
 [[package]]
 name = "cc"
-version = "1.0.73"
+version = "1.0.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fff2a6927b3bb87f9595d67196a70493f627687a71d87a0d692242c33f58c11"
+checksum = "581f5dba903aac52ea3feb5ec4810848460ee833876f1f9b0fdeab1f19091574"
 
 [[package]]
 name = "cfg-expr"
@@ -1343,7 +1343,7 @@ dependencies = [
 [[package]]
 name = "netease-cloud-music-api"
 version = "1.0.3"
-source = "git+https://github.com/gmg137/netease-cloud-music-api.git#be347a9cae36af95a243a25b1f2b0dff4f278fba"
+source = "git+https://github.com/gmg137/netease-cloud-music-api.git#60c23684fc7441145001b187f851e21ab46dd33a"
 dependencies = [
  "anyhow",
  "base64",
@@ -1460,9 +1460,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.15.0"
+version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e82dad04139b71a90c080c8463fe0dc7902db5192d939bd0950f074d014339e1"
+checksum = "86f0b0d4bf799edbc74508c1e8bf170ff5f41238e5f8225603ca7caaae2b7860"
 
 [[package]]
 name = "openssl"
@@ -2006,9 +2006,9 @@ dependencies = [
 
 [[package]]
 name = "tiff"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7259662e32d1e219321eb309d5f9d898b779769d81b76e762c07c8e5d38fcb65"
+checksum = "9f71e422515e83e3ab8a03d4781d05ebf864fc61f4546e6ecffa58cbd34181a0"
 dependencies = [
  "flate2",
  "jpeg-decoder",
