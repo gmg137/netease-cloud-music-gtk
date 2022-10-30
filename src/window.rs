@@ -13,12 +13,14 @@ use gtk::{
     gio::{self, SettingsBindFlags},
     glib, CompositeTemplate,
 };
-use ncm_api::{BannersInfo, LoginInfo, SingerInfo, SongInfo, SongList, TopList};
+use ncm_api::{
+    BannersInfo, LoginInfo, SingerInfo, SongInfo, SongList, DetailDynamic, TopList,
+};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
     cmp::Ordering,
-    collections::LinkedList,
+    collections::{HashSet, LinkedList},
     path::PathBuf,
     sync::{Arc, Mutex},
 };
@@ -26,6 +28,12 @@ use std::{
 mod imp {
 
     use super::*;
+
+    #[derive(Default)]
+    pub struct UserInfo {
+        uid: u64,
+        like_songs: HashSet<u64>,
+    }
 
     #[derive(Default, CompositeTemplate)]
     #[template(resource = "/com/gitee/gmg137/NeteaseCloudMusicGtk4/gtk/window.ui")]
@@ -86,7 +94,22 @@ mod imp {
         pub stack_child: Arc<Mutex<LinkedList<(String, String)>>>,
         search_type: Cell<SearchType>,
         toast: RefCell<Option<Toast>>,
-        uid: Cell<u64>,
+        user_info: RefCell<UserInfo>,
+    }
+
+    impl NeteaseCloudMusicGtk4Window {
+        pub fn user_like_song_contains(&self, id: &u64) -> bool {
+            self.user_info.borrow().like_songs.contains(id)
+        }
+        pub fn user_like_song_add(&self, id: u64) {
+            self.user_info.borrow_mut().like_songs.insert(id);
+        }
+        pub fn user_like_song_remove(&self, id: &u64) {
+            self.user_info.borrow_mut().like_songs.remove(id);
+        }
+        pub fn clear_user_info(&self) {
+            self.user_info.take();
+        }
     }
 
     #[glib::object_subclass]
@@ -172,7 +195,7 @@ mod imp {
                 }
                 "uid" => {
                     let uid = value.get().unwrap();
-                    self.uid.replace(uid);
+                    self.user_info.borrow_mut().uid = uid;
                 }
                 _ => unimplemented!(),
             }
@@ -182,7 +205,7 @@ mod imp {
             match pspec.name() {
                 "toast" => self.toast.borrow().to_value(),
                 "search-type" => self.search_type.get().to_value(),
-                "uid" => self.uid.get().to_value(),
+                "uid" => self.user_info.borrow().uid.to_value(),
                 _ => unimplemented!(),
             }
         }
@@ -367,7 +390,26 @@ impl NeteaseCloudMusicGtk4Window {
     }
 
     pub fn logout(&self) {
-        self.set_uid(0u64);
+        self.imp().clear_user_info();
+    }
+
+    pub fn set_like_song(&self, id: u64, val: bool) {
+        self.imp().player_controls.get().set_property("like", val);
+        if val {
+            self.imp().user_like_song_add(id);
+        } else {
+            self.imp().user_like_song_remove(&id);
+        }
+    }
+
+    pub fn set_user_like_songs(&self, song_ids: &Vec<u64>) {
+        song_ids
+            .iter()
+            .for_each(|id| self.imp().user_like_song_add(id.to_owned()));
+    }
+
+    pub fn set_like_songlist(&self, val: bool) {
+        self.imp().songlist_page.get().set_property("like", val);
     }
 
     pub fn set_user_qrimage(&self, path: PathBuf) {
@@ -465,6 +507,7 @@ impl NeteaseCloudMusicGtk4Window {
 
     pub fn play(&self, song_info: SongInfo) {
         let player_controls = self.imp().player_controls.get();
+        player_controls.set_property("like", self.imp().user_like_song_contains(&song_info.id));
         player_controls.play(song_info);
         let player_revealer = self.imp().player_revealer.get();
         if !player_revealer.reveals_child() {
@@ -492,9 +535,14 @@ impl NeteaseCloudMusicGtk4Window {
         songlist_page.init_songlist_info(songlist, self.is_logined());
     }
 
-    pub fn init_songlist_page(&self, sis: Vec<SongInfo>, page_type: DiscoverSubPage) {
+    pub fn init_songlist_page(
+        &self,
+        sis: Vec<SongInfo>,
+        dy: DetailDynamic,
+        page_type: DiscoverSubPage,
+    ) {
         let songlist_page = self.imp().songlist_page.get();
-        songlist_page.init_songlist(sis, page_type);
+        songlist_page.init_songlist(sis, dy, page_type);
     }
 
     pub fn init_page_data(&self) {

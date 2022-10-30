@@ -6,7 +6,7 @@
 use fragile::Fragile;
 use gettextrs::gettext;
 use gio::Settings;
-use glib::{ParamFlags, ParamSpec, ParamSpecDouble, Sender, Value};
+use glib::{ParamFlags, ParamSpec, ParamSpecBoolean, ParamSpecDouble, Sender, Value};
 use gst::ClockTime;
 use gstreamer_player::*;
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
@@ -477,6 +477,8 @@ mod imp {
         pub loop_button: TemplateChild<CheckButton>,
         #[template_child(id = "shuffle")]
         pub shuffle_button: TemplateChild<CheckButton>,
+        #[template_child(id = "like_button")]
+        pub like_button: TemplateChild<Button>,
 
         pub settings: OnceCell<Settings>,
         pub sender: OnceCell<Sender<Action>>,
@@ -484,6 +486,7 @@ mod imp {
         pub playlist: Arc<Mutex<PlayList>>,
         pub mpris: OnceCell<MprisController>,
         pub volume: Cell<f64>,
+        like: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -580,7 +583,9 @@ mod imp {
             let sender = self.sender.get().unwrap().clone();
             if let Ok(playlist) = self.playlist.lock() {
                 if let Some(song_info) = playlist.current_song() {
-                    sender.send(Action::LikeSong(song_info.id)).unwrap();
+                    sender
+                        .send(Action::LikeSong(song_info.id, !self.like.get()))
+                        .unwrap();
                     return;
                 }
             }
@@ -683,26 +688,42 @@ mod imp {
             obj.setup_player();
             obj.setup_mpris();
             obj.bind_shortcut();
+
+            obj.bind_property("like", &self.like_button.get(), "icon_name")
+                .transform_to(|_, v: bool| {
+                    Some(
+                        (if v {
+                            "starred-symbolic"
+                        } else {
+                            "non-starred-symbolic"
+                        })
+                        .to_string(),
+                    )
+                })
+                .build();
         }
 
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
-                vec![ParamSpecDouble::new(
-                    // Name
-                    "volume",
-                    // Nickname
-                    "volume",
-                    // Short description
-                    "volume",
-                    // Minimum value
-                    f64::MIN,
-                    // Maximum value
-                    f64::MAX,
-                    // Default value
-                    0.0,
-                    // The property can be read and written to
-                    ParamFlags::READWRITE,
-                )]
+                vec![
+                    ParamSpecDouble::new(
+                        // Name
+                        "volume",
+                        // Nickname
+                        "volume",
+                        // Short description
+                        "volume",
+                        // Minimum value
+                        f64::MIN,
+                        // Maximum value
+                        f64::MAX,
+                        // Default value
+                        0.0,
+                        // The property can be read and written to
+                        ParamFlags::READWRITE,
+                    ),
+                    ParamSpecBoolean::new("like", "like", "like", false, ParamFlags::READWRITE),
+                ]
             });
             PROPERTIES.as_ref()
         }
@@ -713,6 +734,10 @@ mod imp {
                     let input_number = value.get().expect("The value needs to be of type `f64`.");
                     self.volume.replace(input_number);
                 }
+                "like" => {
+                    let like = value.get().expect("The value needs to be of type `bool`.");
+                    self.like.replace(like);
+                }
                 _ => unimplemented!(),
             }
         }
@@ -720,6 +745,7 @@ mod imp {
         fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
                 "volume" => self.volume.get().to_value(),
+                "like" => self.like.get().to_value(),
                 _ => unimplemented!(),
             }
         }

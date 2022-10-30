@@ -4,13 +4,16 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use gettextrs::gettext;
-use glib::Sender;
+use glib::{ParamFlags, ParamSpec, ParamSpecBoolean, Sender, Value};
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
-use ncm_api::{SongInfo, SongList};
-use once_cell::sync::OnceCell;
+use ncm_api::{DetailDynamic, SongInfo, SongList};
+use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{application::Action, model::DiscoverSubPage, path::CACHE};
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
 use super::SonglistRow;
 
@@ -30,7 +33,7 @@ impl SonglistPage {
         self.imp().sender.set(sender).unwrap();
     }
 
-    pub fn init_songlist_info(&self, songlist: &SongList, is_logined :bool) {
+    pub fn init_songlist_info(&self, songlist: &SongList, is_logined: bool) {
         let imp = self.imp();
         imp.songlist.replace(Some(songlist.to_owned()));
 
@@ -52,6 +55,9 @@ impl SonglistPage {
         let title = imp.title_label.get();
         title.set_label(&songlist.name);
 
+        imp.num_label.get().set_label(&gettext!("{} songs", 0));
+        self.set_property("like", false);
+
         // 删除旧内容
         let listbox = self.imp().listbox.get();
         while let Some(child) = listbox.last_child() {
@@ -59,13 +65,29 @@ impl SonglistPage {
         }
     }
 
-    pub fn init_songlist(&self, sis: Vec<SongInfo>, page_type: DiscoverSubPage) {
+    pub fn init_songlist(&self, sis: Vec<SongInfo>, dy: DetailDynamic, page_type: DiscoverSubPage) {
         let imp = self.imp();
         imp.page_type.replace(Some(page_type));
+        match dy {
+            DetailDynamic::Album(dy) => {
+                self.set_property("like", dy.is_sub);
+                imp.num_label.get().set_label(&gettext!(
+                    "{} songs, {} booked",
+                    sis.len(),
+                    dy.sub_count
+                ));
+            }
+            DetailDynamic::SongList(dy) => {
+                self.set_property("like", dy.subscribed);
+                imp.num_label.get().set_label(&gettext!(
+                    "{} songs, {} booked",
+                    sis.len(),
+                    dy.booked_count
+                ));
+            }
+        }
+
         imp.playlist.replace(sis.clone());
-        imp.num_label
-            .get()
-            .set_label(&gettext!("{} songs", sis.len()));
         let sender = imp.sender.get().unwrap();
         let listbox = imp.listbox.get();
         sis.into_iter().for_each(|si| {
@@ -119,6 +141,8 @@ mod imp {
         pub page_type: Rc<RefCell<Option<DiscoverSubPage>>>,
 
         pub sender: OnceCell<Sender<Action>>,
+
+        like: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -159,12 +183,12 @@ mod imp {
                 let sender = self.sender.get().unwrap();
                 if let Some(songlist) = &*self.songlist.borrow() {
                     match pt {
-                        DiscoverSubPage::SongList => {
-                            sender.send(Action::LikeSongList(songlist.id)).unwrap()
-                        }
-                        DiscoverSubPage::Album => {
-                            sender.send(Action::LikeAlbum(songlist.id)).unwrap()
-                        }
+                        DiscoverSubPage::SongList => sender
+                            .send(Action::LikeSongList(songlist.id, !self.like.get()))
+                            .unwrap(),
+                        DiscoverSubPage::Album => sender
+                            .send(Action::LikeAlbum(songlist.id, !self.like.get()))
+                            .unwrap(),
                     }
                 }
             }
@@ -174,6 +198,7 @@ mod imp {
     impl ObjectImpl for SonglistPage {
         fn constructed(&self) {
             self.parent_constructed();
+            let obj = self.obj();
 
             let select_row = Rc::new(RefCell::new(-1));
             self.listbox.connect_row_activated(move |list, row| {
@@ -191,6 +216,49 @@ mod imp {
                     *select_row.borrow_mut() = row.index();
                 }
             });
+
+            obj.bind_property("like", &self.like_button.get(), "icon_name")
+                .transform_to(|_, v: bool| {
+                    Some(
+                        (if v {
+                            "starred-symbolic"
+                        } else {
+                            "non-starred-symbolic"
+                        })
+                        .to_string(),
+                    )
+                })
+                .build();
+        }
+
+        fn properties() -> &'static [ParamSpec] {
+            static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
+                vec![ParamSpecBoolean::new(
+                    "like",
+                    "like",
+                    "like",
+                    false,
+                    ParamFlags::READWRITE,
+                )]
+            });
+            PROPERTIES.as_ref()
+        }
+
+        fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
+            match pspec.name() {
+                "like" => {
+                    let like = value.get().expect("The value needs to be of type `bool`.");
+                    self.like.replace(like);
+                }
+                _ => unimplemented!(),
+            }
+        }
+
+        fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
+            match pspec.name() {
+                "like" => self.like.get().to_value(),
+                _ => unimplemented!(),
+            }
         }
     }
     impl WidgetImpl for SonglistPage {}
