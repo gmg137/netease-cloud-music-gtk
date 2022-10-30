@@ -4,7 +4,10 @@ use gio::Settings;
 use glib::{clone, timeout_future, timeout_future_seconds, MainContext, Receiver, Sender, WeakRef};
 use gtk::{gio, glib, prelude::*};
 use log::*;
-use ncm_api::{BannersInfo, CookieJar, LoginInfo, SingerInfo, SongInfo, SongList, TopList};
+use ncm_api::{
+    AlbumDetailDynamic, BannersInfo, CookieJar, DetailDynamic, LoginInfo, SingerInfo, SongInfo,
+    SongList, SongListDetailDynamic, TopList,
+};
 use once_cell::sync::OnceCell;
 use std::cell::RefCell;
 use std::fs;
@@ -20,6 +23,7 @@ use crate::{
 pub enum Action {
     CheckLogin(UserMenuChild, CookieJar),
     Logout,
+    InitUserInfo(LoginInfo),
     TryUpdateQrCode,
     SetQrImage(PathBuf),
     CheckQrTimeout(String),
@@ -49,14 +53,14 @@ pub enum Action {
     PlayStart(SongInfo),
     DownloadSong(SongInfo),
     ToSongListPage(SongList),
-    InitSongListPage(Vec<SongInfo>),
+    InitSongListPage(Vec<SongInfo>, DetailDynamic),
     ToAlbumPage(SongList),
-    InitAlbumPage(Vec<SongInfo>),
+    InitAlbumPage(Vec<SongInfo>, DetailDynamic),
     AddPlayList(Vec<SongInfo>),
     PlayListStart,
-    LikeSongList(u64),
-    LikeAlbum(u64),
-    LikeSong(u64),
+    LikeSongList(u64, bool),
+    LikeAlbum(u64, bool),
+    LikeSong(u64, bool),
     GetToplist,
     GetToplistSongsList(u64),
     InitTopList(Vec<TopList>),
@@ -218,10 +222,12 @@ impl NeteaseCloudMusicGtk4Application {
                             NcmClient::save_global_cookie_jar_to_file();
 
                             sender
+                                .send(Action::InitUserInfo(login_info.to_owned()))
+                                .unwrap();
+                            sender
                                 .send(Action::SwitchUserMenuToUser(login_info, user_menu))
                                 .unwrap();
                             sender.send(Action::InitMyPage).unwrap();
-
                             sender
                                 .send(Action::AddToast(gettext("Login successful!")))
                                 .unwrap();
@@ -246,6 +252,14 @@ impl NeteaseCloudMusicGtk4Application {
                     window.switch_my_page_to_logout();
                     sender.send(Action::SwitchUserMenuToQr).unwrap();
                     sender.send(Action::AddToast(gettext("Logout!"))).unwrap();
+                });
+            }
+            Action::InitUserInfo(login_info) => {
+                let ctx = glib::MainContext::default();
+                ctx.spawn_local(async move {
+                    if let Ok(song_ids) = ncmapi.client.user_song_id_list(login_info.uid).await {
+                        window.set_user_like_songs(&song_ids);
+                    }
                 });
             }
             Action::TryUpdateQrCode => {
@@ -651,9 +665,15 @@ impl NeteaseCloudMusicGtk4Application {
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
+                    let detal_dynamic_as = ncmapi.client.songlist_detail_dynamic(songlist.id);
                     if let Ok(sis) = ncmapi.client.song_list_detail(songlist.id).await {
                         debug!("获取歌单详情: {:?}", sis);
-                        sender.send(Action::InitSongListPage(sis)).unwrap();
+                        let dy =
+                            DetailDynamic::SongList(detal_dynamic_as.await.unwrap_or_else(|err| {
+                                error!("{:?}", err);
+                                SongListDetailDynamic::default()
+                            }));
+                        sender.send(Action::InitSongListPage(sis, dy)).unwrap();
                     } else {
                         error!("获取歌单详情失败: {:?}", songlist);
                         sender
@@ -664,9 +684,9 @@ impl NeteaseCloudMusicGtk4Application {
                     }
                 });
             }
-            Action::InitSongListPage(sis) => {
+            Action::InitSongListPage(sis, dy) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
-                window.init_songlist_page(sis, DiscoverSubPage::SongList);
+                window.init_songlist_page(sis, dy, DiscoverSubPage::SongList);
             }
             Action::ToAlbumPage(songlist) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
@@ -675,9 +695,15 @@ impl NeteaseCloudMusicGtk4Application {
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
+                    let detal_dynamic_as = ncmapi.client.album_detail_dynamic(songlist.id);
                     if let Ok(sis) = ncmapi.client.album(songlist.id).await {
                         debug!("获取专辑详情: {:?}", sis);
-                        sender.send(Action::InitAlbumPage(sis)).unwrap();
+                        let dy =
+                            DetailDynamic::Album(detal_dynamic_as.await.unwrap_or_else(|err| {
+                                error!("{:?}", err);
+                                AlbumDetailDynamic::default()
+                            }));
+                        sender.send(Action::InitAlbumPage(sis, dy)).unwrap();
                     } else {
                         error!("获取专辑详情失败: {:?}", songlist);
                         sender
@@ -686,9 +712,9 @@ impl NeteaseCloudMusicGtk4Application {
                     }
                 });
             }
-            Action::InitAlbumPage(sis) => {
+            Action::InitAlbumPage(sis, dy) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
-                window.init_songlist_page(sis, DiscoverSubPage::Album);
+                window.init_songlist_page(sis, dy, DiscoverSubPage::Album);
             }
             Action::AddPlayList(sis) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
@@ -698,53 +724,80 @@ impl NeteaseCloudMusicGtk4Application {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.playlist_start();
             }
-            Action::LikeSongList(id) => {
+            Action::LikeSongList(id, is_like) => {
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
-                    if ncmapi.client.song_list_like(true, id).await {
-                        debug!("收藏歌单: {:?}", id);
+                    if ncmapi.client.song_list_like(is_like, id).await {
+                        debug!("收藏/取消收藏歌单: {:?}", id);
+                        window.set_like_songlist(is_like);
                         sender
-                            .send(Action::AddToast(gettext("Song list have been collected!")))
+                            .send(Action::AddToast(gettext(if is_like {
+                                "Song list have been collected!"
+                            } else {
+                                "Song list have been uncollected!"
+                            })))
                             .unwrap();
                     } else {
-                        error!("收藏歌单失败: {:?}", id);
+                        error!("收藏/取消收藏歌单失败: {:?}", id);
                         sender
-                            .send(Action::AddToast(gettext("Failed to collect song list!")))
+                            .send(Action::AddToast(gettext(if is_like {
+                                "Failed to collect song list!"
+                            } else {
+                                "Failed to uncollect song list!"
+                            })))
                             .unwrap();
                     }
                 });
             }
-            Action::LikeAlbum(id) => {
+            Action::LikeAlbum(id, is_like) => {
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
-                    if ncmapi.client.album_like(true, id).await {
-                        debug!("收藏专辑: {:?}", id);
+                    if ncmapi.client.album_like(is_like, id).await {
+                        debug!("收藏/取消收藏专辑: {:?}", id);
+                        window.set_like_songlist(is_like);
                         sender
-                            .send(Action::AddToast(gettext("Album have been collected!")))
+                            .send(Action::AddToast(gettext(if is_like {
+                                "Album have been collected!"
+                            } else {
+                                "Album have been uncollected!"
+                            })))
                             .unwrap();
                     } else {
-                        error!("收藏专辑失败: {:?}", id);
+                        error!("收藏/取消收藏专辑失败: {:?}", id);
                         sender
-                            .send(Action::AddToast(gettext("Failed to collect album!")))
+                            .send(Action::AddToast(gettext(if is_like {
+                                "Failed to collect album!"
+                            } else {
+                                "Failed to uncollect album!"
+                            })))
                             .unwrap();
                     }
                 });
             }
-            Action::LikeSong(id) => {
+            Action::LikeSong(id, is_like) => {
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
-                    if ncmapi.client.like(true, id).await {
-                        debug!("收藏歌曲: {:?}", id);
+                    if ncmapi.client.like(is_like, id).await {
+                        debug!("收藏/取消收藏歌曲: {:?}", id);
+                        window.set_like_song(id, is_like);
                         sender
-                            .send(Action::AddToast(gettext("Songs have been collected!")))
+                            .send(Action::AddToast(gettext(if is_like {
+                                "Songs have been collected!"
+                            } else {
+                                "Songs have been uncollected!"
+                            })))
                             .unwrap();
                     } else {
-                        error!("收藏歌曲失败: {:?}", id);
+                        error!("收藏/取消收藏歌曲失败: {:?}", id);
                         sender
-                            .send(Action::AddToast(gettext("Failed to collect songs!")))
+                            .send(Action::AddToast(gettext(if is_like {
+                                "Failed to collect songs!"
+                            } else {
+                                "Failed to uncollect songs!"
+                            })))
                             .unwrap();
                     }
                 });
