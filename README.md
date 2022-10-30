@@ -64,6 +64,17 @@ sudo flatpak install com.gitee.gmg137.NeteaseCloudMusicGtk4-*.flatpak
 nix-env -iA nixpkgs.netease-cloud-music-gtk
 ```
 
+### Gentoo Linux
+```
+// 添加gentoo-zh源
+sudo emerge --ask app-eselect/eselect-repository
+sudo eselect repository enable gentoo-zh
+// 同步gentoo-zh源
+sudo emerge --sync gentoo-zh
+// 安装
+sudo emerge --ask media-sound/netease-cloud-music-gtk
+```
+
 ### 从源码安装(不推荐)
 > 编译依赖: opensssl、dbus、gtk4、gdk-pixbuf、libadwaita-1、gstreamer、gstreamer-base
 ```
