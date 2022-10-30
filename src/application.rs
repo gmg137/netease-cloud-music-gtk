@@ -189,10 +189,8 @@ impl NeteaseCloudMusicGtk4Application {
         let window = self.imp().window.get().unwrap().upgrade().unwrap();
         let mut ncmapi = cli;
         let proxy_address = window.settings().string("proxy-address").to_string();
-        if !proxy_address.is_empty() {
-            if ncmapi.set_proxy(proxy_address).is_err() {
-                // do nothing
-            }
+        if !proxy_address.is_empty() && ncmapi.set_proxy(proxy_address).is_err() {
+            // do nothing
         }
         ncmapi
     }
@@ -333,7 +331,7 @@ impl NeteaseCloudMusicGtk4Application {
                                         error!("No login cookie found");
                                         CookieJar::new()
                                     });
-                                    sender.send(Action::CheckLogin(UserMenuChild::Qr, cookie_jar.to_owned())).unwrap();
+                                    sender.send(Action::CheckLogin(UserMenuChild::Qr, cookie_jar)).unwrap();
                                     break;
                                 }
                                 _ => break,
@@ -389,10 +387,7 @@ impl NeteaseCloudMusicGtk4Application {
                             CookieJar::new()
                         });
                         sender
-                            .send(Action::CheckLogin(
-                                UserMenuChild::Phone,
-                                cookie_jar.to_owned(),
-                            ))
+                            .send(Action::CheckLogin(UserMenuChild::Phone, cookie_jar))
                             .unwrap();
                     } else {
                         error!("登录失败！");

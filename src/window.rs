@@ -402,7 +402,7 @@ impl NeteaseCloudMusicGtk4Window {
         }
     }
 
-    pub fn set_user_like_songs(&self, song_ids: &Vec<u64>) {
+    pub fn set_user_like_songs(&self, song_ids: &[u64]) {
         song_ids
             .iter()
             .for_each(|id| self.imp().user_like_song_add(id.to_owned()));
