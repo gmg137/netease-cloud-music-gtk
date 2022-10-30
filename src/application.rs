@@ -1314,7 +1314,7 @@ impl NeteaseCloudMusicGtk4Application {
             .program_name(&gettext(crate::APP_NAME))
             .logo_icon_name("logo")
             .version(VERSION)
-            .authors(vec!["gmg137".into()])
+            .authors(vec!["gmg137".into(), "catsout".into()])
             .website("https://github.com/gmg137/netease-cloud-music-gtk")
             .license_type(gtk::License::Gpl30)
             .build();
