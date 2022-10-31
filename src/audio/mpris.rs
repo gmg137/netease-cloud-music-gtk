@@ -9,6 +9,7 @@ use glib::clone;
 use gtk::glib;
 use mpris_player::*;
 use ncm_api::SongInfo;
+use std::cell::Cell;
 use std::sync::Arc;
 
 use crate::gui::PlayerControls;
@@ -20,6 +21,7 @@ use super::LoopsState;
 #[derive(Debug)]
 pub struct MprisController {
     mpris: Arc<MprisPlayer>,
+    shuffle: Arc<Cell<bool>>,
 }
 
 impl MprisController {
@@ -34,7 +36,10 @@ impl MprisController {
         mpris.set_can_quit(true);
         mpris.set_can_seek(false);
 
-        Self { mpris }
+        Self {
+            mpris,
+            shuffle: Arc::new(Cell::new(false)),
+        }
     }
 
     pub fn update_metadata(&self, si: &SongInfo) {
@@ -42,7 +47,7 @@ impl MprisController {
         metadata.artist = Some(vec![si.singer.clone()]);
         metadata.title = Some(si.name.clone());
         let mut path_cover = CACHE.clone();
-        path_cover.push(format!("{}-cover.jpg", si.album_id));
+        path_cover.push(format!("{}-songlist.jpg", si.album_id));
         if path_cover.exists() {
             metadata.art_url = Some(format!("file://{}", path_cover.to_string_lossy()));
         } else {
@@ -64,12 +69,25 @@ impl MprisController {
     }
 
     pub fn set_loop_status(&self, status: LoopsState) {
+        // mpris no api for shuffle
+        // set property mannully
+        fn set_mpris_shuffle(s: &MprisController, val: bool) {
+            if s.shuffle.get() != val {
+                s.shuffle.set(val);
+                s.mpris
+                    .property_changed("Shuffle".to_string(), s.shuffle.get());
+            }
+        }
         match status {
-            LoopsState::SHUFFLE => self.mpris.set_shuffle(true).unwrap(),
+            LoopsState::SHUFFLE => self.mpris.set_loop_status(LoopStatus::Playlist),
             LoopsState::LOOP => self.mpris.set_loop_status(LoopStatus::Playlist),
             LoopsState::ONE => self.mpris.set_loop_status(LoopStatus::Track),
             LoopsState::NONE => self.mpris.set_loop_status(LoopStatus::None),
         };
+        match status {
+            LoopsState::SHUFFLE => set_mpris_shuffle(self, true),
+            _ => set_mpris_shuffle(self, false),
+        }
     }
 
     pub fn set_position(&self, value: i64) {
@@ -140,9 +158,11 @@ impl MprisController {
                     player_controls.set_loops(status);
             }));
 
+        let shuffle = self.shuffle.to_owned();
         // mpris shuffle
         self.mpris
             .connect_shuffle(clone!(@weak player_controls => move |status| {
+                    shuffle.replace(status);
                     player_controls.set_shuffle(status);
             }));
 

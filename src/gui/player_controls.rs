@@ -97,25 +97,6 @@ impl PlayerControls {
         imp.mpris.set(MprisController::new()).unwrap();
         let mpris = imp.mpris.get().unwrap();
         mpris.setup_signals(self);
-        let settings = self.settings();
-        let loop_state = settings.string("repeat-variant");
-        match loop_state.as_str() {
-            "none" => {
-                mpris.set_loop_status(LoopsState::NONE);
-            }
-            "one" => {
-                mpris.set_loop_status(LoopsState::ONE);
-            }
-            "loop" => {
-                mpris.set_loop_status(LoopsState::LOOP);
-            }
-            "shuffle" => {
-                mpris.set_loop_status(LoopsState::SHUFFLE);
-            }
-            _ => {
-                mpris.set_loop_status(LoopsState::NONE);
-            }
-        };
     }
 
     pub fn setup_player(&self) {
@@ -603,6 +584,7 @@ mod imp {
                 .unwrap()
                 .set_string("repeat-variant", "none")
                 .unwrap();
+            self.mpris.get().unwrap().set_loop_status(LoopsState::NONE);
             if let Ok(mut playlist) = self.playlist.lock() {
                 playlist.set_loops(LoopsState::NONE);
             }
@@ -617,6 +599,7 @@ mod imp {
                 .unwrap()
                 .set_string("repeat-variant", "one")
                 .unwrap();
+            self.mpris.get().unwrap().set_loop_status(LoopsState::ONE);
             if let Ok(mut playlist) = self.playlist.lock() {
                 playlist.set_loops(LoopsState::ONE);
             }
@@ -631,6 +614,7 @@ mod imp {
                 .unwrap()
                 .set_string("repeat-variant", "loop")
                 .unwrap();
+            self.mpris.get().unwrap().set_loop_status(LoopsState::LOOP);
             if let Ok(mut playlist) = self.playlist.lock() {
                 playlist.set_loops(LoopsState::LOOP);
             }
@@ -645,6 +629,7 @@ mod imp {
                 .unwrap()
                 .set_string("repeat-variant", "shuffle")
                 .unwrap();
+            self.mpris.get().unwrap().set_loop_status(LoopsState::SHUFFLE);
             if let Ok(mut playlist) = self.playlist.lock() {
                 playlist.set_loops(LoopsState::SHUFFLE);
             }
@@ -684,9 +669,11 @@ mod imp {
             *self.playlist.lock().unwrap() = PlayList::new();
 
             obj.setup_settings();
-            obj.load_settings();
-            obj.setup_player();
+            // need to load mpris before load settings, as loading will call mpris fn
             obj.setup_mpris();
+            obj.load_settings();
+
+            obj.setup_player();
             obj.bind_shortcut();
 
             obj.bind_property("like", &self.like_button.get(), "icon_name")
