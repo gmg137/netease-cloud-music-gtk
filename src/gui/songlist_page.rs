@@ -97,7 +97,7 @@ impl SonglistPage {
                 songs_list.set_property("no-act-album", true);
                 imp.page_type.replace(Some(DiscoverSubPage::Album));
                 imp.num_label.get().set_label(&gettext!(
-                    "{} songs, {} booked",
+                    "{} songs, {} favs",
                     sis.len(),
                     dy.sub_count
                 ));
@@ -107,7 +107,7 @@ impl SonglistPage {
                 songs_list.set_property("no-act-album", false);
                 imp.page_type.replace(Some(DiscoverSubPage::SongList));
                 imp.num_label.get().set_label(&gettext!(
-                    "{} songs, {} booked",
+                    "{} songs, {} favs",
                     sis.len(),
                     dy.booked_count
                 ));
