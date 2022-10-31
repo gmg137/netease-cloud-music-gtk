@@ -76,11 +76,15 @@ impl SongListView {
         self.imp().listbox.get()
     }
 
-    pub fn mark_new_row_playing(&self, index: i32) {
+    pub fn mark_new_row_playing(&self, index: i32, do_active: bool) {
         let listbox = self.list_box();
         if let Some(row) = listbox.row_at_index(index) {
             let row = row.downcast::<SonglistRow>().unwrap();
-            row.emit_activate();
+            if do_active {
+                row.emit_activate();
+            } else {
+                row.switch_image(true);
+            }
             listbox.emit_by_name_with_values("row-activated", &[row.to_value()]);
         }
     }

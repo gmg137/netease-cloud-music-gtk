@@ -1286,11 +1286,9 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::InitMyPageRecSongList(sls) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.init_my_page(sls);
             }
             Action::ToPlayListLyricsPage(sis, si) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.init_playlist_lyrics_page(sis, si.to_owned());
                 let sender = imp.sender.clone();
                 sender.send(Action::GetLyrics(si)).unwrap();

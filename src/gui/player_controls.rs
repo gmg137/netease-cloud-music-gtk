@@ -19,7 +19,6 @@ use std::{
     cell::Cell,
     rc::Rc,
     sync::{Arc, Mutex},
-    time::Duration,
 };
 
 glib::wrapper! {
@@ -414,22 +413,6 @@ impl PlayerControls {
             sender
                 .send(Action::ToAlbumPage(songlist.to_owned()))
                 .unwrap();
-
-            /*
-            let mut path = CACHE.clone();
-            path.push(format!("{}-songlist.jpg", songinfo.album_id));
-            if sender
-                .send(Action::DownloadImage(
-                    songinfo.pic_url.to_owned(),
-                    path.to_owned(),
-                    140,
-                    140,
-                    None,
-                ))
-                .is_ok()
-            {
-            }
-            */
         }
     }
 }

@@ -56,14 +56,18 @@ impl PlayListLyricsPage {
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
         songs_list.init_new_list(&sis, is_like_fn);
-        {
-            let mut i = 0;
-            sis.iter().find(|si| {
+
+        let i: i32 = {
+            let mut i: i32 = 0;
+            match sis.iter().find(|si| {
                 i += 1;
                 si.id == current_song.id
-            });
-            songs_list.mark_new_row_playing(i);
-        }
+            }) {
+                Some(_) => i - 1,
+                _ => -1,
+            }
+        };
+        self.switch_row(i);
     }
 
     pub fn update_lyrics(&self, lyrics: String) {
@@ -74,7 +78,7 @@ impl PlayListLyricsPage {
     }
 
     pub fn switch_row(&self, index: i32) {
-        self.imp().songs_list.mark_new_row_playing(index);
+        self.imp().songs_list.mark_new_row_playing(index, false);
     }
 }
 

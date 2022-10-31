@@ -63,7 +63,9 @@ impl SonglistPage {
                     140,
                     140,
                     Some(Arc::new(move |_| {
-                        cover_image.upgrade().unwrap().set_from_file(Some(&path));
+                        if let Some(cover_image) = cover_image.upgrade() {
+                            cover_image.set_from_file(Some(&path));
+                        }
                     })),
                 ))
                 .unwrap();
