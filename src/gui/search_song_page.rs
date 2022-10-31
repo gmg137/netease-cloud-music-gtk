@@ -57,7 +57,10 @@ impl SearchSongPage {
                 imp.songs_list.set_property("no-act-like", true);
                 imp.songs_list.set_property("no-act-album", true);
             }
-            _ => {}
+            _ => {
+                imp.songs_list.set_property("no-act-like", false);
+                imp.songs_list.set_property("no-act-album", false);
+            }
         }
         self.set_property("offset", 0);
         self.set_property("keyword", keyword);
