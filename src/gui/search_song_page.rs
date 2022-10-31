@@ -5,7 +5,8 @@
 //
 use glib::Sender;
 use glib::{
-    ParamFlags, ParamSpec, ParamSpecBoolean, ParamSpecEnum, ParamSpecInt, ParamSpecString, Value,
+    clone, ParamFlags, ParamSpec, ParamSpecBoolean, ParamSpecEnum, ParamSpecInt, ParamSpecString,
+    Value,
 };
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::SongInfo;
@@ -132,25 +133,13 @@ mod imp {
     impl ObjectImpl for SearchSongPage {
         fn constructed(&self) {
             self.parent_constructed();
+            let obj = self.obj();
 
-            /*
-            let select_row = Rc::new(RefCell::new(-1));
-            self.listbox.connect_row_activated(move |list, row| {
-                let index;
-                {
-                    index = *select_row.borrow();
-                }
-                if index != -1 && index != row.index() {
-                    *select_row.borrow_mut() = row.index();
-                    if let Some(row) = list.row_at_index(index) {
-                        let row = row.downcast::<SonglistRow>().unwrap();
-                        row.switch_image(false);
-                    }
-                } else {
-                    *select_row.borrow_mut() = row.index();
-                }
-            });
-            */
+            self.songs_list.imp().scroll_win.connect_edge_overshot(
+                clone!(@weak obj as s => move|_, pos| {
+                    s.scrolled_edge_cb(pos);
+                }),
+            );
         }
 
         fn properties() -> &'static [ParamSpec] {
