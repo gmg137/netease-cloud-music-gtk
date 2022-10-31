@@ -540,7 +540,6 @@ impl NeteaseCloudMusicGtk4Window {
     }
 
     pub fn init_songlist_page(&self, sis: Vec<SongInfo>, dy: DetailDynamic) {
-        self.update_toplist(sis.clone());
         let songlist_page = self.imp().songlist_page.get();
         songlist_page.init_songlist(sis, dy, |id: &u64| self.imp().user_like_song_contains(&id));
     }

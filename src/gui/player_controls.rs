@@ -406,6 +406,16 @@ impl PlayerControls {
     fn cover_clicked_cb(&self) {
         let sender = self.imp().sender.get().unwrap().clone();
         if let Some(songinfo) = self.get_current_song() {
+            let songlist = SongList {
+                id: songinfo.album_id,
+                name: songinfo.album,
+                cover_img_url: songinfo.pic_url,
+            };
+            sender
+                .send(Action::ToAlbumPage(songlist.to_owned()))
+                .unwrap();
+
+            /*
             let mut path = CACHE.clone();
             path.push(format!("{}-songlist.jpg", songinfo.album_id));
             if sender
@@ -414,25 +424,12 @@ impl PlayerControls {
                     path.to_owned(),
                     140,
                     140,
+                    None,
                 ))
                 .is_ok()
             {
-                let songlist = SongList {
-                    id: songinfo.album_id,
-                    name: songinfo.album,
-                    cover_img_url: songinfo.pic_url,
-                };
-                let path = path.to_owned();
-                glib::timeout_add_local(Duration::from_millis(100), move || {
-                    if path.exists() {
-                        sender
-                            .send(Action::ToAlbumPage(songlist.to_owned()))
-                            .unwrap();
-                        return Continue(false);
-                    }
-                    Continue(true)
-                });
             }
+            */
         }
     }
 }

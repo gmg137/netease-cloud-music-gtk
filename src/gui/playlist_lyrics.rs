@@ -5,12 +5,11 @@
 //
 use adw::subclass::prelude::BinImpl;
 use gettextrs::gettext;
-use glib::{ParamFlags, ParamSpec, ParamSpecInt, Sender, Value};
+use glib::{ParamSpec, Sender, Value};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::SongInfo;
 use once_cell::sync::Lazy;
 use once_cell::sync::OnceCell;
-use std::cell::Cell;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -45,38 +44,26 @@ impl PlayListLyricsPage {
         lyrics_text_view.set_buffer(Some(&buffer));
     }
 
-    pub fn update_playlist(&self, sis: Vec<SongInfo>, _current_song: SongInfo, is_like_fn: impl Fn(&u64) -> bool) {
+    pub fn update_playlist(
+        &self,
+        sis: Vec<SongInfo>,
+        current_song: SongInfo,
+        is_like_fn: impl Fn(&u64) -> bool,
+    ) {
         let imp = self.imp();
         imp.playlist.replace(sis.clone());
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
         songs_list.init_new_list(&sis, is_like_fn);
-
-        /*
-        let mut index = 0;
-        sis.into_iter().for_each(|si| {
-            let row = SonglistRow::new();
-            row.set_tooltip_text(Some(&si.name));
-
-            row.set_sender(sender.to_owned());
-            row.set_from_song_info(&si);
-
-            if current_song.id == si.id {
-                row.switch_image(true);
-                self.set_property("select-row", index);
-            }
-
-            let sender = sender.clone();
-            row.connect_activate(move |row| {
-                row.switch_image(true);
-                sender.send(Action::AddPlay(si.clone())).unwrap();
-                sender.send(Action::GetLyrics(si.clone())).unwrap();
+        {
+            let mut i = 0;
+            sis.iter().find(|si| {
+                i += 1;
+                si.id == current_song.id
             });
-            listbox.append(&row);
-            index += 1;
-        });
-        */
+            songs_list.mark_new_row_playing(i);
+        }
     }
 
     pub fn update_lyrics(&self, lyrics: String) {
@@ -86,23 +73,8 @@ impl PlayListLyricsPage {
         lyrics_text_view.set_buffer(Some(&buffer));
     }
 
-    pub fn switch_row(&self, _index: i32) {
-        /*
-        let imp = self.imp();
-        let listbox = imp.playlist_box.get();
-        let current_row_index: i32 = self.property("select-row");
-
-        if let Some(row) = listbox.row_at_index(current_row_index) {
-            let row = row.downcast::<SonglistRow>().unwrap();
-            row.switch_image(false);
-        }
-
-        self.set_property("select-row", index);
-        if let Some(row) = listbox.row_at_index(index) {
-            let row = row.downcast::<SonglistRow>().unwrap();
-            row.switch_image(true);
-        }
-        */
+    pub fn switch_row(&self, index: i32) {
+        self.imp().songs_list.mark_new_row_playing(index);
     }
 }
 
@@ -125,7 +97,6 @@ mod imp {
         pub lyrics_text_view: TemplateChild<TextView>,
         pub playlist: Rc<RefCell<Vec<SongInfo>>>,
         pub sender: OnceCell<Sender<Action>>,
-        select_row: Cell<i32>,
     }
 
     #[glib::object_subclass]
@@ -147,60 +118,21 @@ mod imp {
         fn constructed(&self) {
             let _obj = self.obj();
             self.parent_constructed();
-
-            /*
-            self.playlist_box.connect_row_activated(
-                glib::clone!(@weak obj as s => move |list, row| {
-                    let index = s.property("select-row");
-                    if index != -1 && index != row.index() {
-                        s.set_property("select-row", row.index());
-                        if let Some(row) = list.row_at_index(index) {
-                            let row = row.downcast::<SonglistRow>().unwrap();
-                            row.switch_image(false);
-                        }
-                    } else {
-                        s.set_property("select-row", row.index());
-                    }
-                }),
-            );
-            */
         }
 
         fn properties() -> &'static [ParamSpec] {
-            static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
-                vec![ParamSpecInt::new(
-                    // Name
-                    "select-row",
-                    // Nickname
-                    "select-row",
-                    // Short description
-                    "Current select row index",
-                    // Minimum value
-                    i32::MIN,
-                    // Maximum value
-                    i32::MAX,
-                    // Default value
-                    -1,
-                    // The property can be read and written to
-                    ParamFlags::READWRITE,
-                )]
-            });
+            static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| vec![]);
             PROPERTIES.as_ref()
         }
 
-        fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
+        fn set_property(&self, _id: usize, _value: &Value, pspec: &ParamSpec) {
             match pspec.name() {
-                "select-row" => {
-                    let input_number = value.get().expect("The value needs to be of type `i32`.");
-                    self.select_row.replace(input_number);
-                }
                 _ => unimplemented!(),
             }
         }
 
         fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
-                "select-row" => self.select_row.get().to_value(),
                 _ => unimplemented!(),
             }
         }

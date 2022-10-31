@@ -71,6 +71,19 @@ impl SongListView {
             listbox.remove(&child);
         }
     }
+
+    pub fn list_box(&self) -> ListBox {
+        self.imp().listbox.get()
+    }
+
+    pub fn mark_new_row_playing(&self, index: i32) {
+        let listbox = self.list_box();
+        if let Some(row) = listbox.row_at_index(index) {
+            let row = row.downcast::<SonglistRow>().unwrap();
+            row.emit_activate();
+            listbox.emit_by_name_with_values("row-activated", &[row.to_value()]);
+        }
+    }
 }
 
 #[gtk::template_callbacks]
@@ -131,20 +144,19 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj();
 
-            let select_row = Rc::new(RefCell::new(-1));
+            // clear old actived row
+            let old_select_row = Rc::new(RefCell::new(-1));
             self.listbox.connect_row_activated(move |list, row| {
                 let index;
                 {
-                    index = *select_row.borrow();
+                    index = *old_select_row.borrow();
                 }
+                *old_select_row.borrow_mut() = row.index();
                 if index != -1 && index != row.index() {
-                    *select_row.borrow_mut() = row.index();
                     if let Some(row) = list.row_at_index(index) {
                         let row = row.downcast::<SonglistRow>().unwrap();
                         row.switch_image(false);
                     }
-                } else {
-                    *select_row.borrow_mut() = row.index();
                 }
             });
 
