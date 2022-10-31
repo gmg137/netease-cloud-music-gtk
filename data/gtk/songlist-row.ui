@@ -85,9 +85,34 @@
                                 <property name="halign">end</property>
                                 <property name="hexpand">True</property>
                                 <property name="single_line_mode">True</property>
+                                <property name="margin-end">12</property>
                                 <attributes>
                                     <attribute name="font-features" value="tnum=1" />
                                 </attributes>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkButton" id="like_button">
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
+                                <property name="icon-name">non-starred-symbolic</property>
+                                <property name="tooltip-text" translatable="yes">Like song</property>
+                                <signal name="clicked" handler="like_button_clicked_cb" swapped="true" />
+                                <style>
+                                    <class name="flat" />
+                                </style>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkButton" id="album_button">
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
+                                <property name="icon-name">media-optical-cd-audio-symbolic</property>
+                                <property name="tooltip-text" translatable="yes">View album</property>
+                                <signal name="clicked" handler="album_button_clicked_cb" swapped="true" />
+                                <style>
+                                    <class name="flat" />
+                                </style>
                             </object>
                         </child>
                     </object>

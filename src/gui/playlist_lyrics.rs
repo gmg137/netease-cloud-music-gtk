@@ -57,10 +57,8 @@ impl PlayListLyricsPage {
             let row = SonglistRow::new();
             row.set_tooltip_text(Some(&si.name));
 
-            row.set_name(&si.name);
-            row.set_singer(&si.singer);
-            row.set_album(&si.album);
-            row.set_duration(&si.duration);
+            row.set_sender(sender.to_owned());
+            row.set_from_song_info(&si);
 
             if current_song.id == si.id {
                 row.switch_image(true);

@@ -12,6 +12,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use crate::{application::Action, model::DiscoverSubPage, path::CACHE};
 use std::{
     cell::{Cell, RefCell},
+    collections::HashSet,
     rc::Rc,
 };
 
@@ -65,12 +66,12 @@ impl SonglistPage {
         }
     }
 
-    pub fn init_songlist(&self, sis: Vec<SongInfo>, dy: DetailDynamic, page_type: DiscoverSubPage) {
+    pub fn init_songlist(&self, sis: Vec<SongInfo>, dy: DetailDynamic, is_like_fn: impl Fn(&u64) -> bool) {
         let imp = self.imp();
-        imp.page_type.replace(Some(page_type));
         match dy {
             DetailDynamic::Album(dy) => {
                 self.set_property("like", dy.is_sub);
+                imp.page_type.replace(Some(DiscoverSubPage::Album));
                 imp.num_label.get().set_label(&gettext!(
                     "{} songs, {} booked",
                     sis.len(),
@@ -79,6 +80,7 @@ impl SonglistPage {
             }
             DetailDynamic::SongList(dy) => {
                 self.set_property("like", dy.subscribed);
+                imp.page_type.replace(Some(DiscoverSubPage::SongList));
                 imp.num_label.get().set_label(&gettext!(
                     "{} songs, {} booked",
                     sis.len(),
@@ -92,14 +94,12 @@ impl SonglistPage {
         let listbox = imp.listbox.get();
         sis.into_iter().for_each(|si| {
             let row = SonglistRow::new();
-            row.set_tooltip_text(Some(&si.name));
-
-            row.set_name(&si.name);
-            row.set_singer(&si.singer);
-            row.set_album(&si.album);
-            row.set_duration(&si.duration);
-
             let sender = sender.clone();
+
+            row.set_sender(sender.clone());
+            row.set_from_song_info(&si);
+            row.set_property("like", is_like_fn(&si.id));
+
             row.connect_activate(move |row| {
                 row.switch_image(true);
                 sender.send(Action::AddPlay(si.clone())).unwrap();
@@ -232,15 +232,8 @@ mod imp {
         }
 
         fn properties() -> &'static [ParamSpec] {
-            static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
-                vec![ParamSpecBoolean::new(
-                    "like",
-                    "like",
-                    "like",
-                    false,
-                    ParamFlags::READWRITE,
-                )]
-            });
+            static PROPERTIES: Lazy<Vec<ParamSpec>> =
+                Lazy::new(|| vec![ParamSpecBoolean::builder("like").readwrite().build()]);
             PROPERTIES.as_ref()
         }
 

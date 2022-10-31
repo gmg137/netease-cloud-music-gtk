@@ -9,15 +9,27 @@ use ncm_api::{
     SongList, SongListDetailDynamic, TopList,
 };
 use once_cell::sync::OnceCell;
-use std::cell::RefCell;
 use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
+use std::{cell::RefCell, sync::Arc};
 
 use crate::{
     config::VERSION, gui::NeteaseCloudMusicGtk4Preferences, model::*, ncmapi::*, path::CACHE,
     NeteaseCloudMusicGtk4Window,
 };
+
+// implements Debug for Fn(Targ) using "blanket implementations"
+pub trait ActionCallbackTr<TArg>: Fn(TArg) + Sync + Send {}
+impl<Targ, Tr: Fn(Targ) + Sync + Send> ActionCallbackTr<Targ> for Tr {}
+impl<Targ> std::fmt::Debug for dyn ActionCallbackTr<Targ> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ActionCallback")
+    }
+}
+// wrapper dyn Fn(Targ) => ActionCallback<Targ>
+// Note: we can capture glib object with glib::SendWeakRef, but only valied in MainContext thread
+pub type ActionCallback<Targ> = Arc<dyn ActionCallbackTr<Targ>>;
 
 #[derive(Debug, Clone)]
 pub enum Action {
@@ -60,7 +72,7 @@ pub enum Action {
     PlayListStart,
     LikeSongList(u64, bool),
     LikeAlbum(u64, bool),
-    LikeSong(u64, bool),
+    LikeSong(u64, bool, Option<ActionCallback<bool>>),
     GetToplist,
     GetToplistSongsList(u64),
     InitTopList(Vec<TopList>),
@@ -681,7 +693,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::InitSongListPage(sis, dy) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
-                window.init_songlist_page(sis, dy, DiscoverSubPage::SongList);
+                window.init_songlist_page(sis, dy);
             }
             Action::ToAlbumPage(songlist) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
@@ -709,7 +721,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::InitAlbumPage(sis, dy) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
-                window.init_songlist_page(sis, dy, DiscoverSubPage::Album);
+                window.init_songlist_page(sis, dy);
             }
             Action::AddPlayList(sis) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
@@ -771,7 +783,7 @@ impl NeteaseCloudMusicGtk4Application {
                     }
                 });
             }
-            Action::LikeSong(id, is_like) => {
+            Action::LikeSong(id, is_like, callback) => {
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
@@ -785,6 +797,10 @@ impl NeteaseCloudMusicGtk4Application {
                                 "Songs have been uncollected!"
                             })))
                             .unwrap();
+
+                        if let Some(callback) = callback {
+                            callback(true);
+                        }
                     } else {
                         error!("收藏/取消收藏歌曲失败: {:?}", id);
                         sender

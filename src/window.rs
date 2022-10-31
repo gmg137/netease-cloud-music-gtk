@@ -13,9 +13,7 @@ use gtk::{
     gio::{self, SettingsBindFlags},
     glib, CompositeTemplate,
 };
-use ncm_api::{
-    BannersInfo, LoginInfo, SingerInfo, SongInfo, SongList, DetailDynamic, TopList,
-};
+use ncm_api::{BannersInfo, DetailDynamic, LoginInfo, SingerInfo, SongInfo, SongList, TopList};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
@@ -535,14 +533,9 @@ impl NeteaseCloudMusicGtk4Window {
         songlist_page.init_songlist_info(songlist, self.is_logined());
     }
 
-    pub fn init_songlist_page(
-        &self,
-        sis: Vec<SongInfo>,
-        dy: DetailDynamic,
-        page_type: DiscoverSubPage,
-    ) {
+    pub fn init_songlist_page(&self, sis: Vec<SongInfo>, dy: DetailDynamic) {
         let songlist_page = self.imp().songlist_page.get();
-        songlist_page.init_songlist(sis, dy, page_type);
+        songlist_page.init_songlist(sis, dy, |id: &u64| self.imp().user_like_song_contains(&id));
     }
 
     pub fn init_page_data(&self) {
