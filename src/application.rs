@@ -29,7 +29,12 @@ impl<Targ> std::fmt::Debug for dyn ActionCallbackTr<Targ> {
 }
 // wrapper dyn Fn(Targ) => ActionCallback<Targ>
 // Note: we can capture glib object with glib::SendWeakRef, but only valied in MainContext thread
-pub type ActionCallback<Targ> = Arc<dyn ActionCallbackTr<Targ>>;
+
+// callback is needed as there is no way to lookup the sender object
+// alternative methods: 
+//   unique id for sender object, and store a map
+//   sender object create new (sender, receiver) and attach, then action send back
+pub type ActionCallback<Targ = ()> = Arc<dyn ActionCallbackTr<Targ>>;
 
 #[derive(Debug, Clone)]
 pub enum Action {
@@ -54,7 +59,7 @@ pub enum Action {
     InitTopPicks,
     InitTopPicksSongList,
     // (url,path,width,height)
-    DownloadImage(String, PathBuf, u16, u16, Option<ActionCallback<bool>>),
+    DownloadImage(String, PathBuf, u16, u16, Option<ActionCallback>),
     SetupTopPicks(Vec<SongList>),
     InitNewAlbums,
     InitAllAlbums,
@@ -526,7 +531,7 @@ impl NeteaseCloudMusicGtk4Application {
                         .is_ok()
                     {
                         if let Some(cb) = callback {
-                            cb(true);
+                            cb(());
                         }
                     }
                 });
