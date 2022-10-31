@@ -51,6 +51,13 @@ impl SearchSongPage {
                 title_clamp.set_visible(false);
             }
         }
+        match search_type {
+            SearchType::CloudDisk => {
+                imp.songs_list.set_property("no-act-like", true);
+                imp.songs_list.set_property("no-act-album", true);
+            }
+            _ => {}
+        }
         self.set_property("offset", 0);
         self.set_property("keyword", keyword);
         self.set_property("search-type", search_type);
