@@ -4,19 +4,18 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use gettextrs::gettext;
-use glib::{ParamFlags, ParamSpec, ParamSpecBoolean, Sender, Value};
+use glib::{ParamSpec, ParamSpecBoolean, Sender, Value};
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::{DetailDynamic, SongInfo, SongList};
 use once_cell::sync::{Lazy, OnceCell};
 
-use crate::{application::Action, model::DiscoverSubPage, path::CACHE};
+use crate::{
+    application::Action, gui::songlist_view::SongListView, model::DiscoverSubPage, path::CACHE,
+};
 use std::{
     cell::{Cell, RefCell},
-    collections::HashSet,
     rc::Rc,
 };
-
-use super::SonglistRow;
 
 glib::wrapper! {
     pub struct SonglistPage(ObjectSubclass<imp::SonglistPage>)
@@ -42,8 +41,10 @@ impl SonglistPage {
         let like_button = imp.like_button.get();
         if is_logined {
             like_button.set_visible(true);
+            imp.songs_list.set_property("no-act-like", false);
         } else {
             like_button.set_visible(false);
+            imp.songs_list.set_property("no-act-like", true);
         }
 
         // 设置专辑图
@@ -59,18 +60,21 @@ impl SonglistPage {
         imp.num_label.get().set_label(&gettext!("{} songs", 0));
         self.set_property("like", false);
 
-        // 删除旧内容
-        let listbox = self.imp().listbox.get();
-        while let Some(child) = listbox.last_child() {
-            listbox.remove(&child);
-        }
+        imp.songs_list.clear_list();
     }
 
-    pub fn init_songlist(&self, sis: Vec<SongInfo>, dy: DetailDynamic, is_like_fn: impl Fn(&u64) -> bool) {
+    pub fn init_songlist(
+        &self,
+        sis: Vec<SongInfo>,
+        dy: DetailDynamic,
+        is_like_fn: impl Fn(&u64) -> bool,
+    ) {
         let imp = self.imp();
+        let songs_list = imp.songs_list.get();
         match dy {
             DetailDynamic::Album(dy) => {
                 self.set_property("like", dy.is_sub);
+                songs_list.set_property("no-act-album", true);
                 imp.page_type.replace(Some(DiscoverSubPage::Album));
                 imp.num_label.get().set_label(&gettext!(
                     "{} songs, {} booked",
@@ -80,6 +84,7 @@ impl SonglistPage {
             }
             DetailDynamic::SongList(dy) => {
                 self.set_property("like", dy.subscribed);
+                songs_list.set_property("no-act-album", false);
                 imp.page_type.replace(Some(DiscoverSubPage::SongList));
                 imp.num_label.get().set_label(&gettext!(
                     "{} songs, {} booked",
@@ -91,21 +96,8 @@ impl SonglistPage {
 
         imp.playlist.replace(sis.clone());
         let sender = imp.sender.get().unwrap();
-        let listbox = imp.listbox.get();
-        sis.into_iter().for_each(|si| {
-            let row = SonglistRow::new();
-            let sender = sender.clone();
-
-            row.set_sender(sender.clone());
-            row.set_from_song_info(&si);
-            row.set_property("like", is_like_fn(&si.id));
-
-            row.connect_activate(move |row| {
-                row.switch_image(true);
-                sender.send(Action::AddPlay(si.clone())).unwrap();
-            });
-            listbox.append(&row);
-        });
+        songs_list.set_sender(sender.clone());
+        songs_list.init_new_list(&sis, is_like_fn);
     }
 }
 
@@ -133,8 +125,8 @@ mod imp {
         #[template_child(id = "like_button")]
         pub like_button: TemplateChild<Button>,
 
-        #[template_child(id = "listbox")]
-        pub listbox: TemplateChild<ListBox>,
+        #[template_child(id = "songs_list")]
+        pub songs_list: TemplateChild<SongListView>,
 
         pub playlist: Rc<RefCell<Vec<SongInfo>>>,
         pub songlist: Rc<RefCell<Option<SongList>>>,
@@ -199,23 +191,6 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
-
-            let select_row = Rc::new(RefCell::new(-1));
-            self.listbox.connect_row_activated(move |list, row| {
-                let index;
-                {
-                    index = *select_row.borrow();
-                }
-                if index != -1 && index != row.index() {
-                    *select_row.borrow_mut() = row.index();
-                    if let Some(row) = list.row_at_index(index) {
-                        let row = row.downcast::<SonglistRow>().unwrap();
-                        row.switch_image(false);
-                    }
-                } else {
-                    *select_row.borrow_mut() = row.index();
-                }
-            });
 
             obj.bind_property("like", &self.like_button.get(), "icon_name")
                 .transform_to(|_, v: bool| {

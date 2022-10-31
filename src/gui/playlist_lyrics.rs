@@ -3,7 +3,6 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use super::SonglistRow;
 use adw::subclass::prelude::BinImpl;
 use gettextrs::gettext;
 use glib::{ParamFlags, ParamSpec, ParamSpecInt, Sender, Value};
@@ -16,6 +15,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::application::Action;
+use crate::gui::songlist_view::SongListView;
 
 glib::wrapper! {
     pub struct PlayListLyricsPage(ObjectSubclass<imp::PlayListLyricsPage>)
@@ -32,14 +32,12 @@ impl PlayListLyricsPage {
         self.imp().sender.set(sender).unwrap();
     }
 
-    pub fn init_page(&self, sis: Vec<SongInfo>, si: SongInfo) {
+    pub fn init_page(&self, sis: Vec<SongInfo>, si: SongInfo, is_like_fn: impl Fn(&u64) -> bool) {
         let imp = self.imp();
         // 删除旧内容
-        let playlist_box = imp.playlist_box.get();
-        while let Some(child) = playlist_box.last_child() {
-            playlist_box.remove(&child);
-        }
-        self.update_playlist(sis, si);
+        let songs_list = imp.songs_list.get();
+        songs_list.clear_list();
+        self.update_playlist(sis, si, is_like_fn);
 
         let lyrics_text_view = imp.lyrics_text_view.get();
         let buffer = lyrics_text_view.buffer();
@@ -47,11 +45,15 @@ impl PlayListLyricsPage {
         lyrics_text_view.set_buffer(Some(&buffer));
     }
 
-    pub fn update_playlist(&self, sis: Vec<SongInfo>, current_song: SongInfo) {
+    pub fn update_playlist(&self, sis: Vec<SongInfo>, _current_song: SongInfo, is_like_fn: impl Fn(&u64) -> bool) {
         let imp = self.imp();
         imp.playlist.replace(sis.clone());
         let sender = imp.sender.get().unwrap();
-        let listbox = imp.playlist_box.get();
+        let songs_list = imp.songs_list.get();
+        songs_list.set_sender(sender.clone());
+        songs_list.init_new_list(&sis, is_like_fn);
+
+        /*
         let mut index = 0;
         sis.into_iter().for_each(|si| {
             let row = SonglistRow::new();
@@ -74,6 +76,7 @@ impl PlayListLyricsPage {
             listbox.append(&row);
             index += 1;
         });
+        */
     }
 
     pub fn update_lyrics(&self, lyrics: String) {
@@ -83,10 +86,12 @@ impl PlayListLyricsPage {
         lyrics_text_view.set_buffer(Some(&buffer));
     }
 
-    pub fn switch_row(&self, index: i32) {
+    pub fn switch_row(&self, _index: i32) {
+        /*
         let imp = self.imp();
         let listbox = imp.playlist_box.get();
         let current_row_index: i32 = self.property("select-row");
+
         if let Some(row) = listbox.row_at_index(current_row_index) {
             let row = row.downcast::<SonglistRow>().unwrap();
             row.switch_image(false);
@@ -97,6 +102,7 @@ impl PlayListLyricsPage {
             let row = row.downcast::<SonglistRow>().unwrap();
             row.switch_image(true);
         }
+        */
     }
 }
 
@@ -114,7 +120,7 @@ mod imp {
     #[template(resource = "/com/gitee/gmg137/NeteaseCloudMusicGtk4/gtk/playlist-lyrics-page.ui")]
     pub struct PlayListLyricsPage {
         #[template_child]
-        pub playlist_box: TemplateChild<ListBox>,
+        pub songs_list: TemplateChild<SongListView>,
         #[template_child]
         pub lyrics_text_view: TemplateChild<TextView>,
         pub playlist: Rc<RefCell<Vec<SongInfo>>>,
@@ -139,9 +145,10 @@ mod imp {
 
     impl ObjectImpl for PlayListLyricsPage {
         fn constructed(&self) {
-            let obj = self.obj();
+            let _obj = self.obj();
             self.parent_constructed();
 
+            /*
             self.playlist_box.connect_row_activated(
                 glib::clone!(@weak obj as s => move |list, row| {
                     let index = s.property("select-row");
@@ -156,6 +163,7 @@ mod imp {
                     }
                 }),
             );
+            */
         }
 
         fn properties() -> &'static [ParamSpec] {

@@ -8,7 +8,7 @@ use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, *};
 
 use crate::application::Action;
-use glib::{ParamFlags, ParamSpec, ParamSpecBoolean, SendWeakRef, Sender, Value};
+use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Sender, Value};
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
@@ -22,25 +22,21 @@ glib::wrapper! {
         @implements Accessible, Actionable, Buildable, ConstraintTarget;
 }
 
-impl Default for SonglistRow {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl SonglistRow {
-    pub fn new() -> Self {
-        glib::Object::new(&[])
-    }
-
-    pub fn set_sender(&self, sender: Sender<Action>) {
-        self.imp().sender.set(sender).unwrap();
+    pub fn new(sender: Sender<Action>, si: &SongInfo) -> Self {
+        let obj: Self = glib::Object::new(&[]);
+        let imp = obj.imp();
+        if imp.sender.get().is_none() {
+            imp.sender.set(sender).unwrap();
+        }
+        obj.set_from_song_info(&si);
+        obj
     }
 
     pub fn set_from_song_info(&self, si: &SongInfo) {
-        self.imp().song_id.set(si.id).unwrap();
-        self.imp().album_id.set(si.album_id).unwrap();
-        self.imp().cover_url.set(si.pic_url.to_owned()).unwrap();
+        self.imp().song_id.replace(si.id);
+        self.imp().album_id.replace(si.album_id);
+        self.imp().cover_url.replace(si.pic_url.to_owned());
 
         self.set_tooltip_text(Some(&si.name));
         self.set_name(&si.name);
@@ -53,6 +49,16 @@ impl SonglistRow {
         let imp = self.imp();
         imp.play_icon.set_visible(visible);
     }
+
+    pub fn set_album_btn_visible(&self, visible: bool) {
+        let imp = self.imp();
+        imp.album_button.set_visible(visible);
+    }
+    pub fn set_like_btn_visible(&self, visible: bool) {
+        let imp = self.imp();
+        imp.like_button.set_visible(visible);
+    }
+
 
     fn set_name(&self, label: &str) {
         let imp = self.imp();
@@ -106,9 +112,9 @@ mod imp {
         pub album_button: TemplateChild<Button>,
 
         pub sender: OnceCell<Sender<Action>>,
-        pub song_id: OnceCell<u64>,
-        pub album_id: OnceCell<u64>,
-        pub cover_url: OnceCell<String>,
+        pub song_id: Cell<u64>,
+        pub album_id: Cell<u64>,
+        pub cover_url: RefCell<String>,
         like: Cell<bool>,
     }
 
@@ -138,7 +144,7 @@ mod imp {
             let like = self.like.get();
             sender
                 .send(Action::LikeSong(
-                    self.song_id.get().unwrap().to_owned(),
+                    self.song_id.get().to_owned(),
                     !like,
                     Some(Arc::new(move |_| {
                         if let Some(s) = s_send.upgrade() {
@@ -153,9 +159,9 @@ mod imp {
         fn album_button_clicked_cb(&self) {
             let sender = self.sender.get().unwrap();
             let songlist = SongList {
-                id: self.album_id.get().unwrap().to_owned(),
+                id: self.album_id.get().to_owned(),
                 name: self.album_label.label().to_string(),
-                cover_img_url: self.cover_url.get().unwrap().to_owned(),
+                cover_img_url: self.cover_url.borrow().to_owned(),
             };
             sender
                 .send(Action::ToAlbumPage(songlist.to_owned()))

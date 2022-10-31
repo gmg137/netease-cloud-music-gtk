@@ -6,7 +6,7 @@
 use fragile::Fragile;
 use gettextrs::gettext;
 use gio::Settings;
-use glib::{ParamFlags, ParamSpec, ParamSpecBoolean, ParamSpecDouble, Sender, Value};
+use glib::{ParamSpec, ParamSpecBoolean, ParamSpecDouble, Sender, Value};
 use gst::ClockTime;
 use gstreamer_player::*;
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};

@@ -16,7 +16,10 @@ use once_cell::sync::OnceCell;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::{application::Action, gui::songlist_row::SonglistRow, path::CACHE};
+use crate::{
+    application::Action, gui::songlist_view::SongListView,
+    path::CACHE,
+};
 
 glib::wrapper! {
     pub struct TopListView(ObjectSubclass<imp::TopListView>)
@@ -63,28 +66,17 @@ impl TopListView {
         self.imp().update_toplist_info(0);
     }
 
-    pub fn update_songs_list(&self, sis: Vec<SongInfo>) {
+    pub fn update_songs_list(&self, sis: Vec<SongInfo>, _is_like_fn: impl Fn(&u64) -> bool) {
         let imp = self.imp();
+
         imp.playlist.replace(sis.clone());
         imp.num_label
             .get()
             .set_label(&gettext!("{} songs", sis.len()));
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();
-        sis.into_iter().for_each(|si| {
-            let row = SonglistRow::new();
-            row.set_tooltip_text(Some(&si.name));
-
-            row.set_sender(sender.to_owned());
-            row.set_from_song_info(&si);
-
-            let sender = sender.clone();
-            row.connect_activate(move |row| {
-                row.switch_image(true);
-                sender.send(Action::AddPlay(si.clone())).unwrap();
-            });
-            songs_list.append(&row);
-        });
+        songs_list.set_sender(sender.clone());
+        songs_list.init_new_list(&sis, _is_like_fn);
     }
 }
 
@@ -105,8 +97,9 @@ mod imp {
         pub num_label: TemplateChild<Label>,
         #[template_child]
         pub play_button: TemplateChild<Button>,
+
         #[template_child]
-        pub songs_list: TemplateChild<ListBox>,
+        pub songs_list: TemplateChild<SongListView>,
 
         pub playlist: Rc<RefCell<Vec<SongInfo>>>,
         pub data: OnceCell<Vec<TopList>>,
@@ -152,9 +145,8 @@ mod imp {
 
         pub fn update_toplist_info(&self, index: i32) {
             let songs_list = self.songs_list.get();
-            while let Some(child) = songs_list.last_child() {
-                songs_list.remove(&child);
-            }
+            songs_list.clear_list();
+
             let data = self.data.get().unwrap();
             if let Some(info) = data.get(index as usize) {
                 self.sender
@@ -176,22 +168,6 @@ mod imp {
     impl ObjectImpl for TopListView {
         fn constructed(&self) {
             self.parent_constructed();
-            let select_row = Rc::new(RefCell::new(-1));
-            self.songs_list.connect_row_activated(move |list, row| {
-                let index;
-                {
-                    index = *select_row.borrow();
-                }
-                if index != -1 && index != row.index() {
-                    *select_row.borrow_mut() = row.index();
-                    if let Some(row) = list.row_at_index(index) {
-                        let row = row.downcast::<SonglistRow>().unwrap();
-                        row.switch_image(false);
-                    }
-                } else {
-                    *select_row.borrow_mut() = row.index();
-                }
-            });
         }
     }
     impl WidgetImpl for TopListView {}

@@ -12,14 +12,13 @@ use ncm_api::SongInfo;
 use once_cell::sync::{Lazy, OnceCell};
 
 use crate::application::Action;
+use crate::gui::songlist_view::SongListView;
 use crate::model::SearchType;
 use gettextrs::gettext;
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
 };
-
-use super::SonglistRow;
 
 glib::wrapper! {
     pub struct SearchSongPage(ObjectSubclass<imp::SearchSongPage>)
@@ -55,13 +54,11 @@ impl SearchSongPage {
         self.set_property("offset", 0);
         self.set_property("keyword", keyword);
         self.set_property("search-type", search_type);
-        let listbox = imp.listbox.get();
-        while let Some(child) = listbox.last_child() {
-            listbox.remove(&child);
-        }
+
+        imp.songs_list.get().clear_list();
     }
 
-    pub fn update_songs(&self, sis: Vec<SongInfo>) {
+    pub fn update_songs(&self, sis: Vec<SongInfo>, is_like_fn: impl Fn(&u64) -> bool) {
         self.set_property("update", true);
         let offset = self.property::<i32>("offset") + sis.len() as i32;
         self.set_property("offset", offset);
@@ -69,22 +66,12 @@ impl SearchSongPage {
         let mut playlist = sis.clone();
         (*imp.playlist).borrow_mut().append(&mut playlist);
         imp.num_label.get().set_label(&gettext!("{} songs", offset));
+
         let sender = imp.sender.get().unwrap();
-        let listbox = imp.listbox.get();
-        sis.into_iter().for_each(|si| {
-            let row = SonglistRow::new();
-            row.set_tooltip_text(Some(&si.name));
+        let songs_list = imp.songs_list.get();
+        songs_list.set_sender(sender.clone());
 
-            row.set_sender(sender.to_owned());
-            row.set_from_song_info(&si);
-
-            let sender = sender.clone();
-            row.connect_activate(move |row| {
-                row.switch_image(true);
-                sender.send(Action::AddPlay(si.clone())).unwrap();
-            });
-            listbox.append(&row);
-        });
+        songs_list.init_new_list(&sis, is_like_fn);
     }
 }
 
@@ -107,8 +94,9 @@ mod imp {
         pub title_label: TemplateChild<Label>,
         #[template_child]
         pub num_label: TemplateChild<Label>,
-        #[template_child]
-        pub listbox: TemplateChild<ListBox>,
+
+        #[template_child(id = "songs_list")]
+        pub songs_list: TemplateChild<SongListView>,
         update: Cell<bool>,
         offset: Cell<i32>,
         keyword: RefCell<String>,
@@ -138,6 +126,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
+            /*
             let select_row = Rc::new(RefCell::new(-1));
             self.listbox.connect_row_activated(move |list, row| {
                 let index;
@@ -154,6 +143,7 @@ mod imp {
                     *select_row.borrow_mut() = row.index();
                 }
             });
+            */
         }
 
         fn properties() -> &'static [ParamSpec] {

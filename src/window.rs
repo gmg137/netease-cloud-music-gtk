@@ -392,11 +392,17 @@ impl NeteaseCloudMusicGtk4Window {
     }
 
     pub fn set_like_song(&self, id: u64, val: bool) {
-        self.imp().player_controls.get().set_property("like", val);
+        let imp = self.imp();
+        if let Some(song) = imp.player_controls.get().get_current_song() {
+            if song.id == id {
+                imp.player_controls.get().set_property("like", val);
+            }
+        }
+
         if val {
-            self.imp().user_like_song_add(id);
+            imp.user_like_song_add(id);
         } else {
-            self.imp().user_like_song_remove(&id);
+            imp.user_like_song_remove(&id);
         }
     }
 
@@ -534,6 +540,7 @@ impl NeteaseCloudMusicGtk4Window {
     }
 
     pub fn init_songlist_page(&self, sis: Vec<SongInfo>, dy: DetailDynamic) {
+        self.update_toplist(sis.clone());
         let songlist_page = self.imp().songlist_page.get();
         songlist_page.init_songlist(sis, dy, |id: &u64| self.imp().user_like_song_contains(&id));
     }
@@ -588,12 +595,12 @@ impl NeteaseCloudMusicGtk4Window {
 
     pub fn update_toplist(&self, list: Vec<SongInfo>) {
         let toplist = self.imp().toplist.get();
-        toplist.update_songs_list(list);
+        toplist.update_songs_list(list, |id| self.imp().user_like_song_contains(&id));
     }
 
     pub fn update_search_song_page(&self, list: Vec<SongInfo>) {
         let search_song_page = self.imp().search_song_page.get();
-        search_song_page.update_songs(list);
+        search_song_page.update_songs(list, |id| self.imp().user_like_song_contains(&id));
     }
 
     pub fn update_search_songlist_page(&self, list: Vec<SongList>) {
@@ -665,7 +672,8 @@ impl NeteaseCloudMusicGtk4Window {
 
     pub fn init_playlist_lyrics_page(&self, sis: Vec<SongInfo>, si: SongInfo) {
         let imp = self.imp();
-        imp.playlist_lyrics_page.init_page(sis, si);
+        imp.playlist_lyrics_page
+            .init_page(sis, si, |id| imp.user_like_song_contains(&id));
         imp.label_title.set_label(&gettext("Play List&Lyrics"));
         imp.switcher_title.set_visible(false);
         imp.label_title.set_visible(true);
