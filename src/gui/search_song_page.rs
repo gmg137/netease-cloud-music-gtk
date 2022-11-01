@@ -5,21 +5,21 @@
 //
 use glib::Sender;
 use glib::{
-    ParamFlags, ParamSpec, ParamSpecBoolean, ParamSpecEnum, ParamSpecInt, ParamSpecString, Value,
+    clone, ParamFlags, ParamSpec, ParamSpecBoolean, ParamSpecEnum, ParamSpecInt, ParamSpecString,
+    Value,
 };
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::SongInfo;
 use once_cell::sync::{Lazy, OnceCell};
 
 use crate::application::Action;
+use crate::gui::songlist_view::SongListView;
 use crate::model::SearchType;
 use gettextrs::gettext;
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
 };
-
-use super::SonglistRow;
 
 glib::wrapper! {
     pub struct SearchSongPage(ObjectSubclass<imp::SearchSongPage>)
@@ -55,10 +55,8 @@ impl SearchSongPage {
         self.set_property("offset", 0);
         self.set_property("keyword", keyword);
         self.set_property("search-type", search_type);
-        let listbox = imp.listbox.get();
-        while let Some(child) = listbox.last_child() {
-            listbox.remove(&child);
-        }
+
+        imp.songs_list.get().clear_list();
     }
 
     pub fn update_songs(&self, sis: Vec<SongInfo>) {
@@ -69,24 +67,12 @@ impl SearchSongPage {
         let mut playlist = sis.clone();
         (*imp.playlist).borrow_mut().append(&mut playlist);
         imp.num_label.get().set_label(&gettext!("{} songs", offset));
+
         let sender = imp.sender.get().unwrap();
-        let listbox = imp.listbox.get();
-        sis.into_iter().for_each(|si| {
-            let row = SonglistRow::new();
-            row.set_tooltip_text(Some(&si.name));
+        let songs_list = imp.songs_list.get();
+        songs_list.set_sender(sender.clone());
 
-            row.set_name(&si.name);
-            row.set_singer(&si.singer);
-            row.set_album(&si.album);
-            row.set_duration(&si.duration);
-
-            let sender = sender.clone();
-            row.connect_activate(move |row| {
-                row.switch_image(true);
-                sender.send(Action::AddPlay(si.clone())).unwrap();
-            });
-            listbox.append(&row);
-        });
+        songs_list.init_new_list(&sis);
     }
 }
 
@@ -109,8 +95,9 @@ mod imp {
         pub title_label: TemplateChild<Label>,
         #[template_child]
         pub num_label: TemplateChild<Label>,
-        #[template_child]
-        pub listbox: TemplateChild<ListBox>,
+
+        #[template_child(id = "songs_list")]
+        pub songs_list: TemplateChild<SongListView>,
         update: Cell<bool>,
         offset: Cell<i32>,
         keyword: RefCell<String>,
@@ -139,23 +126,13 @@ mod imp {
     impl ObjectImpl for SearchSongPage {
         fn constructed(&self) {
             self.parent_constructed();
+            let obj = self.obj();
 
-            let select_row = Rc::new(RefCell::new(-1));
-            self.listbox.connect_row_activated(move |list, row| {
-                let index;
-                {
-                    index = *select_row.borrow();
-                }
-                if index != -1 && index != row.index() {
-                    *select_row.borrow_mut() = row.index();
-                    if let Some(row) = list.row_at_index(index) {
-                        let row = row.downcast::<SonglistRow>().unwrap();
-                        row.switch_image(false);
-                    }
-                } else {
-                    *select_row.borrow_mut() = row.index();
-                }
-            });
+            self.songs_list.imp().scroll_win.connect_edge_overshot(
+                clone!(@weak obj as s => move|_, pos| {
+                    s.scrolled_edge_cb(pos);
+                }),
+            );
         }
 
         fn properties() -> &'static [ParamSpec] {

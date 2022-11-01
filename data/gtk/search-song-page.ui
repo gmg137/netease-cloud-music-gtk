@@ -73,30 +73,7 @@
             </object>
         </child>
         <child>
-            <object class="GtkScrolledWindow">
-                <signal name="edge-overshot" handler="scrolled_edge_cb" swapped="true" />
-                <child>
-                    <object class="GtkViewport">
-                        <child>
-                            <object class="AdwClamp">
-                                <property name="vexpand">true</property>
-                                <property name="hexpand">true</property>
-                                <property name="maximum-size">1000</property>
-                                <property name="margin-top">20</property>
-                                <property name="margin-bottom">20</property>
-                                <property name="tightening-threshold">730</property>
-                                <child>
-                                    <object class="GtkListBox" id="listbox">
-                                        <property name="valign">start</property>
-                                        <style>
-                                            <class name="boxed-list" />
-                                        </style>
-                                    </object>
-                                </child>
-                            </object>
-                        </child>
-                    </object>
-                </child>
+            <object class="SongListView" id="songs_list">
             </object>
         </child>
     </template>

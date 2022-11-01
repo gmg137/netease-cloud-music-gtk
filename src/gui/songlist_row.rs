@@ -7,21 +7,39 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, *};
 
+use crate::application::Action;
+use glib::Sender;
+use ncm_api::SongInfo;
+use once_cell::sync::OnceCell;
+use std::cell::{Cell, RefCell};
+
 glib::wrapper! {
     pub struct SonglistRow(ObjectSubclass<imp::SonglistRow>)
         @extends Widget, ListBoxRow,
         @implements Accessible, Actionable, Buildable, ConstraintTarget;
 }
 
-impl Default for SonglistRow {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl SonglistRow {
-    pub fn new() -> Self {
-        glib::Object::new(&[])
+    pub fn new(sender: Sender<Action>, si: &SongInfo) -> Self {
+        let obj: Self = glib::Object::new(&[]);
+        let imp = obj.imp();
+        if imp.sender.get().is_none() {
+            imp.sender.set(sender).unwrap();
+        }
+        obj.set_from_song_info(&si);
+        obj
+    }
+
+    pub fn set_from_song_info(&self, si: &SongInfo) {
+        self.imp().song_id.replace(si.id);
+        self.imp().album_id.replace(si.album_id);
+        self.imp().cover_url.replace(si.pic_url.to_owned());
+
+        self.set_tooltip_text(Some(&si.name));
+        self.set_name(&si.name);
+        self.set_singer(&si.singer);
+        self.set_album(&si.album);
+        self.set_duration(&si.duration);
     }
 
     pub fn switch_image(&self, visible: bool) {
@@ -29,22 +47,22 @@ impl SonglistRow {
         imp.play_icon.set_visible(visible);
     }
 
-    pub fn set_name(&self, label: &str) {
+    fn set_name(&self, label: &str) {
         let imp = self.imp();
         imp.title_label.set_label(label);
     }
 
-    pub fn set_singer(&self, label: &str) {
+    fn set_singer(&self, label: &str) {
         let imp = self.imp();
         imp.artist_label.set_label(label);
     }
 
-    pub fn set_album(&self, label: &str) {
+    fn set_album(&self, label: &str) {
         let imp = self.imp();
         imp.album_label.set_label(label);
     }
 
-    pub fn set_duration(&self, label: &str) {
+    fn set_duration(&self, label: &str) {
         let imp = self.imp();
         imp.duration_label.set_label(label);
     }
@@ -75,6 +93,11 @@ mod imp {
         pub album_label: TemplateChild<Label>,
         #[template_child]
         pub duration_label: TemplateChild<Label>,
+
+        pub sender: OnceCell<Sender<Action>>,
+        pub song_id: Cell<u64>,
+        pub album_id: Cell<u64>,
+        pub cover_url: RefCell<String>,
     }
 
     #[glib::object_subclass]

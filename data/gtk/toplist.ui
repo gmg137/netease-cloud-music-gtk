@@ -103,23 +103,7 @@
                             </object>
                         </child>
                         <child>
-                            <object class="GtkScrolledWindow" id="playlist-container">
-                                <property name="vexpand">True</property>
-                                <child>
-                                    <object class="AdwClamp">
-                                        <property name="maximum-size">1000</property>
-                                        <property name="valign">start</property>
-                                        <child>
-                                            <object class="GtkListBox" id="songs_list">
-                                                <property name="margin-bottom">20</property>
-                                                <property name="margin-top">20</property>
-                                                <style>
-                                                    <class name="boxed-list" />
-                                                </style>
-                                            </object>
-                                        </child>
-                                    </object>
-                                </child>
+                            <object class="SongListView" id="songs_list">
                             </object>
                         </child>
                     </object>

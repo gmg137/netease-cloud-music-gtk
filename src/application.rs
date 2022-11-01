@@ -9,10 +9,10 @@ use ncm_api::{
     SongList, SongListDetailDynamic, TopList,
 };
 use once_cell::sync::OnceCell;
-use std::cell::RefCell;
 use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
+use std::{cell::RefCell};
 
 use crate::{
     config::VERSION, gui::NeteaseCloudMusicGtk4Preferences, model::*, ncmapi::*, path::CACHE,
@@ -681,7 +681,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::InitSongListPage(sis, dy) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
-                window.init_songlist_page(sis, dy, DiscoverSubPage::SongList);
+                window.init_songlist_page(sis, dy);
             }
             Action::ToAlbumPage(songlist) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
@@ -709,7 +709,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::InitAlbumPage(sis, dy) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
-                window.init_songlist_page(sis, dy, DiscoverSubPage::Album);
+                window.init_songlist_page(sis, dy);
             }
             Action::AddPlayList(sis) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
@@ -1238,11 +1238,9 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::InitMyPageRecSongList(sls) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.init_my_page(sls);
             }
             Action::ToPlayListLyricsPage(sis, si) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.init_playlist_lyrics_page(sis, si.to_owned());
                 let sender = imp.sender.clone();
                 sender.send(Action::GetLyrics(si)).unwrap();

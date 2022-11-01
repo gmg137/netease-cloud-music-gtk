@@ -7,32 +7,14 @@
             <object class="AdwFlap">
                 <property name="flap-position">end</property>
                 <property name="content">
-                    <object class="GtkScrolledWindow">
+                    <object class="SongListView" id="songs_list">
                         <property name="margin-top">20</property>
                         <property name="margin-bottom">20</property>
                         <property name="margin-start">20</property>
                         <property name="margin-end">20</property>
+                        <property name="s-content-margin-top">0</property>
+                        <property name="s-content-margin-bottom">0</property>
                         <property name="width-request">500</property>
-                        <child>
-                            <object class="GtkViewport">
-                                <child>
-                                    <object class="AdwClamp">
-                                        <property name="vexpand">true</property>
-                                        <property name="hexpand">true</property>
-                                        <property name="maximum-size">1000</property>
-                                        <property name="tightening-threshold">730</property>
-                                        <child>
-                                            <object class="GtkListBox" id="playlist_box">
-                                                <property name="valign">start</property>
-                                                <style>
-                                                    <class name="boxed-list" />
-                                                </style>
-                                            </object>
-                                        </child>
-                                    </object>
-                                </child>
-                            </object>
-                        </child>
                     </object>
                 </property>
                 <property name="flap">
