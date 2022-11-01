@@ -12,12 +12,29 @@ use once_cell::sync::OnceCell;
 use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
-use std::{cell::RefCell};
+use std::{cell::RefCell, sync::Arc};
 
 use crate::{
     config::VERSION, gui::NeteaseCloudMusicGtk4Preferences, model::*, ncmapi::*, path::CACHE,
     NeteaseCloudMusicGtk4Window,
 };
+
+// implements Debug for Fn(Targ) using "blanket implementations"
+pub trait ActionCallbackTr<TArg>: Fn(TArg) + Sync + Send {}
+impl<Targ, Tr: Fn(Targ) + Sync + Send> ActionCallbackTr<Targ> for Tr {}
+impl<Targ> std::fmt::Debug for dyn ActionCallbackTr<Targ> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ActionCallback")
+    }
+}
+// wrapper dyn Fn(Targ) => ActionCallback<Targ>
+// Note: we can capture glib object with glib::SendWeakRef, but only valied in MainContext thread
+
+// callback is needed as there is no way to lookup the sender object
+// alternative methods:
+//   unique id for sender object, and store a map
+//   sender object create new (sender, receiver) and attach, then action send back
+pub type ActionCallback<Targ = ()> = Arc<dyn ActionCallbackTr<Targ>>;
 
 #[derive(Debug, Clone)]
 pub enum Action {
@@ -42,7 +59,7 @@ pub enum Action {
     InitTopPicks,
     InitTopPicksSongList,
     // (url,path,width,height)
-    DownloadImage(String, PathBuf, u16, u16),
+    DownloadImage(String, PathBuf, u16, u16, Option<ActionCallback>),
     SetupTopPicks(Vec<SongList>),
     InitNewAlbums,
     InitAllAlbums,
@@ -479,7 +496,13 @@ impl NeteaseCloudMusicGtk4Application {
                             let mut path = CACHE.clone();
                             path.push(format!("{}-songlist.jpg", sl.id));
                             sender
-                                .send(Action::DownloadImage(sl.cover_img_url, path, 140, 140))
+                                .send(Action::DownloadImage(
+                                    sl.cover_img_url,
+                                    path,
+                                    140,
+                                    140,
+                                    None,
+                                ))
                                 .unwrap();
                         }
                         sender.send(Action::SetupTopPicks(song_list)).unwrap();
@@ -498,14 +521,19 @@ impl NeteaseCloudMusicGtk4Application {
                     .send(Action::Search(String::new(), SearchType::TopPicks, 0, 50))
                     .unwrap();
             }
-            Action::DownloadImage(url, path, width, height) => {
+            Action::DownloadImage(url, path, width, height, callback) => {
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
-                    ncmapi
+                    if ncmapi
                         .client
                         .download_img(url, path, width, height)
                         .await
-                        .ok();
+                        .is_ok()
+                    {
+                        if let Some(cb) = callback {
+                            cb(());
+                        }
+                    }
                 });
             }
             Action::SetupTopPicks(song_list) => {
@@ -522,7 +550,13 @@ impl NeteaseCloudMusicGtk4Application {
                             let mut path = CACHE.clone();
                             path.push(format!("{}-songlist.jpg", sl.id));
                             sender
-                                .send(Action::DownloadImage(sl.cover_img_url, path, 140, 140))
+                                .send(Action::DownloadImage(
+                                    sl.cover_img_url,
+                                    path,
+                                    140,
+                                    140,
+                                    None,
+                                ))
                                 .unwrap();
                         }
                         sender.send(Action::SetupNewAlbums(song_list)).unwrap();
@@ -571,6 +605,7 @@ impl NeteaseCloudMusicGtk4Application {
                         path_cover,
                         50,
                         50,
+                        None,
                     ))
                     .unwrap();
                 if !path_mp3.exists() && !path_flac.exists() && !path_m4a.exists() {
@@ -807,7 +842,13 @@ impl NeteaseCloudMusicGtk4Application {
                             let mut path = CACHE.clone();
                             path.push(format!("{}-toplist.jpg", t.id));
                             sender
-                                .send(Action::DownloadImage(t.cover.to_owned(), path, 140, 140))
+                                .send(Action::DownloadImage(
+                                    t.cover.to_owned(),
+                                    path,
+                                    140,
+                                    140,
+                                    None,
+                                ))
                                 .unwrap();
                         }
                         timeout_future_seconds(1).await;
@@ -874,6 +915,7 @@ impl NeteaseCloudMusicGtk4Application {
                                             path,
                                             140,
                                             140,
+                                            None,
                                         ))
                                         .unwrap();
                                 }
@@ -899,6 +941,7 @@ impl NeteaseCloudMusicGtk4Application {
                                             path,
                                             140,
                                             140,
+                                            None,
                                         ))
                                         .unwrap();
                                 }
@@ -939,6 +982,7 @@ impl NeteaseCloudMusicGtk4Application {
                                             path,
                                             140,
                                             140,
+                                            None,
                                         ))
                                         .unwrap();
                                 }
@@ -968,6 +1012,7 @@ impl NeteaseCloudMusicGtk4Application {
                                             path,
                                             140,
                                             140,
+                                            None,
                                         ))
                                         .unwrap();
                                 }
@@ -993,6 +1038,7 @@ impl NeteaseCloudMusicGtk4Application {
                                             path,
                                             140,
                                             140,
+                                            None,
                                         ))
                                         .unwrap();
                                 }
@@ -1030,6 +1076,7 @@ impl NeteaseCloudMusicGtk4Application {
                                             path,
                                             140,
                                             140,
+                                            None,
                                         ))
                                         .unwrap();
                                 }
@@ -1057,6 +1104,7 @@ impl NeteaseCloudMusicGtk4Application {
                                             path,
                                             140,
                                             140,
+                                            None,
                                         ))
                                         .unwrap();
                                 }
@@ -1227,6 +1275,7 @@ impl NeteaseCloudMusicGtk4Application {
                                     path,
                                     140,
                                     140,
+                                    None,
                                 ))
                                 .unwrap();
                         }
