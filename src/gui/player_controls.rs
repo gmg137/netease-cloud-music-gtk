@@ -414,6 +414,7 @@ impl PlayerControls {
                     path.to_owned(),
                     140,
                     140,
+                    None,
                 ))
                 .is_ok()
             {
