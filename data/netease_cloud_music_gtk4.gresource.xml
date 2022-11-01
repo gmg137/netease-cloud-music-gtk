@@ -11,6 +11,7 @@
         <file compressed="true">gtk/player-controls.ui</file>
         <file compressed="true">gtk/songlist-page.ui</file>
         <file compressed="true">gtk/songlist-row.ui</file>
+        <file compressed="true">gtk/songlist-view.ui</file>
         <file compressed="true">gtk/toplist.ui</file>
         <file compressed="true">gtk/search-song-page.ui</file>
         <file compressed="true">gtk/search-songlist-page.ui</file>

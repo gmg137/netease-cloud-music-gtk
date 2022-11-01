@@ -6,7 +6,7 @@
 use fragile::Fragile;
 use gettextrs::gettext;
 use gio::Settings;
-use glib::{ParamFlags, ParamSpec, ParamSpecBoolean, ParamSpecDouble, Sender, Value};
+use glib::{ParamSpec, ParamSpecBoolean, ParamSpecDouble, Sender, Value};
 use gst::ClockTime;
 use gstreamer_player::*;
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
@@ -706,23 +706,8 @@ mod imp {
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![
-                    ParamSpecDouble::new(
-                        // Name
-                        "volume",
-                        // Nickname
-                        "volume",
-                        // Short description
-                        "volume",
-                        // Minimum value
-                        f64::MIN,
-                        // Maximum value
-                        f64::MAX,
-                        // Default value
-                        0.0,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE,
-                    ),
-                    ParamSpecBoolean::new("like", "like", "like", false, ParamFlags::READWRITE),
+                    ParamSpecDouble::builder("volume").readwrite().build(),
+                    ParamSpecBoolean::builder("like").readwrite().build(),
                 ]
             });
             PROPERTIES.as_ref()
