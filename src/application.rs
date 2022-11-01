@@ -492,19 +492,6 @@ impl NeteaseCloudMusicGtk4Application {
                     if let Ok(song_list) = ncmapi.client.top_song_list("全部", "hot", 0, 8).await
                     {
                         debug!("获取热门推荐信息：{:?}", song_list);
-                        for sl in song_list.clone() {
-                            let mut path = CACHE.clone();
-                            path.push(format!("{}-songlist.jpg", sl.id));
-                            sender
-                                .send(Action::DownloadImage(
-                                    sl.cover_img_url,
-                                    path,
-                                    140,
-                                    140,
-                                    None,
-                                ))
-                                .unwrap();
-                        }
                         sender.send(Action::SetupTopPicks(song_list)).unwrap();
                     } else {
                         error!("获取热门推荐信息失败！");
@@ -546,19 +533,6 @@ impl NeteaseCloudMusicGtk4Application {
                 ctx.spawn_local(async move {
                     if let Ok(song_list) = ncmapi.client.new_albums("ALL", 0, 8).await {
                         debug!("获取新碟上架信息：{:?}", song_list);
-                        for sl in song_list.clone() {
-                            let mut path = CACHE.clone();
-                            path.push(format!("{}-songlist.jpg", sl.id));
-                            sender
-                                .send(Action::DownloadImage(
-                                    sl.cover_img_url,
-                                    path,
-                                    140,
-                                    140,
-                                    None,
-                                ))
-                                .unwrap();
-                        }
                         sender.send(Action::SetupNewAlbums(song_list)).unwrap();
                     } else {
                         error!("获取新碟上架信息失败！");
@@ -838,20 +812,6 @@ impl NeteaseCloudMusicGtk4Application {
                 ctx.spawn_local(async move {
                     if let Ok(toplist) = ncmapi.client.toplist().await {
                         debug!("获取排行榜: {:?}", toplist);
-                        for t in &toplist {
-                            let mut path = CACHE.clone();
-                            path.push(format!("{}-toplist.jpg", t.id));
-                            sender
-                                .send(Action::DownloadImage(
-                                    t.cover.to_owned(),
-                                    path,
-                                    140,
-                                    140,
-                                    None,
-                                ))
-                                .unwrap();
-                        }
-                        timeout_future_seconds(1).await;
                         sender.send(Action::InitTopList(toplist)).unwrap();
                     } else {
                         error!("获取排行榜失败!");
@@ -906,20 +866,6 @@ impl NeteaseCloudMusicGtk4Application {
                             if let Ok(sgs) = ncmapi.client.search_singer(text, offset, limit).await
                             {
                                 debug!("搜索歌手：{:?}", sgs);
-                                for t in &sgs {
-                                    let mut path = CACHE.clone();
-                                    path.push(format!("{}-singer.jpg", t.id));
-                                    sender
-                                        .send(Action::DownloadImage(
-                                            t.pic_url.to_owned(),
-                                            path,
-                                            140,
-                                            140,
-                                            None,
-                                        ))
-                                        .unwrap();
-                                }
-                                timeout_future_seconds(1).await;
                                 sender.send(Action::UpdateSearchSingerPage(sgs)).unwrap();
                             } else {
                                 sender
@@ -932,20 +878,6 @@ impl NeteaseCloudMusicGtk4Application {
                         SearchType::Album => {
                             if let Ok(sls) = ncmapi.client.search_album(text, offset, limit).await {
                                 debug!("搜索专辑：{:?}", sls);
-                                for t in &sls {
-                                    let mut path = CACHE.clone();
-                                    path.push(format!("{}-songlist.jpg", t.id));
-                                    sender
-                                        .send(Action::DownloadImage(
-                                            t.cover_img_url.to_owned(),
-                                            path,
-                                            140,
-                                            140,
-                                            None,
-                                        ))
-                                        .unwrap();
-                                }
-                                timeout_future_seconds(1).await;
                                 sender.send(Action::UpdateSearchSongListPage(sls)).unwrap();
                             } else {
                                 sender
@@ -973,20 +905,6 @@ impl NeteaseCloudMusicGtk4Application {
                                 ncmapi.client.search_songlist(text, offset, limit).await
                             {
                                 debug!("搜索歌单：{:?}", sls);
-                                for t in &sls {
-                                    let mut path = CACHE.clone();
-                                    path.push(format!("{}-songlist.jpg", t.id));
-                                    sender
-                                        .send(Action::DownloadImage(
-                                            t.cover_img_url.to_owned(),
-                                            path,
-                                            140,
-                                            140,
-                                            None,
-                                        ))
-                                        .unwrap();
-                                }
-                                timeout_future_seconds(1).await;
                                 sender.send(Action::UpdateSearchSongListPage(sls)).unwrap();
                             } else {
                                 sender
@@ -1003,20 +921,6 @@ impl NeteaseCloudMusicGtk4Application {
                                 .await
                             {
                                 debug!("获取歌单：{:?}", sls);
-                                for t in &sls {
-                                    let mut path = CACHE.clone();
-                                    path.push(format!("{}-songlist.jpg", t.id));
-                                    sender
-                                        .send(Action::DownloadImage(
-                                            t.cover_img_url.to_owned(),
-                                            path,
-                                            140,
-                                            140,
-                                            None,
-                                        ))
-                                        .unwrap();
-                                }
-                                timeout_future_seconds(1).await;
                                 sender.send(Action::UpdateSearchSongListPage(sls)).unwrap();
                             } else {
                                 sender
@@ -1029,20 +933,6 @@ impl NeteaseCloudMusicGtk4Application {
                         SearchType::AllAlbums => {
                             if let Ok(sls) = ncmapi.client.new_albums("ALL", offset, limit).await {
                                 debug!("获取专辑：{:?}", sls);
-                                for sl in sls.clone() {
-                                    let mut path = CACHE.clone();
-                                    path.push(format!("{}-songlist.jpg", sl.id));
-                                    sender
-                                        .send(Action::DownloadImage(
-                                            sl.cover_img_url,
-                                            path,
-                                            140,
-                                            140,
-                                            None,
-                                        ))
-                                        .unwrap();
-                                }
-                                timeout_future_seconds(1).await;
                                 sender.send(Action::UpdateSearchSongListPage(sls)).unwrap();
                             } else {
                                 sender
@@ -1067,20 +957,6 @@ impl NeteaseCloudMusicGtk4Application {
                         SearchType::LikeAlbums => {
                             if let Ok(sls) = ncmapi.client.album_sublist(offset, limit).await {
                                 debug!("获取收藏的专辑：{:?}", sls);
-                                for t in &sls {
-                                    let mut path = CACHE.clone();
-                                    path.push(format!("{}-songlist.jpg", t.id));
-                                    sender
-                                        .send(Action::DownloadImage(
-                                            t.cover_img_url.to_owned(),
-                                            path,
-                                            140,
-                                            140,
-                                            None,
-                                        ))
-                                        .unwrap();
-                                }
-                                timeout_future_seconds(1).await;
                                 sender.send(Action::UpdateSearchSongListPage(sls)).unwrap();
                             } else {
                                 sender
@@ -1095,20 +971,6 @@ impl NeteaseCloudMusicGtk4Application {
                             if let Ok(sls) = ncmapi.client.user_song_list(uid, offset, limit).await
                             {
                                 debug!("获取收藏的歌单：{:?}", sls);
-                                for t in &sls {
-                                    let mut path = CACHE.clone();
-                                    path.push(format!("{}-songlist.jpg", t.id));
-                                    sender
-                                        .send(Action::DownloadImage(
-                                            t.cover_img_url.to_owned(),
-                                            path,
-                                            140,
-                                            140,
-                                            None,
-                                        ))
-                                        .unwrap();
-                                }
-                                timeout_future_seconds(1).await;
                                 sender.send(Action::UpdateSearchSongListPage(sls)).unwrap();
                             } else {
                                 sender
@@ -1266,20 +1128,6 @@ impl NeteaseCloudMusicGtk4Application {
                 ctx.spawn_local(async move {
                     if let Ok(sls) = ncmapi.client.recommend_resource().await {
                         debug!("获取推荐歌单：{:?}", sls);
-                        for t in &sls {
-                            let mut path = CACHE.clone();
-                            path.push(format!("{}-songlist.jpg", t.id));
-                            sender
-                                .send(Action::DownloadImage(
-                                    t.cover_img_url.to_owned(),
-                                    path,
-                                    140,
-                                    140,
-                                    None,
-                                ))
-                                .unwrap();
-                        }
-                        timeout_future_seconds(1).await;
                         sender.send(Action::InitMyPageRecSongList(sls)).unwrap();
                     } else {
                         sender.send(Action::InitMyPage).unwrap();

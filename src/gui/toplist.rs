@@ -15,6 +15,7 @@ use ncm_api::{SongInfo, TopList};
 use once_cell::sync::OnceCell;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::{
     application::Action, gui::songlist_view::SongListView,
@@ -44,6 +45,8 @@ impl TopListView {
 
     pub fn init_sidebar(&self, list: Vec<TopList>) {
         let sidebar = self.imp().sidebar.get();
+        let sender = self.imp().sender.get().unwrap();
+
         let mut select = false;
         for t in &list {
             let action = ActionRow::builder()
@@ -53,7 +56,26 @@ impl TopListView {
                 .build();
             let mut path = CACHE.clone();
             path.push(format!("{}-toplist.jpg", t.id));
-            let image = Image::from_file(path);
+            let image = gtk::Image::from_icon_name("image-missing-symbolic");
+            
+            // download cover
+            if !path.exists() {
+                let image = glib::SendWeakRef::from(image.downgrade());
+                sender
+                    .send(Action::DownloadImage(
+                        t.cover.to_owned(),
+                        path.to_owned(),
+                        140,
+                        140,
+                        Some(Arc::new(move |_| {
+                            image.upgrade().unwrap().set_from_file(Some(&path));
+                        })),
+                    ))
+                    .unwrap();
+            } else {
+                image.set_from_file(Some(&path));
+            }
+
             image.set_pixel_size(40);
             action.add_prefix(&image);
             sidebar.append(&action);
