@@ -5,7 +5,7 @@
 //
 use glib::Sender;
 use glib::{
-    ParamFlags, ParamSpec, ParamSpecBoolean, ParamSpecEnum, ParamSpecInt, ParamSpecString, Value,
+    ParamFlags, ParamSpec, ParamSpecBoolean, ParamSpecEnum, ParamSpecInt, ParamSpecString, Value, SendWeakRef
 };
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::SongList;
@@ -13,6 +13,7 @@ use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{application::Action, model::SearchType, path::CACHE};
 use std::cell::{Cell, RefCell};
+use std::sync::Arc;
 
 glib::wrapper! {
     pub struct SearchSongListPage(ObjectSubclass<imp::SearchSongListPage>)
@@ -55,7 +56,26 @@ impl SearchSongListPage {
         for sl in song_list {
             let mut path = CACHE.clone();
             path.push(format!("{}-songlist.jpg", sl.id));
-            let image = gtk::Image::from_file(path);
+            let image = gtk::Image::from_icon_name("image-missing-symbolic");
+            
+            // download cover
+            if !path.exists() {
+                let image = SendWeakRef::from(image.downgrade());
+                sender
+                    .send(Action::DownloadImage(
+                        sl.cover_img_url.to_owned(),
+                        path.to_owned(),
+                        140,
+                        140,
+                        Some(Arc::new(move |_| {
+                            image.upgrade().unwrap().set_from_file(Some(&path));
+                        })),
+                    ))
+                    .unwrap();
+            } else {
+                image.set_from_file(Some(&path));
+            }
+
             let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
             image.set_pixel_size(140);
             let frame = gtk::Frame::new(None);

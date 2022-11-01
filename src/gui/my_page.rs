@@ -4,10 +4,11 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 
-use glib::Sender;
+use glib::{SendWeakRef, Sender};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::SongList;
 use once_cell::sync::OnceCell;
+use std::sync::Arc;
 
 use crate::{application::Action, path::CACHE};
 
@@ -43,39 +44,53 @@ impl MyPage {
         for sl in song_list {
             let mut path = CACHE.clone();
             path.push(format!("{}-songlist.jpg", sl.id));
-            if path.exists() {
-                let image = gtk::Image::from_file(path);
-                let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
-                image.set_pixel_size(140);
-                let frame = gtk::Frame::new(None);
-                frame.set_halign(gtk::Align::Center);
-                frame.set_child(Some(&image));
-                boxs.append(&frame);
-                let label = gtk::Label::new(Some(&sl.name));
-                label.set_lines(2);
-                label.set_margin_start(20);
-                label.set_margin_end(20);
-                label.set_width_chars(1);
-                label.set_max_width_chars(1);
-                label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-                label.set_wrap(true);
-                boxs.append(&label);
-                top_picks.attach(&boxs, col, row, 1, 1);
-                col += 1;
-                if col == 5 {
-                    col = 1;
-                    row += 1;
-                }
-                let gesture_click = GestureClick::new();
-                image.add_controller(&gesture_click);
-                let sender = sender.clone();
-                gesture_click.connect_pressed(move |_, _, _, _| {
-                    sender.send(Action::ToSongListPage(sl.clone())).unwrap();
-                });
+            let image = gtk::Image::from_icon_name("image-missing-symbolic");
+
+            // download cover
+            if !path.exists() {
+                let image = SendWeakRef::from(image.downgrade());
+                sender
+                    .send(Action::DownloadImage(
+                        sl.cover_img_url.to_owned(),
+                        path.to_owned(),
+                        140,
+                        140,
+                        Some(Arc::new(move |_| {
+                            image.upgrade().unwrap().set_from_file(Some(&path));
+                        })),
+                    ))
+                    .unwrap();
             } else {
-                sender.send(Action::InitMyPage).unwrap();
-                break;
+                image.set_from_file(Some(&path));
             }
+
+            let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
+            image.set_pixel_size(140);
+            let frame = gtk::Frame::new(None);
+            frame.set_halign(gtk::Align::Center);
+            frame.set_child(Some(&image));
+            boxs.append(&frame);
+            let label = gtk::Label::new(Some(&sl.name));
+            label.set_lines(2);
+            label.set_margin_start(20);
+            label.set_margin_end(20);
+            label.set_width_chars(1);
+            label.set_max_width_chars(1);
+            label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+            label.set_wrap(true);
+            boxs.append(&label);
+            top_picks.attach(&boxs, col, row, 1, 1);
+            col += 1;
+            if col == 5 {
+                col = 1;
+                row += 1;
+            }
+            let gesture_click = GestureClick::new();
+            image.add_controller(&gesture_click);
+            let sender = sender.clone();
+            gesture_click.connect_pressed(move |_, _, _, _| {
+                sender.send(Action::ToSongListPage(sl.clone())).unwrap();
+            });
         }
     }
 }

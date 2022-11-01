@@ -11,6 +11,7 @@ use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{application::Action, model::SearchType, path::CACHE};
 use std::cell::{Cell, RefCell};
+use std::sync::Arc;
 
 glib::wrapper! {
     pub struct SearchSingerPage(ObjectSubclass<imp::SearchSingerPage>)
@@ -55,12 +56,32 @@ impl SearchSingerPage {
             let mut path = CACHE.clone();
             path.push(format!("{}-singer.jpg", si.id));
             let avatar = adw::Avatar::new(140, Some(&si.name), true);
-            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(path) {
+
+            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(path.to_owned()) {
                 let image = Image::from_pixbuf(Some(&pixbuf));
                 if let Some(paintable) = image.paintable() {
                     avatar.set_custom_image(Some(&paintable));
                 }
+            } else {
+                let avatar = glib::SendWeakRef::from(avatar.downgrade());
+                sender
+                    .send(Action::DownloadImage(
+                        si.pic_url.to_owned(),
+                        path.to_owned(),
+                        140,
+                        140,
+                        Some(Arc::new(move |_| {
+                            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
+                                let image = Image::from_pixbuf(Some(&pixbuf));
+                                if let Some(paintable) = image.paintable() {
+                                    avatar.upgrade().unwrap().set_custom_image(Some(&paintable));
+                                }
+                            }
+                        })),
+                    ))
+                    .unwrap();
             }
+
             let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
             boxs.append(&avatar);
             let label = gtk::Label::new(Some(&si.name));
