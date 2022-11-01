@@ -55,19 +55,7 @@ impl PlayListLyricsPage {
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(&sis, is_like_fn);
-
-        let i: i32 = {
-            let mut i: i32 = 0;
-            match sis.iter().find(|si| {
-                i += 1;
-                si.id == current_song.id
-            }) {
-                Some(_) => i - 1,
-                _ => -1,
-            }
-        };
-        self.switch_row(i);
+        songs_list.init_new_list(&sis, Some(current_song.id), is_like_fn);
     }
 
     pub fn update_lyrics(&self, lyrics: String) {

@@ -10,7 +10,7 @@ use ncm_api::{DetailDynamic, SongInfo, SongList};
 use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{
-    application::Action, gui::songlist_view::SongListView, model::DiscoverSubPage, path::CACHE,
+    application::Action, gui::songlist_view::SongListView, model::DiscoverSubPage, path::CACHE
 };
 use std::{
     cell::{Cell, RefCell},
@@ -87,6 +87,7 @@ impl SonglistPage {
         &self,
         sis: Vec<SongInfo>,
         dy: DetailDynamic,
+        cur_song: Option<u64>,
         is_like_fn: impl Fn(&u64) -> bool,
     ) {
         let imp = self.imp();
@@ -117,7 +118,7 @@ impl SonglistPage {
         imp.playlist.replace(sis.clone());
         let sender = imp.sender.get().unwrap();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(&sis, is_like_fn);
+        songs_list.init_new_list(&sis, cur_song, is_like_fn);
     }
 }
 

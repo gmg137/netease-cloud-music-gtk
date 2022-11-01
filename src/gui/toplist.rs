@@ -76,7 +76,7 @@ impl TopListView {
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(&sis, _is_like_fn);
+        songs_list.init_new_list(&sis, None, _is_like_fn);
     }
 }
 

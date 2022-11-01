@@ -6,6 +6,7 @@ mod model;
 mod ncmapi;
 mod path;
 mod window;
+mod signal;
 
 use self::application::NeteaseCloudMusicGtk4Application;
 use self::window::NeteaseCloudMusicGtk4Window;
@@ -41,6 +42,8 @@ fn main() {
         gio::Resource::load(PKGDATADIR.to_owned() + "/netease-cloud-music-gtk4.gresource")
             .expect("Could not load resources");
     gio::resources_register(&resources);
+
+    signal::NcmGSignalWrapper::init_global();
 
     glib::set_application_name(&gettextrs::gettext(APP_NAME));
 

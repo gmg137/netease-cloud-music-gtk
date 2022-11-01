@@ -2,6 +2,7 @@ use crate::{
     application::{Action, NeteaseCloudMusicGtk4Application},
     gui::*,
     model::*,
+    signal::NCM_GSIGNAL,
 };
 use adw::{ColorScheme, StyleManager, Toast};
 use gettextrs::gettext;
@@ -404,6 +405,8 @@ impl NeteaseCloudMusicGtk4Window {
         } else {
             imp.user_like_song_remove(&id);
         }
+
+        NCM_GSIGNAL.get().unwrap().emit_like(id, val);
     }
 
     pub fn set_user_like_songs(&self, song_ids: &[u64]) {
@@ -512,12 +515,15 @@ impl NeteaseCloudMusicGtk4Window {
     pub fn play(&self, song_info: SongInfo) {
         let player_controls = self.imp().player_controls.get();
         player_controls.set_property("like", self.imp().user_like_song_contains(&song_info.id));
-        player_controls.play(song_info);
+        player_controls.play(song_info.to_owned());
         let player_revealer = self.imp().player_revealer.get();
         if !player_revealer.reveals_child() {
             player_revealer.set_visible(true);
             player_revealer.set_reveal_child(true);
         }
+
+        let sig = NCM_GSIGNAL.get().unwrap();
+        sig.emit_play(song_info.id, song_info.album_id, 0);
     }
 
     pub fn switch_stack_to_songlist_page(&self, songlist: &SongList) {
@@ -541,7 +547,14 @@ impl NeteaseCloudMusicGtk4Window {
 
     pub fn init_songlist_page(&self, sis: Vec<SongInfo>, dy: DetailDynamic) {
         let songlist_page = self.imp().songlist_page.get();
-        songlist_page.init_songlist(sis, dy, |id: &u64| self.imp().user_like_song_contains(&id));
+        let cur_song = self
+            .imp()
+            .player_controls
+            .get_current_song()
+            .map(|si| si.id);
+        songlist_page.init_songlist(sis, dy, cur_song, |id: &u64| {
+            self.imp().user_like_song_contains(&id)
+        });
     }
 
     pub fn init_page_data(&self) {

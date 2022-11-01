@@ -8,12 +8,11 @@ use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, *};
 
 use crate::application::Action;
-use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Sender, Value};
+use glib::{ParamSpec, ParamSpecBoolean, Sender, Value};
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
-    sync::Arc,
 };
 
 glib::wrapper! {
@@ -140,17 +139,12 @@ mod imp {
         #[template_callback]
         fn like_button_clicked_cb(&self) {
             let sender = self.sender.get().unwrap();
-            let s_send = SendWeakRef::from(self.obj().downgrade());
             let like = self.like.get();
             sender
                 .send(Action::LikeSong(
                     self.song_id.get().to_owned(),
                     !like,
-                    Some(Arc::new(move |_| {
-                        if let Some(s) = s_send.upgrade() {
-                            s.set_property("like", !like);
-                        }
-                    })),
+                    None,
                 ))
                 .unwrap();
         }

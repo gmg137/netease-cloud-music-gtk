@@ -82,7 +82,7 @@ impl SearchSongPage {
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
 
-        songs_list.init_new_list(&sis, is_like_fn);
+        songs_list.init_new_list(&sis, None, is_like_fn);
     }
 }
 

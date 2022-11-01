@@ -7,12 +7,17 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, *};
 
-use crate::{application::Action, gui::songlist_row::SonglistRow};
-use glib::{ParamSpec, ParamSpecBoolean, ParamSpecInt, Sender, Value};
+use crate::{
+    application::Action,
+    gui::songlist_row::SonglistRow,
+    signal::{NcmGSignal, NCM_GSIGNAL},
+};
+use glib::{closure_local, ParamSpec, ParamSpecBoolean, ParamSpecInt, Sender, Value};
 use ncm_api::SongInfo;
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
+    collections::HashMap,
     rc::Rc,
 };
 
@@ -40,7 +45,12 @@ impl SongListView {
         }
     }
 
-    pub fn init_new_list(&self, sis: &Vec<SongInfo>, is_like_fn: impl Fn(&u64) -> bool) {
+    pub fn init_new_list(
+        &self,
+        sis: &Vec<SongInfo>,
+        cur_song: Option<u64>,
+        is_like_fn: impl Fn(&u64) -> bool,
+    ) {
         let sender = self.imp().sender.get().unwrap().to_owned();
         let imp = self.imp();
 
@@ -56,13 +66,23 @@ impl SongListView {
             row.set_album_btn_visible(!no_act_album);
             row.set_like_btn_visible(!no_act_like);
 
-            let si = si.clone();
+            let si = si.to_owned();
+            imp.child_map.borrow_mut().insert(si.id, row.to_owned());
+            listbox.append(&row);
+
             row.connect_activate(move |row| {
                 row.switch_image(true);
-                sender.send(Action::AddPlay(si.clone())).unwrap();
+                sender.send(Action::AddPlay(si.to_owned())).unwrap();
             });
-            listbox.append(&row);
         });
+
+        if let Some(song_id) = cur_song {
+            self.mark_new_row_playing_with_id(song_id, false);
+        }
+    }
+
+    pub fn set_songlist_id(&self, id: u64) {
+        self.imp().songlist_id.set(id);
     }
 
     pub fn clear_list(&self) {
@@ -70,6 +90,8 @@ impl SongListView {
         while let Some(child) = listbox.last_child() {
             listbox.remove(&child);
         }
+        self.imp().child_map.borrow_mut().clear();
+        self.set_songlist_id(0);
     }
 
     pub fn list_box(&self) -> ListBox {
@@ -87,6 +109,77 @@ impl SongListView {
             }
             listbox.emit_by_name_with_values("row-activated", &[row.to_value()]);
         }
+    }
+    pub fn mark_new_row_playing_with_id(&self, song_id: u64, do_active: bool) -> bool {
+        let listbox = self.list_box();
+        match self.imp().child_map.borrow().get(&song_id) {
+            Some(row) => {
+                if do_active {
+                    row.emit_activate();
+                } else {
+                    row.switch_image(true);
+                }
+                listbox.emit_by_name_with_values("row-activated", &[row.to_value()]);
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub fn mark_song_like(&self, song_id: u64, val: bool) -> bool {
+        match self.imp().child_map.borrow().get(&song_id) {
+            Some(row) => {
+                row.set_property("like", val);
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn setup_connect(&self) {
+        NCM_GSIGNAL
+            .get()
+            .unwrap()
+            .connect_like(closure_local!(@watch self as s =>
+                move |_: NcmGSignal, id: u64, val: bool| {
+                    s.mark_song_like(id, val);
+                }
+            ));
+
+
+        let old_select_row = Rc::new(RefCell::new(-1));
+        let old_select_row_1 = old_select_row.to_owned();
+        NCM_GSIGNAL
+            .get()
+            .unwrap()
+            .connect_play(closure_local!(@watch self as s =>
+                move |_: NcmGSignal, id: u64, album_id: u64, mix_id: u64| {
+                    let s_songlist_id = s.imp().songlist_id.get();
+                    if s_songlist_id == 0 || s_songlist_id == album_id || s_songlist_id == mix_id {
+                        if !s.mark_new_row_playing_with_id(id, false) {
+                            if let Some(row) = s.list_box().row_at_index(*old_select_row_1.borrow()) {
+                                let row = row.downcast::<SonglistRow>().unwrap();
+                                row.switch_image(false);
+                            }
+                        }
+                    }
+                }
+            ));
+
+        // clear old actived row
+        self.imp().listbox.connect_row_activated(move |list, row| {
+            let index;
+            {
+                index = *old_select_row.borrow();
+            }
+            *old_select_row.borrow_mut() = row.index();
+            if index != -1 && index != row.index() {
+                if let Some(row) = list.row_at_index(index) {
+                    let row = row.downcast::<SonglistRow>().unwrap();
+                    row.switch_image(false);
+                }
+            }
+        });
     }
 }
 
@@ -116,6 +209,9 @@ mod imp {
         pub listbox: TemplateChild<ListBox>,
 
         pub sender: OnceCell<Sender<Action>>,
+
+        pub songlist_id: Cell<u64>,
+        pub child_map: RefCell<HashMap<u64, SonglistRow>>,
 
         no_act_album: Cell<bool>,
         no_act_like: Cell<bool>,
@@ -148,27 +244,13 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj();
 
-            // clear old actived row
-            let old_select_row = Rc::new(RefCell::new(-1));
-            self.listbox.connect_row_activated(move |list, row| {
-                let index;
-                {
-                    index = *old_select_row.borrow();
-                }
-                *old_select_row.borrow_mut() = row.index();
-                if index != -1 && index != row.index() {
-                    if let Some(row) = list.row_at_index(index) {
-                        let row = row.downcast::<SonglistRow>().unwrap();
-                        row.switch_image(false);
-                    }
-                }
-            });
-
             let clamp = self.adw_clamp.get();
             obj.bind_property("s-content-margin-top", &clamp, "margin-top")
                 .build();
             obj.bind_property("s-content-margin-bottom", &clamp, "margin-bottom")
                 .build();
+
+            obj.setup_connect();
         }
 
         fn properties() -> &'static [ParamSpec] {

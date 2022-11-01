@@ -25,6 +25,7 @@ rust_sources = files(
   'config.rs',
   'main.rs',
   'window.rs',
+  'signal.rs',
 )
 
 sources = [cargo_sources, rust_sources]
