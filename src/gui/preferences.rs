@@ -64,6 +64,10 @@ impl NeteaseCloudMusicGtk4Preferences {
             .flags(SettingsBindFlags::DEFAULT)
             .build();
     }
+
+    pub fn set_cache_size_label(&self, size: f64, unit: String) {
+        self.imp().cache_clear.get().set_property("subtitle", format!("{:.1} {}", size, unit));
+    }
 }
 
 impl Default for NeteaseCloudMusicGtk4Preferences {

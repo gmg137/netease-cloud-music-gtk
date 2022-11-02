@@ -1157,11 +1157,9 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::UpdateLyrics(lrc) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.update_lyrics(lrc);
             }
             Action::UpdatePlayListStatus(index) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.updat_playlist_status(index);
             }
         }
@@ -1193,6 +1191,10 @@ impl NeteaseCloudMusicGtk4Application {
         let preferences = NeteaseCloudMusicGtk4Preferences::new();
         preferences.set_modal(true);
         preferences.set_transient_for(Some(&window));
+
+        let (size, unit) = crate::path::get_cache_size();
+        preferences.set_cache_size_label(size, unit);
+
         preferences.present();
     }
 
