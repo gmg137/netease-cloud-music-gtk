@@ -3,12 +3,12 @@
     <requires lib="gtk" version="4.0" />
     <template class="SongListView" parent="GtkBox">
         <child>
-            <object class="GtkScrolledWindow" id="win">
+            <object class="GtkScrolledWindow" id="scroll_win">
                 <child>
                     <object class="GtkViewport">
                         <property name="scroll-to-focus">True</property>
                         <child>
-                            <object class="AdwClamp" id="clamp">
+                            <object class="AdwClamp" id="adw_clamp">
                                 <property name="vexpand">true</property>
                                 <property name="hexpand">true</property>
                                 <property name="maximum-size">1000</property>

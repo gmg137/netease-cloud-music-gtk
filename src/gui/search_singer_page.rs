@@ -57,7 +57,7 @@ impl SearchSingerPage {
             path.push(format!("{}-singer.jpg", si.id));
             let avatar = adw::Avatar::new(140, Some(&si.name), true);
 
-            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(path.to_owned()) {
+            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
                 let image = Image::from_pixbuf(Some(&pixbuf));
                 if let Some(paintable) = image.paintable() {
                     avatar.set_custom_image(Some(&paintable));

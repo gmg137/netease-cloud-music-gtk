@@ -40,7 +40,7 @@ impl SongListView {
         }
     }
 
-    pub fn init_new_list(&self, sis: &Vec<SongInfo>) {
+    pub fn init_new_list(&self, sis: &[SongInfo]) {
         let sender = self.imp().sender.get().unwrap().to_owned();
         let imp = self.imp();
 
@@ -48,7 +48,7 @@ impl SongListView {
         sis.iter().for_each(|si: &SongInfo| {
             let sender = sender.clone();
 
-            let row = SonglistRow::new(sender.clone(), &si);
+            let row = SonglistRow::new(sender.clone(), si);
 
             let si = si.clone();
             row.connect_activate(move |row| {
@@ -102,11 +102,11 @@ mod imp {
     #[derive(Debug, Default, CompositeTemplate)]
     #[template(resource = "/com/gitee/gmg137/NeteaseCloudMusicGtk4/gtk/songlist-view.ui")]
     pub struct SongListView {
-        #[template_child(id = "win")]
+        #[template_child]
         pub scroll_win: TemplateChild<ScrolledWindow>,
-        #[template_child(id = "clamp")]
+        #[template_child]
         pub adw_clamp: TemplateChild<adw::Clamp>,
-        #[template_child(id = "listbox")]
+        #[template_child]
         pub listbox: TemplateChild<ListBox>,
 
         pub sender: OnceCell<Sender<Action>>,

@@ -120,20 +120,18 @@ mod imp {
         }
 
         fn properties() -> &'static [ParamSpec] {
-            static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| vec![]);
+            static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(std::vec::Vec::new);
             PROPERTIES.as_ref()
         }
 
         fn set_property(&self, _id: usize, _value: &Value, pspec: &ParamSpec) {
-            match pspec.name() {
-                _ => unimplemented!(),
-            }
+            pspec.name();
+            unimplemented!()
         }
 
         fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
-            match pspec.name() {
-                _ => unimplemented!(),
-            }
+            pspec.name();
+            unimplemented!()
         }
     }
     impl WidgetImpl for PlayListLyricsPage {}

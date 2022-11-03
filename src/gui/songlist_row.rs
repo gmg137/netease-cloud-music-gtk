@@ -26,7 +26,7 @@ impl SonglistRow {
         if imp.sender.get().is_none() {
             imp.sender.set(sender).unwrap();
         }
-        obj.set_from_song_info(&si);
+        obj.set_from_song_info(si);
         obj
     }
 

@@ -80,7 +80,7 @@ pub fn get_dir_size(path: impl Into<PathBuf>) -> u64 {
 }
 
 pub fn dir_size_with_unit(dir_size: u64) -> (f64, String) {
-    const BYTE_UNITS: &'static [&str] = &["B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    const BYTE_UNITS: &[&str] = &["B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
     let dir_size = dir_size as f64 + 1.0;
     let exponent = std::cmp::min(dir_size.log(1024.0).floor() as usize, BYTE_UNITS.len() - 1);
     (
