@@ -234,7 +234,7 @@ impl NeteaseCloudMusicGtk4Application {
                             window.set_uid(login_info.uid);
 
                             ncmapi.set_cookie_jar_to_global();
-                            NcmClient::save_global_cookie_jar_to_file();
+                            ncmapi.save_global_cookie_jar_to_file();
 
                             sender
                                 .send(Action::InitUserInfo(login_info.to_owned()))
