@@ -276,7 +276,7 @@ mod imp {
                     name: banner.name.to_owned(),
                     singer: banner.singer.to_owned(),
                     album: banner.album.to_owned(),
-                    album_id: banner.id.to_owned(),
+                    album_id: banner.album_id.to_owned(),
                     pic_url: banner.pic_url.to_owned(),
                     duration: banner.duration.to_owned(),
                     song_url: "".to_owned(),
