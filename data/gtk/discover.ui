@@ -31,6 +31,7 @@
                                 </child>
                                 <style>
                                     <class name="card" />
+                                    <class name="activatable_image" />
                                 </style>
                             </object>
                         </child>
@@ -111,7 +112,8 @@
                                     <object class="GtkImage">
                                         <property name="halign">start</property>
                                         <property name="valign">center</property>
-                                        <property name="icon-name">media-optical-cd-audio-symbolic</property>
+                                        <property name="pixel-size">20</property>
+                                        <property name="icon-name">playlist-symbolic</property>
                                     </object>
                                 </child>
                                 <child>
@@ -126,17 +128,16 @@
                                     </object>
                                 </child>
                                 <child>
-                                    <object class="GtkImage">
+                                    <object class="GtkButton">
+                                        <signal name="clicked" handler="top_picks_cb" swapped="true" />
                                         <property name="halign">end</property>
                                         <property name="valign">end</property>
                                         <property name="hexpand">true</property>
                                         <property name="icon-name">view-more-symbolic</property>
                                         <property name="tooltip-text" translatable="yes">View More</property>
-                                        <child>
-                                            <object class="GtkGestureClick">
-                                                <signal name="pressed" handler="top_picks_cb" swapped="true" />
-                                            </object>
-                                        </child>
+                                        <style>
+                                            <class name="flat" />
+                                        </style>
                                     </object>
                                 </child>
                             </object>
@@ -176,6 +177,7 @@
                                     <object class="GtkImage">
                                         <property name="halign">start</property>
                                         <property name="valign">center</property>
+                                        <property name="pixel-size">20</property>
                                         <property name="icon-name">media-optical-cd-audio-symbolic</property>
                                     </object>
                                 </child>
@@ -191,17 +193,16 @@
                                     </object>
                                 </child>
                                 <child>
-                                    <object class="GtkImage">
+                                    <object class="GtkButton">
+                                        <signal name="clicked" handler="new_albums_cb" swapped="true" />
                                         <property name="halign">end</property>
                                         <property name="valign">end</property>
                                         <property name="hexpand">true</property>
                                         <property name="icon-name">view-more-symbolic</property>
                                         <property name="tooltip-text" translatable="yes">View More</property>
-                                        <child>
-                                            <object class="GtkGestureClick">
-                                                <signal name="pressed" handler="new_albums_cb" swapped="true" />
-                                            </object>
-                                        </child>
+                                        <style>
+                                            <class name="flat" />
+                                        </style>
                                     </object>
                                 </child>
                             </object>

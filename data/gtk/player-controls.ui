@@ -55,15 +55,22 @@
             </object>
         </child>
         <child>
-            <object class="GtkImage" id="cover_image">
-                <property name="halign">fill</property>
+            <object class="GtkFrame">
+                <property name="halign">center</property>
                 <property name="valign">center</property>
-                <property name="icon-name">image-missing-symbolic</property>
-                <property name="pixel-size">50</property>
-                <property name="tooltip-text" translatable="yes">View Album</property>
                 <child>
-                    <object class="GtkGestureClick">
-                        <signal name="pressed" handler="cover_clicked_cb" swapped="true" />
+                    <object class="GtkImage" id="cover_image">
+                        <property name="icon-name">image-missing-symbolic</property>
+                        <property name="pixel-size">50</property>
+                        <property name="tooltip-text" translatable="yes">View Album</property>
+                        <child>
+                            <object class="GtkGestureClick">
+                                <signal name="pressed" handler="cover_clicked_cb" swapped="true" />
+                            </object>
+                        </child>
+                        <style>
+                            <class name="activatable_image" />
+                        </style>
                     </object>
                 </child>
             </object>

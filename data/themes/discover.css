@@ -5,6 +5,20 @@
  * Distributed under terms of the GPL-3.0-or-later license.
  */
 
+.activatable_image {
+  opacity: 1;
+  transition: .3s ease;
+}
+
+
+.activatable_image:hover {
+    opacity: 0.7;
+}
+
+.activatable_image:active {
+    opacity: 0.6;
+}
+
 button.hover-button:hover {
   background-color: rgba(255,255,255,0.5);
 }

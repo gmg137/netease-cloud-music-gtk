@@ -201,7 +201,8 @@
                             <object class="GtkImage">
                                 <property name="halign">start</property>
                                 <property name="valign">center</property>
-                                <property name="icon-name">media-optical-cd-audio-symbolic</property>
+                                <property name="pixel-size">20</property>
+                                <property name="icon-name">playlist-symbolic</property>
                             </object>
                         </child>
                         <child>
