@@ -566,7 +566,7 @@ mod imp {
             if let Ok(playlist) = self.playlist.lock() {
                 if let Some(song_info) = playlist.current_song() {
                     sender
-                        .send(Action::LikeSong(song_info.id, !self.like.get()))
+                        .send(Action::LikeSong(song_info.id, !self.like.get(), None))
                         .unwrap();
                     return;
                 }
@@ -630,7 +630,10 @@ mod imp {
                 .unwrap()
                 .set_string("repeat-variant", "shuffle")
                 .unwrap();
-            self.mpris.get().unwrap().set_loop_status(LoopsState::SHUFFLE);
+            self.mpris
+                .get()
+                .unwrap()
+                .set_loop_status(LoopsState::SHUFFLE);
             if let Ok(mut playlist) = self.playlist.lock() {
                 playlist.set_loops(LoopsState::SHUFFLE);
             }

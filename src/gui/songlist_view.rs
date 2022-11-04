@@ -40,15 +40,18 @@ impl SongListView {
         }
     }
 
-    pub fn init_new_list(&self, sis: &[SongInfo]) {
+    pub fn init_new_list(&self, sis: &[SongInfo], is_like_fn: impl Fn(&u64) -> bool) {
         let sender = self.imp().sender.get().unwrap().to_owned();
         let imp = self.imp();
 
         let listbox = imp.listbox.get();
+        let no_act_like = self.property::<bool>("no-act-like");
         sis.iter().for_each(|si: &SongInfo| {
             let sender = sender.clone();
 
             let row = SonglistRow::new(sender.clone(), si);
+            row.set_property("like", is_like_fn(&si.id));
+            row.set_like_button_visible(!no_act_like);
 
             let si = si.clone();
             row.connect_activate(move |row| {
@@ -111,7 +114,6 @@ mod imp {
 
         pub sender: OnceCell<Sender<Action>>,
 
-        no_act_album: Cell<bool>,
         no_act_like: Cell<bool>,
 
         content_margin: RefCell<Margin>,
@@ -168,7 +170,6 @@ mod imp {
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![
-                    ParamSpecBoolean::builder("no-act-album").build(),
                     ParamSpecBoolean::builder("no-act-like").build(),
                     ParamSpecInt::builder("s-content-margin-top").build(),
                     ParamSpecInt::builder("s-content-margin-bottom").build(),
@@ -179,10 +180,6 @@ mod imp {
 
         fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
             match pspec.name() {
-                "no-act-album" => {
-                    let val = value.get().unwrap();
-                    self.no_act_album.replace(val);
-                }
                 "no-act-like" => {
                     let val = value.get().unwrap();
                     self.no_act_like.replace(val);
@@ -201,7 +198,6 @@ mod imp {
 
         fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
-                "no-act-album" => self.no_act_album.get().to_value(),
                 "no-act-like" => self.no_act_like.get().to_value(),
                 "s-content-margin-top" => self.content_margin.borrow().top.to_value(),
                 "s-content-margin-bottom" => self.content_margin.borrow().bottom.to_value(),

@@ -8,10 +8,13 @@ use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, *};
 
 use crate::application::Action;
-use glib::Sender;
+use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Sender, Value};
 use ncm_api::SongInfo;
-use once_cell::sync::OnceCell;
-use std::cell::{Cell, RefCell};
+use once_cell::sync::{Lazy, OnceCell};
+use std::{
+    cell::{Cell, RefCell},
+    sync::Arc,
+};
 
 glib::wrapper! {
     pub struct SonglistRow(ObjectSubclass<imp::SonglistRow>)
@@ -47,6 +50,11 @@ impl SonglistRow {
         imp.play_icon.set_visible(visible);
     }
 
+    pub fn set_like_button_visible(&self, visible: bool) {
+        let imp = self.imp();
+        imp.like_button.set_visible(visible);
+    }
+
     fn set_name(&self, label: &str) {
         let imp = self.imp();
         imp.title_label.set_label(label);
@@ -74,6 +82,25 @@ impl SonglistRow {
     fn on_click(&self) {
         self.emit_activate();
     }
+
+    #[template_callback]
+    fn like_button_clicked_cb(&self) {
+        let imp = self.imp();
+        let sender = imp.sender.get().unwrap();
+        let s_send = SendWeakRef::from(self.downgrade());
+        let like = imp.like.get();
+        sender
+            .send(Action::LikeSong(
+                imp.song_id.get().to_owned(),
+                !like,
+                Some(Arc::new(move |_| {
+                    if let Some(s) = s_send.upgrade() {
+                        s.set_property("like", !like);
+                    }
+                })),
+            ))
+            .unwrap();
+    }
 }
 
 mod imp {
@@ -93,11 +120,14 @@ mod imp {
         pub album_label: TemplateChild<Label>,
         #[template_child]
         pub duration_label: TemplateChild<Label>,
+        #[template_child]
+        pub like_button: TemplateChild<Button>,
 
         pub sender: OnceCell<Sender<Action>>,
         pub song_id: Cell<u64>,
         pub album_id: Cell<u64>,
         pub cover_url: RefCell<String>,
+        pub like: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -116,7 +146,48 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for SonglistRow {}
+    impl ObjectImpl for SonglistRow {
+        fn constructed(&self) {
+            self.parent_constructed();
+            let obj = self.obj();
+
+            obj.bind_property("like", &self.like_button.get(), "icon_name")
+                .transform_to(|_, v: bool| {
+                    Some(
+                        (if v {
+                            "starred-symbolic"
+                        } else {
+                            "non-starred-symbolic"
+                        })
+                        .to_string(),
+                    )
+                })
+                .build();
+        }
+
+        fn properties() -> &'static [ParamSpec] {
+            static PROPERTIES: Lazy<Vec<ParamSpec>> =
+                Lazy::new(|| vec![ParamSpecBoolean::builder("like").readwrite().build()]);
+            PROPERTIES.as_ref()
+        }
+
+        fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
+            match pspec.name() {
+                "like" => {
+                    let like = value.get().expect("The value needs to be of type `bool`.");
+                    self.like.replace(like);
+                }
+                _ => unimplemented!(),
+            }
+        }
+
+        fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
+            match pspec.name() {
+                "like" => self.like.get().to_value(),
+                _ => unimplemented!(),
+            }
+        }
+    }
     impl WidgetImpl for SonglistRow {}
     impl ListBoxRowImpl for SonglistRow {}
 }

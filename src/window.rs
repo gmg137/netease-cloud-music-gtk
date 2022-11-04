@@ -18,7 +18,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
     cmp::Ordering,
-    collections::{HashSet, LinkedList},
+    collections::LinkedList,
     path::PathBuf,
     sync::{Arc, Mutex},
 };
@@ -26,12 +26,6 @@ use std::{
 mod imp {
 
     use super::*;
-
-    #[derive(Default)]
-    pub struct UserInfo {
-        uid: u64,
-        like_songs: HashSet<u64>,
-    }
 
     #[derive(Default, CompositeTemplate)]
     #[template(resource = "/com/gitee/gmg137/NeteaseCloudMusicGtk4/gtk/window.ui")]
@@ -541,7 +535,7 @@ impl NeteaseCloudMusicGtk4Window {
 
     pub fn init_songlist_page(&self, sis: Vec<SongInfo>, dy: DetailDynamic) {
         let songlist_page = self.imp().songlist_page.get();
-        songlist_page.init_songlist(sis, dy);
+        songlist_page.init_songlist(sis, dy, |id: &u64| self.imp().user_like_song_contains(id));
     }
 
     pub fn init_page_data(&self) {
@@ -594,12 +588,12 @@ impl NeteaseCloudMusicGtk4Window {
 
     pub fn update_toplist(&self, list: Vec<SongInfo>) {
         let toplist = self.imp().toplist.get();
-        toplist.update_songs_list(list);
+        toplist.update_songs_list(list, |id| self.imp().user_like_song_contains(id));
     }
 
     pub fn update_search_song_page(&self, list: Vec<SongInfo>) {
         let search_song_page = self.imp().search_song_page.get();
-        search_song_page.update_songs(list);
+        search_song_page.update_songs(list, |id| self.imp().user_like_song_contains(id));
     }
 
     pub fn update_search_songlist_page(&self, list: Vec<SongList>) {
@@ -672,7 +666,7 @@ impl NeteaseCloudMusicGtk4Window {
     pub fn init_playlist_lyrics_page(&self, sis: Vec<SongInfo>, si: SongInfo) {
         let imp = self.imp();
         imp.playlist_lyrics_page
-            .init_page(sis, si);
+            .init_page(sis, si, |id| imp.user_like_song_contains(id));
         imp.label_title.set_label(&gettext("Play List&Lyrics"));
         imp.switcher_title.set_visible(false);
         imp.label_title.set_visible(true);

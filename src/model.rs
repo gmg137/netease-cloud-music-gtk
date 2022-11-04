@@ -5,6 +5,12 @@
 //
 use gtk::glib;
 
+#[derive(Default)]
+pub struct UserInfo {
+    pub uid: u64,
+    pub like_songs: std::collections::HashSet<u64>,
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum UserMenuChild {
     Qr,

@@ -77,7 +77,7 @@ pub enum Action {
     PlayListStart,
     LikeSongList(u64, bool),
     LikeAlbum(u64, bool),
-    LikeSong(u64, bool),
+    LikeSong(u64, bool, Option<ActionCallback<bool>>),
     GetToplist,
     GetToplistSongsList(u64),
     InitTopList(Vec<TopList>),
@@ -780,7 +780,7 @@ impl NeteaseCloudMusicGtk4Application {
                     }
                 });
             }
-            Action::LikeSong(id, is_like) => {
+            Action::LikeSong(id, is_like, callback) => {
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
@@ -794,6 +794,9 @@ impl NeteaseCloudMusicGtk4Application {
                                 "Songs have been uncollected!"
                             })))
                             .unwrap();
+                        if let Some(callback) = callback {
+                            callback(true);
+                        }
                     } else {
                         error!("收藏/取消收藏歌曲失败: {:?}", id);
                         sender

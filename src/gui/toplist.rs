@@ -17,10 +17,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::{
-    application::Action, gui::songlist_view::SongListView,
-    path::CACHE,
-};
+use crate::{application::Action, gui::songlist_view::SongListView, path::CACHE};
 
 glib::wrapper! {
     pub struct TopListView(ObjectSubclass<imp::TopListView>)
@@ -57,7 +54,7 @@ impl TopListView {
             let mut path = CACHE.clone();
             path.push(format!("{}-toplist.jpg", t.id));
             let image = gtk::Image::from_icon_name("image-missing-symbolic");
-            
+
             // download cover
             if !path.exists() {
                 let image = glib::SendWeakRef::from(image.downgrade());
@@ -88,7 +85,7 @@ impl TopListView {
         self.imp().update_toplist_info(0);
     }
 
-    pub fn update_songs_list(&self, sis: Vec<SongInfo>) {
+    pub fn update_songs_list(&self, sis: Vec<SongInfo>, is_like_fn: impl Fn(&u64) -> bool) {
         let imp = self.imp();
 
         imp.playlist.replace(sis.clone());
@@ -98,7 +95,7 @@ impl TopListView {
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(&sis);
+        songs_list.init_new_list(&sis, is_like_fn);
     }
 }
 

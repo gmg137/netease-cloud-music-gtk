@@ -52,6 +52,14 @@ impl SearchSongPage {
                 title_clamp.set_visible(false);
             }
         }
+        match search_type {
+            SearchType::CloudDisk => {
+                imp.songs_list.set_property("no-act-like", true);
+            }
+            _ => {
+                imp.songs_list.set_property("no-act-like", false);
+            }
+        }
         self.set_property("offset", 0);
         self.set_property("keyword", keyword);
         self.set_property("search-type", search_type);
@@ -59,7 +67,7 @@ impl SearchSongPage {
         imp.songs_list.get().clear_list();
     }
 
-    pub fn update_songs(&self, sis: Vec<SongInfo>) {
+    pub fn update_songs(&self, sis: Vec<SongInfo>, is_like_fn: impl Fn(&u64) -> bool) {
         self.set_property("update", true);
         let offset = self.property::<i32>("offset") + sis.len() as i32;
         self.set_property("offset", offset);
@@ -72,7 +80,7 @@ impl SearchSongPage {
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
 
-        songs_list.init_new_list(&sis);
+        songs_list.init_new_list(&sis, is_like_fn);
     }
 }
 

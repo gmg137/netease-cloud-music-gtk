@@ -43,8 +43,10 @@ impl SonglistPage {
         let like_button = imp.like_button.get();
         if is_logined {
             like_button.set_visible(true);
+            imp.songs_list.set_property("no-act-like", false);
         } else {
             like_button.set_visible(false);
+            imp.songs_list.set_property("no-act-like", true);
         }
 
         // 设置专辑图
@@ -79,7 +81,12 @@ impl SonglistPage {
         imp.songs_list.clear_list();
     }
 
-    pub fn init_songlist(&self, sis: Vec<SongInfo>, dy: DetailDynamic) {
+    pub fn init_songlist(
+        &self,
+        sis: Vec<SongInfo>,
+        dy: DetailDynamic,
+        is_like_fn: impl Fn(&u64) -> bool,
+    ) {
         let imp = self.imp();
         let songs_list = imp.songs_list.get();
         match dy {
@@ -106,7 +113,7 @@ impl SonglistPage {
         imp.playlist.replace(sis.clone());
         let sender = imp.sender.get().unwrap();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(&sis);
+        songs_list.init_new_list(&sis, is_like_fn);
     }
 }
 
