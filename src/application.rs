@@ -571,17 +571,6 @@ impl NeteaseCloudMusicGtk4Application {
                 path_mp3.push(format!("{}.mp3", song_info.id));
                 let mut path_flac = CACHE.clone();
                 path_flac.push(format!("{}.flac", song_info.id));
-                let mut path_cover = CACHE.clone();
-                path_cover.push(format!("{}-cover.jpg", song_info.album_id));
-                sender
-                    .send(Action::DownloadImage(
-                        song_info.pic_url.to_owned(),
-                        path_cover,
-                        50,
-                        50,
-                        None,
-                    ))
-                    .unwrap();
                 if !path_mp3.exists() && !path_flac.exists() && !path_m4a.exists() {
                     let ctx = glib::MainContext::default();
                     ctx.spawn_local(async move {

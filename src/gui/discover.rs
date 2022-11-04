@@ -61,8 +61,6 @@ impl Discover {
 
             // download cover
             if !path.exists() {
-                boxs.set_visible(false);
-                let boxs = glib::SendWeakRef::from(boxs.downgrade());
                 let image = glib::SendWeakRef::from(image.downgrade());
                 sender
                     .send(Action::DownloadImage(
@@ -72,7 +70,6 @@ impl Discover {
                         140,
                         Some(Arc::new(move |_| {
                             image.upgrade().unwrap().set_from_file(Some(&path));
-                            boxs.upgrade().unwrap().set_visible(true);
                         })),
                     ))
                     .unwrap();
@@ -123,8 +120,6 @@ impl Discover {
 
             // download cover
             if !path.exists() {
-                boxs.set_visible(false);
-                let boxs = glib::SendWeakRef::from(boxs.downgrade());
                 let image = glib::SendWeakRef::from(image.downgrade());
                 sender
                     .send(Action::DownloadImage(
@@ -134,7 +129,6 @@ impl Discover {
                         140,
                         Some(Arc::new(move |_| {
                             image.upgrade().unwrap().set_from_file(Some(&path));
-                            boxs.upgrade().unwrap().set_visible(true);
                         })),
                     ))
                     .unwrap();

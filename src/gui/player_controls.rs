@@ -6,7 +6,7 @@
 use fragile::Fragile;
 use gettextrs::gettext;
 use gio::Settings;
-use glib::{ParamSpec, ParamSpecBoolean, ParamSpecDouble, Sender, Value};
+use glib::{ParamSpec, ParamSpecBoolean, ParamSpecDouble, SendWeakRef, Sender, Value};
 use gst::ClockTime;
 use gstreamer_player::*;
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
@@ -155,7 +155,23 @@ impl PlayerControls {
         if path_cover.exists() {
             cover_image.set_from_file(Some(&path_cover));
         } else {
-            cover_image.set_icon_name(Some("logo-symbolic"));
+            cover_image.set_from_icon_name(Some("image-missing-symbolic"));
+            let sender = imp.sender.get().unwrap().clone();
+            let cover_image = SendWeakRef::from(imp.cover_image.get().downgrade());
+            sender
+                .send(Action::DownloadImage(
+                    song_info.pic_url.to_owned(),
+                    path_cover.to_owned(),
+                    50,
+                    50,
+                    Some(Arc::new(move |_| {
+                        cover_image
+                            .upgrade()
+                            .unwrap()
+                            .set_from_file(Some(&path_cover));
+                    })),
+                ))
+                .unwrap();
         }
 
         let title_label = imp.title_label.get();
