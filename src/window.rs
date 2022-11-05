@@ -691,6 +691,17 @@ impl NeteaseCloudMusicGtk4Window {
             }
         }
     }
+
+    pub fn gst_position_update(&self, sec: u64) {
+        self.imp().player_controls.get().gst_position_update(sec);
+    }
+    pub fn gst_duration_changed(&self, sec: u64) {
+        self.imp().player_controls.get().gst_duration_changed(sec);
+    }
+
+    pub fn gst_state_changed(&self, state: gstreamer_player::PlayerState) {
+        self.imp().player_controls.get().gst_state_changed(state);
+    }
 }
 
 #[gtk::template_callbacks]

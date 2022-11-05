@@ -4,6 +4,8 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 
+use gtk::glib;
+use mpris_player::LoopStatus;
 use ncm_api::SongInfo;
 
 #[derive(Debug)]
@@ -203,7 +205,8 @@ impl PlayList {
 }
 
 #[allow(clippy::upper_case_acronyms)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, glib::Enum)]
+#[enum_type(name = "LoopsState")]
 pub enum LoopsState {
     // 随机
     SHUFFLE,
@@ -213,4 +216,43 @@ pub enum LoopsState {
     ONE,
     // 不循环
     NONE,
+}
+
+impl LoopsState {
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "none" => LoopsState::NONE,
+            "one" => LoopsState::ONE,
+            "loop" => LoopsState::LOOP,
+            "shuffle" => LoopsState::SHUFFLE,
+            _ => LoopsState::NONE,
+        }
+    }
+}
+
+impl Default for LoopsState {
+    fn default() -> LoopsState {
+        LoopsState::NONE
+    }
+}
+
+impl From<LoopStatus> for LoopsState {
+    fn from(status: LoopStatus) -> Self {
+        match status {
+            LoopStatus::None => LoopsState::NONE,
+            LoopStatus::Track => LoopsState::ONE,
+            LoopStatus::Playlist => LoopsState::LOOP,
+        }
+    }
+}
+
+impl ToString for LoopsState {
+    fn to_string(&self) -> String {
+        match self {
+            LoopsState::NONE => "none".to_string(),
+            LoopsState::ONE => "one".to_string(),
+            LoopsState::LOOP => "loop".to_string(),
+            LoopsState::SHUFFLE => "shuffle".to_string(),
+        }
+    }
 }

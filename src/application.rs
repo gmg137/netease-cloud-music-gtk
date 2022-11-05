@@ -100,6 +100,10 @@ pub enum Action {
     UpdateLyrics(String),
     UpdatePlayListStatus(usize),
     GetLyrics(SongInfo),
+
+    GstPositionUpdate(u64),
+    GstDurationChanged(u64),
+    GstStateChanged(gstreamer_player::PlayerState),
 }
 
 mod imp {
@@ -1153,6 +1157,15 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::UpdatePlayListStatus(index) => {
                 window.updat_playlist_status(index);
+            }
+            Action::GstPositionUpdate(sec) => {
+                window.gst_position_update(sec);
+            }
+            Action::GstDurationChanged(sec) => {
+                window.gst_duration_changed(sec);
+            }
+            Action::GstStateChanged(state) => {
+                window.gst_state_changed(state);
             }
         }
         glib::Continue(true)
