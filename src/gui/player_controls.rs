@@ -3,21 +3,21 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use fragile::Fragile;
 use gettextrs::gettext;
 use gio::Settings;
-use glib::{ParamSpec, ParamSpecBoolean, ParamSpecDouble, SendWeakRef, Sender, Value};
+use glib::{
+    ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum, SendWeakRef, Sender, Value,
+};
 use gst::ClockTime;
 use gstreamer_player::*;
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
-use mpris_player::{LoopStatus, PlaybackStatus};
+use mpris_player::PlaybackStatus;
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::*;
 
 use crate::{application::Action, audio::*, path::CACHE};
 use std::{
     cell::Cell,
-    rc::Rc,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -42,15 +42,6 @@ impl PlayerControls {
     fn setup_settings(&self) {
         let settings = Settings::new(crate::APP_ID);
 
-        self.set_property(
-            "volume",
-            if settings.boolean("mute-start") {
-                0.0
-            } else {
-                settings.double("volume")
-            },
-        );
-
         self.imp()
             .settings
             .set(settings)
@@ -62,34 +53,16 @@ impl PlayerControls {
     }
 
     fn load_settings(&self) {
-        let imp = self.imp();
         let settings = self.settings();
         let loop_state = settings.string("repeat-variant");
-        let loop_state = match loop_state.as_str() {
-            "none" => {
-                imp.none_button.set_active(true);
-                LoopsState::NONE
-            }
-            "one" => {
-                imp.one_button.set_active(true);
-                LoopsState::ONE
-            }
-            "loop" => {
-                imp.loop_button.set_active(true);
-                LoopsState::LOOP
-            }
-            "shuffle" => {
-                imp.shuffle_button.set_active(true);
-                LoopsState::SHUFFLE
-            }
-            _ => {
-                imp.none_button.set_active(true);
-                LoopsState::NONE
-            }
-        };
-        if let Ok(mut playlist) = imp.playlist.lock() {
-            playlist.set_loops(loop_state);
-        }
+        let loop_state = LoopsState::from_str(loop_state.as_str());
+
+        self.set_loops(loop_state);
+        self.set_volume(if settings.boolean("mute-start") {
+            0.0
+        } else {
+            settings.double("volume")
+        });
     }
 
     pub fn setup_mpris(&self) {
@@ -182,45 +155,48 @@ impl PlayerControls {
         artist_label.set_label(&song_info.singer);
 
         let mpris = imp.mpris.get().unwrap();
-        mpris.update_metadata(&song_info);
-        mpris.set_playback_status(PlaybackStatus::Playing);
-        mpris.set_volume(self.property("volume"));
+        mpris.update_metadata(&song_info, 0);
+        mpris.set_playback_status(PlaybackStatus::Playing).unwrap();
+        mpris.set_volume(self.property("volume")).unwrap();
+        mpris.set_position(0);
     }
 
     pub fn connect_gst_signals(&self) {
         let imp = self.imp();
+        let sender_ = imp.sender.get().unwrap().clone();
         let player = imp.player.get().unwrap();
 
-        let scale = Rc::new(imp.seek_scale.get());
-
-        let scale_clone = Fragile::new(Rc::clone(&scale));
-        let progress_time_label = Fragile::new(Rc::new(imp.progress_time_label.get()));
+        let sender = sender_.clone();
+        let old_msec: Cell<u64> = Cell::new(0);
         player.connect_position_updated(move |_, clock| {
             if let Some(clock) = clock {
-                let scale = scale_clone.get();
-                let duration = format!("{:0>2}:{:0>2}", clock.seconds() / 60, clock.seconds() % 60);
-                scale.set_value(clock.useconds() as f64);
-                progress_time_label.get().set_label(&duration);
+                // mseconds -> milliseconds
+                // useconds -> microseconds
+                let msec = clock.mseconds();
+                if old_msec.get() / 500 != msec / 500 {
+                    sender
+                        .send(Action::GstPositionUpdate(clock.useconds()))
+                        .unwrap();
+                    old_msec.replace(msec);
+                }
             }
         });
 
-        let scale_clone = Fragile::new(Rc::clone(&scale));
-        let duration_label = Fragile::new(Rc::new(imp.duration_label.get()));
+        let sender = sender_.clone();
         player.connect_duration_changed(move |_, clock| {
             if let Some(clock) = clock {
-                let scale = scale_clone.get();
-                let duration = format!("{:0>2}:{:0>2}", clock.seconds() / 60, clock.seconds() % 60);
-                scale.set_range(0.0, clock.useconds() as f64);
-                duration_label.get().set_label(&duration);
+                sender
+                    .send(Action::GstDurationChanged(clock.useconds()))
+                    .unwrap();
             }
         });
 
-        let sender = imp.sender.get().unwrap().clone();
+        let sender = sender_.clone();
         player.connect_end_of_stream(move |_| {
             sender.send(Action::PlayNextSong).unwrap();
         });
 
-        let sender = imp.sender.get().unwrap().clone();
+        let sender = sender_.clone();
         player.connect_error(move |_, e| {
             sender
                 .send(Action::AddToast(gettext!(
@@ -231,16 +207,54 @@ impl PlayerControls {
             sender.send(Action::PlayNextSong).unwrap();
         });
 
-        let play_button = Fragile::new(Rc::new(imp.play_button.get()));
+        let sender = sender_.clone();
         player.connect_state_changed(move |_, state| {
-            let play_button = play_button.get();
-            match state {
-                PlayerState::Stopped => play_button.set_icon_name("media-playback-start-symbolic"),
-                PlayerState::Paused => play_button.set_icon_name("media-playback-start-symbolic"),
-                PlayerState::Playing => play_button.set_icon_name("media-playback-pause-symbolic"),
-                _ => (),
-            }
+            sender.send(Action::GstStateChanged(state)).unwrap();
         });
+    }
+    // msec -> microseconds
+    pub fn gst_position_update(&self, msec: u64) {
+        let imp = self.imp();
+        let sec = msec / 10u64.pow(6);
+
+        let duration = format!("{:0>2}:{:0>2}", sec / 60, sec % 60);
+        let seek_scale = imp.seek_scale.get();
+
+        /*
+         *  the api of mpris is broken on set_position
+         *  set_position should not emitted PropertiesChanged, but it does
+         *  so, disable the set_position and don't update metadata's length
+         */
+        // imp.mpris.get().unwrap().set_position(msec as i64);
+
+        seek_scale.set_value(msec as f64);
+        imp.progress_time_label.get().set_label(&duration);
+    }
+    pub fn gst_duration_changed(&self, msec: u64) {
+        let imp = self.imp();
+        let sec = msec / 10u64.pow(6);
+
+        let duration = format!("{:0>2}:{:0>2}", sec / 60, sec % 60);
+
+        imp.seek_scale.set_range(0.0, msec as f64);
+        imp.duration_label.get().set_label(&duration);
+
+        /*
+         * not update_metadata length
+         */
+        // if let Some(si) = self.get_current_song() {
+        //     imp.mpris.get().unwrap().update_metadata(&si, msec as i64);
+        // }
+    }
+    pub fn gst_state_changed(&self, state: gstreamer_player::PlayerState) {
+        let imp = self.imp();
+        let play_button = imp.play_button.get();
+        match state {
+            PlayerState::Stopped => play_button.set_icon_name("media-playback-start-symbolic"),
+            PlayerState::Paused => play_button.set_icon_name("media-playback-start-symbolic"),
+            PlayerState::Playing => play_button.set_icon_name("media-playback-pause-symbolic"),
+            _ => (),
+        }
     }
 
     pub fn bind_shortcut(&self) {
@@ -313,7 +327,7 @@ impl PlayerControls {
         let player = imp.player.get().unwrap();
         let mpris = imp.mpris.get().unwrap();
 
-        mpris.set_playback_status(PlaybackStatus::Playing);
+        mpris.set_playback_status(PlaybackStatus::Playing).unwrap();
         player.play();
     }
 
@@ -322,7 +336,7 @@ impl PlayerControls {
         let player = imp.player.get().unwrap();
         let mpris = imp.mpris.get().unwrap();
 
-        mpris.set_playback_status(PlaybackStatus::Paused);
+        mpris.set_playback_status(PlaybackStatus::Paused).unwrap();
         player.pause();
     }
 
@@ -331,52 +345,75 @@ impl PlayerControls {
         let player = imp.player.get().unwrap();
         let mpris = imp.mpris.get().unwrap();
 
-        mpris.set_playback_status(PlaybackStatus::Stopped);
+        mpris.set_playback_status(PlaybackStatus::Stopped).unwrap();
         player.stop();
     }
 
-    // 从 Mpris2 设置播放循环
-    pub fn set_loops(&self, loops_status: LoopStatus) {
-        let imp = self.imp();
-        match loops_status {
-            LoopStatus::None => {
-                imp.none_button.set_active(true);
-            }
-            LoopStatus::Track => {
-                imp.one_button.set_active(true);
-            }
-            LoopStatus::Playlist => {
-                imp.loop_button.set_active(true);
-            }
+    // these set funcs will be called from mpris
+    pub fn set_loops(&self, state: LoopsState) {
+        if self.property::<LoopsState>("loops") != state {
+            self.set_property("loops", state);
         }
     }
-
-    // 从 Mpris2 设置混淆播放
     pub fn set_shuffle(&self, shuffle: bool) {
         let imp = self.imp();
-        if shuffle {
-            imp.shuffle_button.set_active(true);
-        } else if let Some(status) = imp.mpris.get().unwrap().get_loop_status() {
-            if status.eq("None") {
-                self.set_loops(LoopStatus::None);
-            } else if status.eq("Track") {
-                self.set_loops(LoopStatus::Track);
-            } else if status.eq("Playlist") {
-                self.set_loops(LoopStatus::Playlist);
-            } else {
-                self.set_loops(LoopStatus::None);
+        match shuffle {
+            true => self.set_loops(LoopsState::SHUFFLE),
+            false => {
+                if let Some(status) = imp.mpris.get().unwrap().get_loop_status().ok() {
+                    self.set_loops(status.into());
+                };
             }
         }
     }
-
     pub fn set_volume(&self, value: f64) {
-        let player = self.imp().player.get().unwrap();
-        player.set_volume(value);
+        let old: f64 = self.property("volume");
+        if (old * 100.0).round() as i64 != (value * 100.0).round() as i64 {
+            self.set_property("volume", value);
+        }
+    }
 
-        self.set_property("volume", value);
+    pub fn setup_notify_connect(&self) {
+        self.connect_notify(None, move |s, p| {
+            s.property_changed(p.name(), p);
+        });
+    }
 
-        let volume_button = self.imp().volume_button.get();
-        volume_button.set_value(value);
+    fn property_changed(&self, name: &str, _: &ParamSpec) {
+        let imp = self.imp();
+        let player = imp.player.get().unwrap();
+        let mpris = imp.mpris.get().unwrap();
+        match name {
+            "volume" => {
+                let value = self.property::<f64>("volume");
+                player.set_volume(value);
+                self.imp().volume_button.get().set_value(value);
+                mpris.set_volume(value).unwrap();
+            }
+            "loops" => {
+                let value = self.property::<LoopsState>("loops");
+                let switch: gtk::CheckButton = match value {
+                    LoopsState::SHUFFLE => imp.shuffle_button.get(),
+                    LoopsState::NONE => imp.none_button.get(),
+                    LoopsState::ONE => imp.one_button.get(),
+                    LoopsState::LOOP => imp.loop_button.get(),
+                };
+                if !switch.is_active() {
+                    switch.set_active(true);
+                }
+
+                mpris.set_loop_status(value).unwrap();
+
+                if let Ok(mut playlist) = imp.playlist.lock() {
+                    playlist.set_loops(value);
+                }
+
+                self.settings()
+                    .set_string("repeat-variant", value.to_string().as_str())
+                    .unwrap();
+            }
+            _ => (),
+        }
     }
 }
 
@@ -390,13 +427,7 @@ impl Default for PlayerControls {
 impl PlayerControls {
     #[template_callback]
     fn volume_cb(&self, adj: Adjustment) {
-        let player = self.imp().player.get().unwrap();
-        let mpris = self.imp().mpris.get().unwrap();
-        player.set_volume(adj.value());
-        if self.property::<f64>("volume") != adj.value() {
-            mpris.set_volume(adj.value());
-        }
-        self.set_property("volume", adj.value());
+        self.set_volume(adj.value());
     }
 
     #[template_callback]
@@ -483,7 +514,10 @@ mod imp {
         pub player: OnceCell<Player>,
         pub playlist: Arc<Mutex<PlayList>>,
         pub mpris: OnceCell<MprisController>,
-        pub volume: Cell<f64>,
+
+        volume: Cell<f64>,
+        loops: Cell<LoopsState>,
+
         like: Cell<bool>,
     }
 
@@ -536,11 +570,11 @@ mod imp {
                 .eq("media-playback-start-symbolic")
             {
                 player.play();
-                mpris.set_playback_status(PlaybackStatus::Playing);
+                mpris.set_playback_status(PlaybackStatus::Playing).unwrap();
                 button.set_icon_name("media-playback-pause-symbolic");
             } else {
                 player.pause();
-                mpris.set_playback_status(PlaybackStatus::Paused);
+                mpris.set_playback_status(PlaybackStatus::Paused).unwrap();
                 button.set_icon_name("media-playback-start-symbolic");
             }
         }
@@ -572,7 +606,6 @@ mod imp {
 
             let mpris = self.mpris.get().unwrap();
             mpris.set_position(value as i64);
-            mpris.seek(value as i64);
             Inhibit(false)
         }
 
@@ -596,63 +629,32 @@ mod imp {
         fn repeat_none_cb(&self) {
             self.repeat_image
                 .set_icon_name(Some("media-playlist-consecutive-symbolic"));
-            self.settings
-                .get()
-                .unwrap()
-                .set_string("repeat-variant", "none")
-                .unwrap();
-            self.mpris.get().unwrap().set_loop_status(LoopsState::NONE);
-            if let Ok(mut playlist) = self.playlist.lock() {
-                playlist.set_loops(LoopsState::NONE);
-            }
+
+            self.obj().set_loops(LoopsState::NONE);
         }
 
         #[template_callback]
         fn repeat_one_cb(&self) {
             self.repeat_image
                 .set_icon_name(Some("media-playlist-repeat-song-symbolic"));
-            self.settings
-                .get()
-                .unwrap()
-                .set_string("repeat-variant", "one")
-                .unwrap();
-            self.mpris.get().unwrap().set_loop_status(LoopsState::ONE);
-            if let Ok(mut playlist) = self.playlist.lock() {
-                playlist.set_loops(LoopsState::ONE);
-            }
+
+            self.obj().set_loops(LoopsState::ONE);
         }
 
         #[template_callback]
         fn repeat_loop_cb(&self) {
             self.repeat_image
                 .set_icon_name(Some("media-playlist-repeat-symbolic"));
-            self.settings
-                .get()
-                .unwrap()
-                .set_string("repeat-variant", "loop")
-                .unwrap();
-            self.mpris.get().unwrap().set_loop_status(LoopsState::LOOP);
-            if let Ok(mut playlist) = self.playlist.lock() {
-                playlist.set_loops(LoopsState::LOOP);
-            }
+
+            self.obj().set_loops(LoopsState::LOOP);
         }
 
         #[template_callback]
         fn repeat_shuffle_cb(&self) {
             self.repeat_image
                 .set_icon_name(Some("media-playlist-shuffle-symbolic"));
-            self.settings
-                .get()
-                .unwrap()
-                .set_string("repeat-variant", "shuffle")
-                .unwrap();
-            self.mpris
-                .get()
-                .unwrap()
-                .set_loop_status(LoopsState::SHUFFLE);
-            if let Ok(mut playlist) = self.playlist.lock() {
-                playlist.set_loops(LoopsState::SHUFFLE);
-            }
+
+            self.obj().set_loops(LoopsState::SHUFFLE);
         }
 
         #[template_callback]
@@ -688,12 +690,13 @@ mod imp {
             self.parent_constructed();
             *self.playlist.lock().unwrap() = PlayList::new();
 
-            obj.setup_settings();
-            // need to load mpris before load settings, as loading will call mpris fn
-            obj.setup_mpris();
-            obj.load_settings();
-
             obj.setup_player();
+            obj.setup_settings();
+            obj.setup_mpris();
+
+            obj.setup_notify_connect();
+
+            obj.load_settings();
             obj.bind_shortcut();
 
             obj.bind_property("like", &self.like_button.get(), "icon_name")
@@ -713,7 +716,8 @@ mod imp {
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![
-                    ParamSpecDouble::builder("volume").readwrite().build(),
+                    ParamSpecDouble::builder("volume").build(),
+                    ParamSpecEnum::builder("loops", LoopsState::default()).build(),
                     ParamSpecBoolean::builder("like").readwrite().build(),
                 ]
             });
@@ -726,19 +730,24 @@ mod imp {
                     let input_number = value.get().expect("The value needs to be of type `f64`.");
                     self.volume.replace(input_number);
                 }
+                "loops" => {
+                    let val = value.get().unwrap();
+                    self.loops.replace(val);
+                }
                 "like" => {
                     let like = value.get().expect("The value needs to be of type `bool`.");
                     self.like.replace(like);
                 }
-                _ => unimplemented!(),
+                n => unimplemented!("{}", n),
             }
         }
 
         fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
                 "volume" => self.volume.get().to_value(),
+                "loops" => self.loops.get().to_value(),
                 "like" => self.like.get().to_value(),
-                _ => unimplemented!(),
+                n => unimplemented!("{}", n),
             }
         }
 

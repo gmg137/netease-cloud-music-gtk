@@ -212,7 +212,7 @@
         <property name="upper">1</property>
         <property name="value">0</property>
         <property name="step-increment">0.05</property>
-        <property name="page-increment">1</property>
+        <property name="page-increment">0.2</property>
         <signal name="value-changed" handler="volume_cb" swapped="true" />
     </object>
     <object class="GtkPopover" id="repeat_popover">

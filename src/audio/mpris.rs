@@ -8,8 +8,8 @@ use adw::prelude::GtkWindowExt;
 use glib::clone;
 use gtk::glib;
 use mpris_player::*;
+
 use ncm_api::SongInfo;
-use std::cell::Cell;
 use std::sync::Arc;
 
 use crate::gui::PlayerControls;
@@ -18,10 +18,12 @@ use crate::window::NeteaseCloudMusicGtk4Window;
 
 use super::LoopsState;
 
+pub type MprisErr = <MprisPlayer as OrgMprisMediaPlayer2>::Err;
+pub type MprisResult<T> = Result<T, MprisErr>;
+
 #[derive(Debug)]
 pub struct MprisController {
     mpris: Arc<MprisPlayer>,
-    shuffle: Arc<Cell<bool>>,
 }
 
 impl MprisController {
@@ -38,14 +40,14 @@ impl MprisController {
 
         Self {
             mpris,
-            shuffle: Arc::new(Cell::new(false)),
         }
     }
 
-    pub fn update_metadata(&self, si: &SongInfo) {
+    pub fn update_metadata(&self, si: &SongInfo, microseconds: i64) {
         let mut metadata = Metadata::new();
         metadata.artist = Some(vec![si.singer.clone()]);
         metadata.title = Some(si.name.clone());
+        metadata.length = Some(microseconds);
         let mut path_cover = CACHE.clone();
         path_cover.push(format!("{}-songlist.jpg", si.album_id));
         if path_cover.exists() {
@@ -56,33 +58,49 @@ impl MprisController {
         self.mpris.set_metadata(metadata);
     }
 
-    pub fn set_volume(&self, volume: f64) {
-        self.mpris.set_volume(volume).unwrap();
+    pub fn set_volume(&self, volume: f64) -> MprisResult<()> {
+        if (self.mpris.get_volume()? * 100.0).round() as i64 != (volume * 100.0).round() as i64 {
+            self.mpris.set_volume(volume)?;
+        }
+        Ok(())
     }
 
-    pub fn set_playback_status(&self, state: PlaybackStatus) {
-        self.mpris.set_playback_status(state);
+    pub fn set_playback_status(&self, state: PlaybackStatus) -> MprisResult<()> {
+        if self.mpris.get_playback_status()? != state.value() {
+            self.mpris.set_playback_status(state);
+        }
+        Ok(())
     }
 
-    pub fn get_loop_status(&self) -> Option<String> {
-        self.mpris.get_loop_status().ok()
+    pub fn get_loop_status(&self) -> MprisResult<LoopsState> {
+        Ok(match self.mpris.get_loop_status()?.as_str() {
+            "None" => LoopsState::NONE,
+            "Track" => LoopsState::ONE,
+            "Playlists" => LoopsState::LOOP,
+            _ => LoopsState::NONE,
+        })
     }
 
-    pub fn set_loop_status(&self, status: LoopsState) {
-        // mpris no api for shuffle
-        // set property mannully
-        fn set_mpris_shuffle(s: &MprisController, val: bool) {
-            if s.shuffle.get() != val {
-                s.shuffle.set(val);
-                s.mpris
-                    .property_changed("Shuffle".to_string(), s.shuffle.get());
+    pub fn set_loop_status(&self, status: LoopsState) -> MprisResult<()> {
+        fn set_mpris_shuffle(s: &MprisController, val: bool) -> MprisResult<()> {
+            if s.mpris.get_shuffle()? != val {
+                s.mpris.set_shuffle(val)?;
+                // the api is wrong, set manually
+                s.mpris.property_changed("Shuffle".to_string(), val);
             }
+            Ok(())
+        }
+        fn set_loop_status(s: &MprisController, val: LoopStatus) -> MprisResult<()> {
+            if s.mpris.get_loop_status()? != val.value() {
+                s.mpris.set_loop_status(val);
+            }
+            Ok(())
         }
         match status {
-            LoopsState::SHUFFLE => self.mpris.set_loop_status(LoopStatus::Playlist),
-            LoopsState::LOOP => self.mpris.set_loop_status(LoopStatus::Playlist),
-            LoopsState::ONE => self.mpris.set_loop_status(LoopStatus::Track),
-            LoopsState::NONE => self.mpris.set_loop_status(LoopStatus::None),
+            LoopsState::SHUFFLE => set_loop_status(self, LoopStatus::Playlist)?,
+            LoopsState::LOOP => set_loop_status(self, LoopStatus::Playlist)?,
+            LoopsState::ONE => set_loop_status(self, LoopStatus::Track)?,
+            LoopsState::NONE => set_loop_status(self, LoopStatus::None)?,
         };
         match status {
             LoopsState::SHUFFLE => set_mpris_shuffle(self, true),
@@ -94,8 +112,8 @@ impl MprisController {
         self.mpris.set_position(value);
     }
 
-    pub fn seek(&self, value: i64) {
-        self.mpris.seek(value).ok();
+    pub fn seek(&self, value: i64) -> MprisResult<()> {
+        self.mpris.seek(value)
     }
 
     pub fn setup_signals(&self, player_controls: &PlayerControls) {
@@ -155,14 +173,12 @@ impl MprisController {
         // mpris loop
         self.mpris
             .connect_loop_status(clone!(@weak player_controls => move |status| {
-                    player_controls.set_loops(status);
+                    player_controls.set_loops(status.into());
             }));
 
-        let shuffle = self.shuffle.to_owned();
         // mpris shuffle
         self.mpris
             .connect_shuffle(clone!(@weak player_controls => move |status| {
-                    shuffle.replace(status);
                     player_controls.set_shuffle(status);
             }));
 

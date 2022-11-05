@@ -12,7 +12,6 @@ ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", versi
 anyhow = "*"
 gstreamer = "*"
 gstreamer-player = "*"
-fragile = "*"
 fastrand = "*"
 mpris-player = "0.6.2"
 regex = "*"
