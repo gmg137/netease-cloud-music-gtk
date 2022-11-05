@@ -9,7 +9,7 @@ use ncm_api::{BannersInfo, SongInfo, SongList};
 use once_cell::sync::OnceCell;
 use std::sync::{Arc, RwLock};
 
-use crate::{application::Action, path::CACHE};
+use crate::{application::Action, gui::SongListGridItem, path::CACHE};
 
 glib::wrapper! {
     pub struct Discover(ObjectSubclass<imp::Discover>)
@@ -49,120 +49,31 @@ impl Discover {
     }
 
     pub fn setup_top_picks(&self, song_list: Vec<SongList>) {
-        let sender = self.imp().sender.get().unwrap();
+        let sender = self.imp().sender.get().unwrap().clone();
         let top_picks = self.imp().top_picks.get();
-        let mut row = 1;
-        let mut col = 1;
-        for sl in song_list {
-            let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
-            let mut path = CACHE.clone();
-            path.push(format!("{}-songlist.jpg", sl.id));
-            let image = gtk::Image::from_icon_name("image-missing-symbolic");
 
-            // download cover
-            if !path.exists() {
-                let image = glib::SendWeakRef::from(image.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        sl.cover_img_url.to_owned(),
-                        path.to_owned(),
-                        140,
-                        140,
-                        Some(Arc::new(move |_| {
-                            image.upgrade().unwrap().set_from_file(Some(&path));
-                        })),
-                    ))
-                    .unwrap();
-            } else {
-                image.set_from_file(Some(&path));
-            }
+        SongListGridItem::box_update_songlist(top_picks.clone(), &song_list, 140, &sender);
 
-            image.set_pixel_size(140);
-            let frame = gtk::Frame::new(None);
-            frame.set_halign(gtk::Align::Center);
-            frame.set_child(Some(&image));
-            boxs.append(&frame);
-            let label = gtk::Label::new(Some(&sl.name));
-            label.set_lines(2);
-            label.set_margin_start(20);
-            label.set_margin_end(20);
-            label.set_width_chars(1);
-            label.set_max_width_chars(1);
-            label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-            label.set_wrap(true);
-            boxs.append(&label);
-            top_picks.attach(&boxs, col, row, 1, 1);
-            col += 1;
-            if col == 5 {
-                col = 1;
-                row = 2;
-            }
-            let gesture_click = GestureClick::new();
-            image.add_controller(&gesture_click);
-            let sender = sender.clone();
-            gesture_click.connect_pressed(move |_, _, _, _| {
+        top_picks.connect_child_activated(move |_, child| {
+            let index = child.index() as usize;
+            if let Some(sl) = song_list.get(index) {
                 sender.send(Action::ToSongListPage(sl.clone())).unwrap();
-            });
-        }
+            }
+        });
     }
 
     pub fn setup_new_albums(&self, song_list: Vec<SongList>) {
-        let sender = self.imp().sender.get().unwrap();
+        let sender = self.imp().sender.get().unwrap().clone();
         let new_albums = self.imp().new_albums.get();
-        let mut row = 1;
-        let mut col = 1;
-        for sl in song_list {
-            let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
-            let mut path = CACHE.clone();
-            path.push(format!("{}-songlist.jpg", sl.id));
-            let image = gtk::Image::from_icon_name("image-missing-symbolic");
+        SongListGridItem::box_update_songlist(new_albums.clone(), &song_list, 140, &sender);
 
-            // download cover
-            if !path.exists() {
-                let image = glib::SendWeakRef::from(image.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        sl.cover_img_url.to_owned(),
-                        path.to_owned(),
-                        140,
-                        140,
-                        Some(Arc::new(move |_| {
-                            image.upgrade().unwrap().set_from_file(Some(&path));
-                        })),
-                    ))
-                    .unwrap();
-            } else {
-                image.set_from_file(Some(&path));
-            }
-
-            image.set_pixel_size(140);
-            let frame = gtk::Frame::new(None);
-            frame.set_halign(gtk::Align::Center);
-            frame.set_child(Some(&image));
-            boxs.append(&frame);
-            let label = gtk::Label::new(Some(&sl.name));
-            label.set_lines(2);
-            label.set_margin_start(20);
-            label.set_margin_end(20);
-            label.set_width_chars(1);
-            label.set_max_width_chars(1);
-            label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-            label.set_wrap(true);
-            boxs.append(&label);
-            new_albums.attach(&boxs, col, row, 1, 1);
-            col += 1;
-            if col == 5 {
-                col = 1;
-                row = 2;
-            }
-            let gesture_click = GestureClick::new();
-            image.add_controller(&gesture_click);
-            let sender = sender.clone();
-            gesture_click.connect_pressed(move |_, _, _, _| {
+        new_albums.connect_child_activated(move |_, child| {
+            let index = child.index() as usize;
+            if let Some(sl) = song_list.get(index) {
                 sender.send(Action::ToAlbumPage(sl.clone())).unwrap();
-            });
-        }
+            }
+        });
     }
 
     pub fn add_carousel(&self, banner: BannersInfo) {
@@ -213,9 +124,9 @@ mod imp {
         #[template_child]
         pub next_button: TemplateChild<gtk::Button>,
         #[template_child]
-        pub top_picks: TemplateChild<gtk::Grid>,
+        pub top_picks: TemplateChild<gtk::FlowBox>,
         #[template_child]
-        pub new_albums: TemplateChild<gtk::Grid>,
+        pub new_albums: TemplateChild<gtk::FlowBox>,
         pub rotation_timer_id: Arc<RwLock<bool>>,
         pub timeout_sender: OnceCell<Sender<()>>,
         pub sender: OnceCell<Sender<Action>>,
