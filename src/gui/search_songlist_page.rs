@@ -4,16 +4,13 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use glib::Sender;
-use glib::{
-    ParamFlags, ParamSpec, ParamSpecBoolean, ParamSpecEnum, ParamSpecInt, ParamSpecString, Value, SendWeakRef
-};
+use glib::{ParamSpec, ParamSpecBoolean, ParamSpecEnum, ParamSpecInt, ParamSpecString, Value};
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::SongList;
 use once_cell::sync::{Lazy, OnceCell};
 
-use crate::{application::Action, model::SearchType, path::CACHE};
+use crate::{application::Action, gui::SongListGridItem, model::SearchType};
 use std::cell::{Cell, RefCell};
-use std::sync::Arc;
 
 glib::wrapper! {
     pub struct SearchSongListPage(ObjectSubclass<imp::SearchSongListPage>)
@@ -27,102 +24,29 @@ impl SearchSongListPage {
     }
 
     pub fn set_sender(&self, sender: Sender<Action>) {
-        self.imp().sender.set(sender).unwrap();
+        self.imp().sender.set(sender.to_owned()).unwrap();
     }
 
     pub fn init_page(&self, keyword: String, search_type: SearchType) {
         let imp = self.imp();
-        let offset = self.property::<i32>("offset");
         let songlist_grid = imp.songlist_grid.get();
-        for _ in 0..(offset / 5) {
-            songlist_grid.remove_row(1);
-        }
-        while let Some(child) = songlist_grid.last_child() {
-            songlist_grid.remove(&child);
-        }
+        SongListGridItem::view_clear(songlist_grid);
+
         self.set_property("offset", 0i32);
         self.set_property("keyword", keyword);
         self.set_property("search-type", search_type);
     }
 
     pub fn update_songlist(&self, song_list: Vec<SongList>) {
+        let sender = self.imp().sender.get().unwrap();
+        let grid = self.imp().songlist_grid.get();
         self.set_property("update", true);
         let offset = self.property::<i32>("offset");
         let song_list_len = song_list.len();
-        let sender = self.imp().sender.get().unwrap();
-        let songlist_grid = self.imp().songlist_grid.get();
-        let mut row = (offset / 5) + 1;
-        let mut col = 1;
-        for sl in song_list {
-            let mut path = CACHE.clone();
-            path.push(format!("{}-songlist.jpg", sl.id));
-            let image = gtk::Image::from_icon_name("image-missing-symbolic");
-            
-            // download cover
-            if !path.exists() {
-                let image = SendWeakRef::from(image.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        sl.cover_img_url.to_owned(),
-                        path.to_owned(),
-                        140,
-                        140,
-                        Some(Arc::new(move |_| {
-                            image.upgrade().unwrap().set_from_file(Some(&path));
-                        })),
-                    ))
-                    .unwrap();
-            } else {
-                image.set_from_file(Some(&path));
-            }
 
-            let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
-            image.set_pixel_size(140);
-            let frame = gtk::Frame::new(None);
-            frame.set_halign(gtk::Align::Center);
-            frame.set_child(Some(&image));
-            boxs.append(&frame);
-            let label = gtk::Label::new(Some(&sl.name));
-            label.set_lines(2);
-            label.set_margin_start(20);
-            label.set_margin_end(20);
-            label.set_width_chars(1);
-            label.set_max_width_chars(1);
-            label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-            label.set_wrap(true);
-            boxs.append(&label);
-            songlist_grid.attach(&boxs, col, row, 1, 1);
-            col += 1;
-            if col == 6 {
-                col = 1;
-                row += 1;
-            }
-            let gesture_click = GestureClick::new();
-            image.add_controller(&gesture_click);
-            let sender = sender.clone();
-            let search_type = self.property::<SearchType>("search-type");
-            gesture_click.connect_pressed(move |_, _, _, _| match search_type {
-                SearchType::Album => {
-                    sender.send(Action::ToAlbumPage(sl.clone())).unwrap();
-                }
-                SearchType::AllAlbums => {
-                    sender.send(Action::ToAlbumPage(sl.clone())).unwrap();
-                }
-                SearchType::LikeAlbums => {
-                    sender.send(Action::ToAlbumPage(sl.clone())).unwrap();
-                }
-                SearchType::SongList => {
-                    sender.send(Action::ToSongListPage(sl.clone())).unwrap();
-                }
-                SearchType::TopPicks => {
-                    sender.send(Action::ToSongListPage(sl.clone())).unwrap();
-                }
-                SearchType::LikeSongList => {
-                    sender.send(Action::ToSongListPage(sl.clone())).unwrap();
-                }
-                _ => (),
-            });
-        }
+        SongListGridItem::view_setup_factory(grid.clone(), 140);
+        SongListGridItem::view_update_songlist(grid, &song_list, 140, &sender);
+
         self.set_property("offset", offset + song_list_len as i32);
     }
 }
@@ -140,8 +64,8 @@ mod imp {
     #[derive(Debug, Default, CompositeTemplate)]
     #[template(resource = "/com/gitee/gmg137/NeteaseCloudMusicGtk4/gtk/search-songlist-page.ui")]
     pub struct SearchSongListPage {
-        #[template_child]
-        pub songlist_grid: TemplateChild<Grid>,
+        #[template_child(id = "songlist_grid")]
+        pub songlist_grid: TemplateChild<gtk::GridView>,
 
         update: Cell<bool>,
         offset: Cell<i32>,
@@ -168,63 +92,24 @@ mod imp {
     }
 
     impl ObjectImpl for SearchSongListPage {
+        fn constructed(&self) {
+            self.parent_constructed();
+
+            let obj = self.obj();
+            obj.set_widget_name("songlist_page");
+        }
+
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![
-                    ParamSpecBoolean::new(
-                        // Name
-                        "update",
-                        // Nickname
-                        "update",
-                        // Short description
-                        "Used to determine if the page is updated when scrolling to the bottom.",
-                        // Default value
-                        false,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE,
-                    ),
-                    ParamSpecInt::new(
-                        // Name
-                        "offset",
-                        // Nickname
-                        "offset",
-                        // Short description
-                        "offset",
-                        // Minimum value
-                        i32::MIN,
-                        // Maximum value
-                        i32::MAX,
-                        // Default value
-                        0,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE,
-                    ),
-                    ParamSpecString::new(
-                        // Name
-                        "keyword",
-                        // Nickname
-                        "keyword",
-                        // Short description
-                        "Search keyword",
-                        // Default value
-                        None,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE,
-                    ),
-                    ParamSpecEnum::new(
-                        // Name
-                        "search-type",
-                        // Nickname
-                        "search-type",
-                        // Short description
-                        "search type",
-                        // Enum type
-                        SearchType::static_type(),
-                        // Default value
-                        SearchType::default() as i32,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE | glib::ParamFlags::EXPLICIT_NOTIFY,
-                    ),
+                    ParamSpecBoolean::builder("update").build(),
+                    ParamSpecInt::builder("offset").build(),
+                    ParamSpecString::builder("keyword")
+                        .default_value(None)
+                        .build(),
+                    ParamSpecEnum::builder("search-type", SearchType::default())
+                        .explicit_notify()
+                        .build(),
                 ]
             });
             PROPERTIES.as_ref()
@@ -290,6 +175,22 @@ impl SearchSongListPage {
                     )))
                     .unwrap();
             }
+        }
+    }
+    #[template_callback]
+    fn grid_activate_cb(&self, pos: u32) {
+        let search_type = self.property::<SearchType>("search-type");
+        let sender = self.imp().sender.get().unwrap();
+
+        let item = SongListGridItem::view_item_at_pos(self.imp().songlist_grid.get(), pos).unwrap();
+        match search_type {
+            SearchType::Album | SearchType::AllAlbums | SearchType::LikeAlbums => {
+                sender.send(Action::ToAlbumPage(item.into())).unwrap();
+            }
+            SearchType::SongList | SearchType::TopPicks | SearchType::LikeSongList => {
+                sender.send(Action::ToSongListPage(item.into())).unwrap();
+            }
+            _ => (),
         }
     }
 }

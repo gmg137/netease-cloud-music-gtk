@@ -237,12 +237,14 @@
                                         <property name="margin-bottom">20</property>
                                         <property name="tightening-threshold">730</property>
                                         <child>
-                                            <object class="GtkGrid" id="rec_grid">
-                                                <property name="can_focus">False</property>
-                                                <property name="halign">fill</property>
-                                                <property name="margin-top">9</property>
-                                                <property name="row_spacing">15</property>
-                                                <property name="column_homogeneous">True</property>
+                                            <object class="GtkFlowBox" id="rec_grid">
+                                                <property name="hexpand">True</property>
+                                                <property name="valign">start</property>
+                                                <property name="max-children-per-line">4</property>
+                                                <property name="min-children-per-line">3</property>
+                                                <property name="homogeneous">False</property>
+                                                <property name="selection-mode">none</property>
+                                                <property name="activate-on-single-click">True</property>
                                             </object>
                                         </child>
                                     </object>
