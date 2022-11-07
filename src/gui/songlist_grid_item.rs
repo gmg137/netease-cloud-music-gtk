@@ -23,6 +23,7 @@ impl From<SongListGridItem> for SongList {
             id: item.property::<u64>("id"),
             name: item.property::<String>("name"),
             cover_img_url: item.property::<String>("pic-url"),
+            author: item.property::<String>("author"),
         }
     }
 }
@@ -33,6 +34,7 @@ impl SongListGridItem {
             .property("id", &sl.id)
             .property("name", &sl.name)
             .property("pic-url", &sl.cover_img_url)
+            .property("author", &sl.author)
             .property("texture", &icon)
             .build();
 
@@ -61,7 +63,7 @@ impl SongListGridItem {
         s
     }
 
-    fn create(pic_size: i32) -> (gtk::Box, gtk::Image, gtk::Label) {
+    fn create(pic_size: i32) -> (gtk::Box, gtk::Image, gtk::Label, gtk::Label) {
         let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
         let image = gtk::Image::builder()
@@ -87,18 +89,34 @@ impl SongListGridItem {
             .wrap(true)
             .margin_top(6)
             .build();
+
+        let label_author = gtk::Label::builder()
+            .width_chars(1)
+            .max_width_chars(1)
+            .ellipsize(gtk::pango::EllipsizeMode::Middle)
+            .wrap(true)
+            .margin_top(6)
+            .css_classes(
+                ["label-album-grid-artist", "dim-label"]
+                    .map(String::from)
+                    .to_vec(),
+            )
+            .build();
+
         boxs.append(&label);
-        (boxs, image, label)
+        boxs.append(&label_author);
+        (boxs, image, label, label_author)
     }
 
     pub fn box_update_songlist(
         grid_box: gtk::FlowBox,
         song_list: &Vec<SongList>,
         pic_size: i32,
+        show_author: bool,
         sender: &Sender<Action>,
     ) {
         for sl in song_list {
-            let (boxs, image, label) = Self::create(pic_size);
+            let (boxs, image, label, label_author) = Self::create(pic_size);
             let mut path = crate::path::CACHE.clone();
             path.push(format!("{}-songlist.jpg", sl.id));
             // download cover
@@ -122,6 +140,8 @@ impl SongListGridItem {
             }
 
             label.set_label(&sl.name);
+            label_author.set_label(&sl.author);
+            label_author.set_visible(show_author);
 
             grid_box.insert(&boxs, -1);
         }
@@ -133,11 +153,12 @@ impl SongListGridItem {
         }
     }
 
-    pub fn view_setup_factory(grid: gtk::GridView, pic_size: i32) {
+    pub fn view_setup_factory(grid: gtk::GridView, pic_size: i32, show_author: bool) {
         let factory = SignalListItemFactory::new();
 
         factory.connect_setup(move |_, list_item| {
-            let (boxs, _, _) = Self::create(pic_size);
+            let (boxs, _, _, label_author) = Self::create(pic_size);
+            label_author.set_visible(show_author);
             list_item.set_child(Some(&boxs));
         });
         factory.connect_bind(move |_, list_item| {
@@ -150,9 +171,14 @@ impl SongListGridItem {
             let frame = list_item.child().unwrap().first_child().unwrap();
             let image = frame.first_child().unwrap();
             let label = frame.next_sibling().unwrap();
+            let label_author = label.next_sibling().unwrap();
 
             songlist_object
                 .bind_property("name", &label, "label")
+                .sync_create()
+                .build();
+            songlist_object
+                .bind_property("author", &label_author, "label")
                 .sync_create()
                 .build();
             songlist_object
@@ -225,7 +251,7 @@ mod imp {
         id: Cell<u64>,
         name: RefCell<String>,
         pic_url: RefCell<String>,
-        // author: RefCell<String>,
+        author: RefCell<String>,
         pub texture: RefCell<Option<gdk::Paintable>>,
     }
     #[glib::object_subclass]
@@ -245,6 +271,7 @@ mod imp {
                     ParamSpecUInt64::builder("id").build(),
                     ParamSpecString::builder("name").build(),
                     ParamSpecString::builder("pic-url").build(),
+                    ParamSpecString::builder("author").build(),
                     ParamSpecObject::builder::<gdk::Paintable>("texture").build(),
                 ]
             });
@@ -265,6 +292,10 @@ mod imp {
                     let val = value.get().unwrap();
                     self.pic_url.replace(val);
                 }
+                "author" => {
+                    let val = value.get().unwrap();
+                    self.author.replace(val);
+                }
                 "texture" => {
                     let val = value.get().unwrap();
                     self.texture.replace(val);
@@ -278,6 +309,7 @@ mod imp {
                 "id" => self.id.get().to_value(),
                 "name" => self.name.borrow().to_value(),
                 "pic-url" => self.pic_url.borrow().to_value(),
+                "author" => self.author.borrow().to_value(),
                 "texture" => self.texture.borrow().to_value(),
                 _ => unimplemented!(),
             }

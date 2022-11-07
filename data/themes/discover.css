@@ -9,6 +9,11 @@ button.hover-button:hover {
   background-color: rgba(255,255,255,0.5);
 }
 
+.label-album-grid-artist {
+    font-size: smaller;
+    color: @theme_fg_color;
+}
+
 flowboxchild {
   margin: 12px;
   padding: 4px;

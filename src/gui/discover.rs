@@ -52,7 +52,7 @@ impl Discover {
         let sender = self.imp().sender.get().unwrap().clone();
         let top_picks = self.imp().top_picks.get();
 
-        SongListGridItem::box_update_songlist(top_picks.clone(), &song_list, 140, &sender);
+        SongListGridItem::box_update_songlist(top_picks.clone(), &song_list, 140, false, &sender);
 
         top_picks.connect_child_activated(move |_, child| {
             let index = child.index() as usize;
@@ -66,7 +66,7 @@ impl Discover {
         let sender = self.imp().sender.get().unwrap().clone();
         let new_albums = self.imp().new_albums.get();
 
-        SongListGridItem::box_update_songlist(new_albums.clone(), &song_list, 140, &sender);
+        SongListGridItem::box_update_songlist(new_albums.clone(), &song_list, 140, true, &sender);
 
         new_albums.connect_child_activated(move |_, child| {
             let index = child.index() as usize;

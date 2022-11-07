@@ -450,6 +450,7 @@ impl PlayerControls {
                     id: songinfo.album_id,
                     name: songinfo.album,
                     cover_img_url: songinfo.pic_url,
+                    author: String::new(),
                 };
                 let path = path.to_owned();
                 glib::timeout_add_local(Duration::from_millis(100), move || {
