@@ -37,7 +37,7 @@ impl MyPage {
         let sender = self.imp().sender.get().unwrap().clone();
         let top_picks = self.imp().rec_grid.get();
 
-        SongListGridItem::box_update_songlist(top_picks.clone(), &song_list, 140, &sender);
+        SongListGridItem::box_update_songlist(top_picks.clone(), &song_list, 140, false, &sender);
 
         top_picks.connect_child_activated(move |_, child| {
             let index = child.index() as usize;

@@ -44,7 +44,12 @@ impl SearchSongListPage {
         let offset = self.property::<i32>("offset");
         let song_list_len = song_list.len();
 
-        SongListGridItem::view_setup_factory(grid.clone(), 140);
+        let show_author = match self.property::<SearchType>("search-type") {
+            SearchType::Album | SearchType::AllAlbums | SearchType::LikeAlbums => true,
+            _ => false,
+        };
+
+        SongListGridItem::view_setup_factory(grid.clone(), 140, show_author);
         SongListGridItem::view_update_songlist(grid, &song_list, 140, &sender);
 
         self.set_property("offset", offset + song_list_len as i32);
