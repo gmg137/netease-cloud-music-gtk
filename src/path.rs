@@ -43,6 +43,18 @@ pub fn init() -> std::io::Result<()> {
     Ok(())
 }
 
+pub fn get_music_cache_path(id: u64, rate: u32) -> PathBuf {
+    let rate = match rate {
+        0 => 128000,
+        1 => 192000,
+        2 => 320000,
+        3 => 999000,
+        4 => 1900000,
+        _ => 320000,
+    };
+    CACHE.join(format!("music_{}_{}", id, rate))
+}
+
 pub fn get_cache_size() -> (f64, String) {
     let size: u64 = {
         match CACHE_SIZE.get() {

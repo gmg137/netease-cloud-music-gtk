@@ -6,10 +6,11 @@
 use gettextrs::gettext;
 use gio::Settings;
 use glib::{
-    ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum, SendWeakRef, Sender, Value,
+    ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum, ParamSpecUInt, SendWeakRef,
+    Sender, Value,
 };
 use gst::ClockTime;
-use gstreamer_player::*;
+use gstreamer_play::{prelude::ElementExt, *};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use mpris_player::PlaybackStatus;
 use ncm_api::{SongInfo, SongList};
@@ -63,6 +64,8 @@ impl PlayerControls {
         } else {
             settings.double("volume")
         });
+
+        settings.bind("music-rate", self, "music-rate").build();
     }
 
     pub fn setup_mpris(&self) {
@@ -74,11 +77,8 @@ impl PlayerControls {
 
     pub fn setup_player(&self) {
         let imp = self.imp();
-        let dispatcher = PlayerGMainContextSignalDispatcher::new(None);
-        let player = Player::new(
-            PlayerVideoRenderer::NONE,
-            Some(&dispatcher.upcast::<PlayerSignalDispatcher>()),
-        );
+        let player = Play::new(PlayVideoRenderer::NONE);
+        let player_signal = PlaySignalAdapter::new(&player);
         let mut config = player.config();
         config.set_user_agent(
             "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:100.0) Gecko/20100101 Firefox/100.0",
@@ -88,7 +88,20 @@ impl PlayerControls {
         player.set_config(config).unwrap();
         player.set_volume(0.0);
 
+        let pipeline = player.pipeline();
+
+        let flags = pipeline.property_value("flags");
+        let flags_class = glib::FlagsClass::new(flags.type_()).unwrap();
+        let flags = flags_class
+            .builder_with_value(flags)
+            .unwrap()
+            .set_by_nick("download")
+            .build()
+            .unwrap();
+        pipeline.set_property_from_value("flags", &flags);
+
         imp.player.set(player).unwrap();
+        imp.player_signal.set(player_signal).unwrap();
     }
 
     pub fn play(&self, song_info: SongInfo) {
@@ -165,10 +178,29 @@ impl PlayerControls {
         let imp = self.imp();
         let sender_ = imp.sender.get().unwrap().clone();
         let player = imp.player.get().unwrap();
+        let player_sig = imp.player_signal.get().unwrap();
+
+        let sender = sender_.clone();
+        // need gstplay's playbin bus
+        let bus = player.pipeline().bus().unwrap();
+        bus.connect_message(Some("element"), move |_, msg| {
+            use gst::MessageView;
+            if let MessageView::Element(ele) = msg.view() {
+                if let Some(stu) = ele.structure() {
+                    match stu.name() {
+                        "GstCacheDownloadComplete" => {
+                            let loc = stu.get::<String>("location").unwrap();
+                            sender.send(Action::GstCacheDownloadComplete(loc)).unwrap();
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        });
 
         let sender = sender_.clone();
         let old_msec: Cell<u64> = Cell::new(0);
-        player.connect_position_updated(move |_, clock| {
+        player_sig.connect_position_updated(move |_, clock| {
             if let Some(clock) = clock {
                 // mseconds -> milliseconds
                 // useconds -> microseconds
@@ -183,7 +215,7 @@ impl PlayerControls {
         });
 
         let sender = sender_.clone();
-        player.connect_duration_changed(move |_, clock| {
+        player_sig.connect_duration_changed(move |_, clock| {
             if let Some(clock) = clock {
                 sender
                     .send(Action::GstDurationChanged(clock.useconds()))
@@ -192,12 +224,12 @@ impl PlayerControls {
         });
 
         let sender = sender_.clone();
-        player.connect_end_of_stream(move |_| {
+        player_sig.connect_end_of_stream(move |_| {
             sender.send(Action::PlayNextSong).unwrap();
         });
 
         let sender = sender_.clone();
-        player.connect_error(move |_, e| {
+        player_sig.connect_error(move |_, e, _| {
             sender
                 .send(Action::AddToast(gettext!(
                     "Playback error:{}",
@@ -208,9 +240,12 @@ impl PlayerControls {
         });
 
         let sender = sender_.clone();
-        player.connect_state_changed(move |_, state| {
+        player_sig.connect_state_changed(move |_, state| {
             sender.send(Action::GstStateChanged(state)).unwrap();
         });
+
+        // let sender = sender_.clone();
+        // player_sig.connect_buffering(move |_, percent| {});
     }
     // msec -> microseconds
     pub fn gst_position_update(&self, msec: u64) {
@@ -246,14 +281,26 @@ impl PlayerControls {
         //     imp.mpris.get().unwrap().update_metadata(&si, msec as i64);
         // }
     }
-    pub fn gst_state_changed(&self, state: gstreamer_player::PlayerState) {
+    pub fn gst_state_changed(&self, state: PlayState) {
         let imp = self.imp();
         let play_button = imp.play_button.get();
         match state {
-            PlayerState::Stopped => play_button.set_icon_name("media-playback-start-symbolic"),
-            PlayerState::Paused => play_button.set_icon_name("media-playback-start-symbolic"),
-            PlayerState::Playing => play_button.set_icon_name("media-playback-pause-symbolic"),
+            PlayState::Stopped => play_button.set_icon_name("media-playback-start-symbolic"),
+            PlayState::Paused => play_button.set_icon_name("media-playback-start-symbolic"),
+            PlayState::Playing => play_button.set_icon_name("media-playback-pause-symbolic"),
             _ => (),
+        }
+    }
+    pub fn gst_cache_download_complete(&self, loc: String) {
+        if let Some(si) = self.get_current_song() {
+            let rate = self.property::<u32>("music-rate");
+            let src = std::path::PathBuf::from(loc);
+            let dst = crate::path::get_music_cache_path(si.id, rate);
+            std::thread::spawn(|| {
+                if let Err(err) = std::fs::copy(src, dst) {
+                    log::error!("{:?}", err);
+                }
+            });
         }
     }
 
@@ -512,12 +559,14 @@ mod imp {
 
         pub settings: OnceCell<Settings>,
         pub sender: OnceCell<Sender<Action>>,
-        pub player: OnceCell<Player>,
+        pub player: OnceCell<gstreamer_play::Play>,
+        pub player_signal: OnceCell<gstreamer_play::PlaySignalAdapter>,
         pub playlist: Arc<Mutex<PlayList>>,
         pub mpris: OnceCell<MprisController>,
 
         volume: Cell<f64>,
         loops: Cell<LoopsState>,
+        music_rate: Cell<u32>,
 
         like: Cell<bool>,
     }
@@ -719,6 +768,7 @@ mod imp {
                 vec![
                     ParamSpecDouble::builder("volume").build(),
                     ParamSpecEnum::builder("loops", LoopsState::default()).build(),
+                    ParamSpecUInt::builder("music-rate").build(),
                     ParamSpecBoolean::builder("like").readwrite().build(),
                 ]
             });
@@ -735,6 +785,10 @@ mod imp {
                     let val = value.get().unwrap();
                     self.loops.replace(val);
                 }
+                "music-rate" => {
+                    let val = value.get().unwrap();
+                    self.music_rate.replace(val);
+                }
                 "like" => {
                     let like = value.get().expect("The value needs to be of type `bool`.");
                     self.like.replace(like);
@@ -747,6 +801,7 @@ mod imp {
             match pspec.name() {
                 "volume" => self.volume.get().to_value(),
                 "loops" => self.loops.get().to_value(),
+                "music-rate" => self.music_rate.get().to_value(),
                 "like" => self.like.get().to_value(),
                 n => unimplemented!("{}", n),
             }
