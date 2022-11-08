@@ -103,7 +103,8 @@ pub enum Action {
 
     GstPositionUpdate(u64),
     GstDurationChanged(u64),
-    GstStateChanged(gstreamer_player::PlayerState),
+    GstStateChanged(gstreamer_play::PlayState),
+    GstCacheDownloadComplete(String),
 }
 
 mod imp {
@@ -569,16 +570,12 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::Play(song_info) => {
                 let sender = imp.sender.clone();
-                let mut path_m4a = CACHE.clone();
-                path_m4a.push(format!("{}.m4a", song_info.id));
-                let mut path_mp3 = CACHE.clone();
-                path_mp3.push(format!("{}.mp3", song_info.id));
-                let mut path_flac = CACHE.clone();
-                path_flac.push(format!("{}.flac", song_info.id));
-                if !path_mp3.exists() && !path_flac.exists() && !path_m4a.exists() {
+                let music_rate = window.settings().uint("music-rate");
+                let path = crate::path::get_music_cache_path(song_info.id, music_rate);
+
+                if !path.exists() {
                     let ctx = glib::MainContext::default();
                     ctx.spawn_local(async move {
-                        let music_rate = window.settings().uint("music-rate");
                         ncmapi.set_rate(music_rate);
                         if song_info.song_url.is_empty() {
                             if let Ok(song_url) = ncmapi.songs_url(&[song_info.id]).await {
@@ -588,7 +585,7 @@ impl NeteaseCloudMusicGtk4Application {
                                         song_url: song_url.url.to_owned(),
                                         ..song_info
                                     };
-                                    sender.send(Action::DownloadSong(song_info)).unwrap();
+                                    sender.send(Action::PlayStart(song_info)).unwrap();
                                 } else {
                                     sender
                                         .send(Action::AddToast(gettext!(
@@ -612,13 +609,7 @@ impl NeteaseCloudMusicGtk4Application {
                     });
                 } else {
                     let song_info = SongInfo {
-                        song_url: if path_mp3.exists() {
-                            format!("file://{}", path_mp3.to_str().unwrap().to_owned())
-                        } else if path_flac.exists() {
-                            format!("file://{}", path_flac.to_str().unwrap().to_owned())
-                        } else {
-                            format!("file://{}", path_m4a.to_str().unwrap().to_owned())
-                        },
+                        song_url: format!("file://{}", path.to_str().unwrap().to_owned()),
                         ..song_info
                     };
                     sender.send(Action::PlayStart(song_info)).unwrap();
@@ -627,14 +618,8 @@ impl NeteaseCloudMusicGtk4Application {
             Action::DownloadSong(song_info) => {
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
-                let mut path = CACHE.clone();
-                if song_info.song_url.ends_with("mp3") {
-                    path.push(format!("{}.mp3", song_info.id));
-                } else if song_info.song_url.ends_with("flac") {
-                    path.push(format!("{}.flac", song_info.id));
-                } else {
-                    path.push(format!("{}.m4a", song_info.id));
-                }
+                let music_rate = window.settings().uint("music-rate");
+                let path = crate::path::get_music_cache_path(song_info.id, music_rate);
                 ctx.spawn_local(async move {
                     if ncmapi
                         .client
@@ -1166,6 +1151,9 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::GstStateChanged(state) => {
                 window.gst_state_changed(state);
+            }
+            Action::GstCacheDownloadComplete(loc) => {
+                window.gst_cache_download_complete(loc);
             }
         }
         glib::Continue(true)
