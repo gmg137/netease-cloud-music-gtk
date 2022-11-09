@@ -14,11 +14,12 @@ use once_cell::sync::{Lazy, OnceCell};
 
 use crate::application::Action;
 use crate::gui::songlist_view::SongListView;
-use crate::model::SearchType;
+use crate::model::{SearchType, SearchResult};
 use gettextrs::gettext;
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
+    sync::Arc,
 };
 
 glib::wrapper! {
@@ -36,7 +37,7 @@ impl SearchSongPage {
         self.imp().sender.set(sender).unwrap();
     }
 
-    pub fn init_page(&self, keyword: String, search_type: SearchType) {
+    pub fn init_page(&self, keyword: &str, search_type: SearchType) {
         let imp = self.imp();
         imp.playlist.replace(Vec::new());
         let title_clamp = imp.title_clamp.get();
@@ -67,12 +68,12 @@ impl SearchSongPage {
         imp.songs_list.get().clear_list();
     }
 
-    pub fn update_songs(&self, sis: Vec<SongInfo>, is_like_fn: impl Fn(&u64) -> bool) {
+    pub fn update_songs(&self, sis: &[SongInfo], likes: &[bool]) {
         self.set_property("update", true);
         let offset = self.property::<i32>("offset") + sis.len() as i32;
         self.set_property("offset", offset);
         let imp = self.imp();
-        let mut playlist = sis.clone();
+        let mut playlist = sis.clone().to_vec();
         (*imp.playlist).borrow_mut().append(&mut playlist);
         imp.num_label.get().set_label(&gettext!("{} songs", offset));
 
@@ -80,7 +81,7 @@ impl SearchSongPage {
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
 
-        songs_list.init_new_list(&sis, is_like_fn);
+        songs_list.init_new_list(&sis, &likes);
     }
 }
 
@@ -257,12 +258,20 @@ impl SearchSongPage {
             let sender = self.imp().sender.get().unwrap();
             if position == gtk::PositionType::Bottom {
                 self.set_property("update", false);
+                let s = glib::SendWeakRef::from(self.downgrade());
                 sender
                     .send(Action::Search(
                         self.property("keyword"),
                         self.property("search-type"),
                         self.property::<i32>("offset") as u16,
                         50,
+                        Arc::new(move |sis| {
+                            if let Some(s) = s.upgrade() {
+                                if let SearchResult::Songs(sis, likes) = sis {
+                                    s.update_songs(&sis, &likes);
+                                }
+                            }
+                        })
                     ))
                     .unwrap_or(());
                 sender

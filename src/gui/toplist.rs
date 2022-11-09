@@ -85,17 +85,17 @@ impl TopListView {
         self.imp().update_toplist_info(0);
     }
 
-    pub fn update_songs_list(&self, sis: Vec<SongInfo>, is_like_fn: impl Fn(&u64) -> bool) {
+    pub fn update_songs_list(&self, sis: &[SongInfo], likes: &[bool]) {
         let imp = self.imp();
 
-        imp.playlist.replace(sis.clone());
+        imp.playlist.replace(sis.clone().to_vec());
         imp.num_label
             .get()
             .set_label(&gettext!("{} songs", sis.len()));
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(&sis, is_like_fn);
+        songs_list.init_new_list(&sis, &likes);
     }
 }
 

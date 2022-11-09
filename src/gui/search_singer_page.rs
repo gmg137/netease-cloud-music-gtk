@@ -9,7 +9,7 @@ pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, 
 use ncm_api::SingerInfo;
 use once_cell::sync::{Lazy, OnceCell};
 
-use crate::{application::Action, model::SearchType, path::CACHE};
+use crate::{application::Action, model::{SearchType, SearchResult}, path::CACHE};
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;
 
@@ -237,12 +237,21 @@ impl SearchSingerPage {
             let sender = self.imp().sender.get().unwrap();
             if position == gtk::PositionType::Bottom {
                 self.set_property("update", false);
+                let s = glib::SendWeakRef::from(self.downgrade());
                 sender
                     .send(Action::Search(
                         self.property("keyword"),
                         SearchType::Singer,
                         self.property::<i32>("offset") as u16,
                         50,
+                        Arc::new(move |sgs| {
+                            if let Some(s) = s.upgrade() {
+                                if let SearchResult::Singers(sgs) = sgs {
+                                    s.update_singer(sgs);
+                                }
+                            }
+
+                        })
                     ))
                     .unwrap_or(());
                 sender

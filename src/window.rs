@@ -2,22 +2,21 @@ use crate::{
     application::{Action, NeteaseCloudMusicGtk4Application},
     gui::*,
     model::*,
+    ncmapi::NcmClient,
 };
 use adw::{ColorScheme, StyleManager, Toast};
 use gettextrs::gettext;
 use gio::{Settings, SimpleAction};
-use glib::{
-    clone, ParamFlags, ParamSpec, ParamSpecEnum, ParamSpecObject, ParamSpecUInt64, Sender, Value,
-};
+use glib::{clone, ParamSpec, ParamSpecEnum, ParamSpecObject, ParamSpecUInt64, Sender, Value};
 use gtk::{
     gio::{self, SettingsBindFlags},
     glib, CompositeTemplate,
 };
-use ncm_api::{BannersInfo, DetailDynamic, LoginInfo, SingerInfo, SongInfo, SongList, TopList};
+use log::*;
+use ncm_api::{BannersInfo, DetailDynamic, LoginInfo, SongInfo, SongList, TopList};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
-    cmp::Ordering,
     collections::LinkedList,
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -36,6 +35,8 @@ mod imp {
         pub gbox: TemplateChild<Box>,
         #[template_child]
         pub toast_overlay: TemplateChild<adw::ToastOverlay>,
+        #[template_child]
+        pub base_stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub stack: TemplateChild<adw::ViewStack>,
         #[template_child]
@@ -59,31 +60,25 @@ mod imp {
         #[template_child]
         pub player_revealer: TemplateChild<Revealer>,
         #[template_child]
-        pub songlist_page: TemplateChild<SonglistPage>,
-        #[template_child]
         pub player_controls: TemplateChild<PlayerControls>,
         #[template_child]
         pub toplist: TemplateChild<TopListView>,
         #[template_child]
         pub discover: TemplateChild<Discover>,
         #[template_child]
-        pub search_song_page: TemplateChild<SearchSongPage>,
-        #[template_child]
-        pub search_songlist_page: TemplateChild<SearchSongListPage>,
-        #[template_child]
-        pub search_singer_page: TemplateChild<SearchSingerPage>,
-        #[template_child]
         pub my_stack: TemplateChild<adw::ViewStack>,
         #[template_child]
         pub my_page: TemplateChild<MyPage>,
-        #[template_child]
-        pub playlist_lyrics_page: TemplateChild<PlayListLyricsPage>,
+
+        pub playlist_lyrics_page: OnceCell<PlayListLyricsPage>,
 
         pub user_menus: OnceCell<UserMenus>,
         pub popover_menu: OnceCell<PopoverMenu>,
         pub settings: OnceCell<Settings>,
         pub sender: OnceCell<Sender<Action>>,
         pub stack_child: Arc<Mutex<LinkedList<(String, String)>>>,
+        pub page_stack: OnceCell<PageStack>,
+
         search_type: Cell<SearchType>,
         toast: RefCell<Option<Toast>>,
         user_info: RefCell<UserInfo>,
@@ -125,6 +120,14 @@ mod imp {
             let obj = self.obj();
             self.parent_constructed();
 
+            self.page_stack
+                .set(PageStack::new(self.base_stack.get()))
+                .unwrap();
+
+            self.playlist_lyrics_page
+                .set(PlayListLyricsPage::new())
+                .unwrap();
+
             if let Ok(mut stack_child) = self.stack_child.lock() {
                 stack_child.push_back(("discover".to_owned(), "".to_owned()));
             }
@@ -138,36 +141,13 @@ mod imp {
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![
-                    ParamSpecEnum::new(
-                        // Name
-                        "search-type",
-                        // Nickname
-                        "search-type",
-                        // Short description
-                        "search type",
-                        // Enum type
-                        SearchType::static_type(),
-                        // Default value
-                        SearchType::default() as i32,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE | glib::ParamFlags::EXPLICIT_NOTIFY,
-                    ),
-                    ParamSpecObject::new(
-                        "toast",
-                        "toast",
-                        "toast",
-                        Toast::static_type(),
-                        glib::ParamFlags::READWRITE | glib::ParamFlags::CONSTRUCT_ONLY,
-                    ),
-                    ParamSpecUInt64::new(
-                        "uid",
-                        "uid",
-                        "uid",
-                        u64::MIN,
-                        u64::MAX,
-                        0u64,
-                        glib::ParamFlags::READWRITE,
-                    ),
+                    ParamSpecEnum::builder("search-type", SearchType::default())
+                        .explicit_notify()
+                        .build(),
+                    ParamSpecObject::builder::<Toast>("toast")
+                        .construct_only()
+                        .build(),
+                    ParamSpecUInt64::builder("uid").build(),
                 ]
             });
             PROPERTIES.as_ref()
@@ -239,13 +219,14 @@ impl NeteaseCloudMusicGtk4Window {
 
     fn setup_action(&self) {
         let imp = self.imp();
+        let sender_ = imp.sender.get().unwrap().clone();
         // 监测用户菜单弹出
         let popover = imp.popover_menu.get().unwrap();
-        let sender = imp.sender.get().unwrap().clone();
+        let sender = sender_.clone();
         popover.connect_child_notify(move |_| {
             sender.send(Action::TryUpdateQrCode).unwrap();
         });
-        let sender = imp.sender.get().unwrap().clone();
+        let sender = sender_.clone();
         popover.connect_show(move |_| {
             sender.send(Action::TryUpdateQrCode).unwrap();
         });
@@ -283,41 +264,13 @@ impl NeteaseCloudMusicGtk4Window {
         }));
 
         // 设置返回键功能
-        let switcher_title = imp.switcher_title.get();
-        let label_title = imp.label_title.get();
-        let stack = imp.stack.get();
-        let back_button = imp.back_button.get();
         let action_back = SimpleAction::new("back-button", None);
-        let stack_child = imp.stack_child.clone();
         self.add_action(&action_back);
-        action_back.connect_activate(
-            clone!(@weak switcher_title, @weak label_title, @weak stack, @weak back_button => move |_,_|{
-                let mut child_name = String::new();
-                if let Ok(mut sc) = stack_child.lock() {
-                    match sc.len().cmp(&2) {
-                        Ordering::Less => (),
-                        Ordering::Equal => {
-                            switcher_title.set_visible(true);
-                            label_title.set_visible(false);
-                            back_button.set_visible(false);
-                            if let Some(s) = sc.front() {
-                                child_name = s.0.to_owned();
-                            }
-                        },
-                        Ordering::Greater => {
-                            sc.pop_back();
-                            if let Some(s) = sc.pop_back() {
-                                child_name = s.0;
-                                label_title.set_text(&s.1);
-                            }
-                        },
-                    }
-                }
-                if !child_name.is_empty() {
-                    stack.set_visible_child_name(&child_name);
-                }
-            }),
-        );
+
+        let sender = sender_.clone();
+        action_back.connect_activate(move |_, _| {
+            sender.send(Action::PageBack).unwrap();
+        });
 
         let toast = self.property::<Toast>("toast");
         toast.connect_dismissed(|toast| {
@@ -385,6 +338,12 @@ impl NeteaseCloudMusicGtk4Window {
         self.imp().clear_user_info();
     }
 
+    pub fn get_song_likes(&self, sis: &[SongInfo]) -> Vec<bool> {
+        sis.iter()
+            .map(|si| self.imp().user_like_song_contains(&si.id))
+            .collect()
+    }
+
     pub fn set_like_song(&self, id: u64, val: bool) {
         let imp = self.imp();
         if let Some(song) = imp.player_controls.get().get_current_song() {
@@ -404,10 +363,6 @@ impl NeteaseCloudMusicGtk4Window {
         song_ids
             .iter()
             .for_each(|id| self.imp().user_like_song_add(id.to_owned()));
-    }
-
-    pub fn set_like_songlist(&self, val: bool) {
-        self.imp().songlist_page.get().set_property("like", val);
     }
 
     pub fn set_user_qrimage(&self, path: PathBuf) {
@@ -514,30 +469,6 @@ impl NeteaseCloudMusicGtk4Window {
         }
     }
 
-    pub fn switch_stack_to_songlist_page(&self, songlist: &SongList) {
-        let imp = self.imp();
-        let switcher_title = imp.switcher_title.get();
-        switcher_title.set_visible(false);
-
-        let label_title = imp.label_title.get();
-        label_title.set_visible(true);
-        label_title.set_label(&songlist.name);
-
-        let stack = imp.stack.get();
-        stack.set_visible_child_name("songlist");
-
-        let back_button = imp.back_button.get();
-        back_button.set_visible(true);
-
-        let songlist_page = imp.songlist_page.get();
-        songlist_page.init_songlist_info(songlist, self.is_logined());
-    }
-
-    pub fn init_songlist_page(&self, sis: Vec<SongInfo>, dy: DetailDynamic) {
-        let songlist_page = self.imp().songlist_page.get();
-        songlist_page.init_songlist(sis, dy, |id: &u64| self.imp().user_like_song_contains(id));
-    }
-
     pub fn init_page_data(&self) {
         let imp = self.imp();
         let sender = imp.sender.get().unwrap();
@@ -545,18 +476,6 @@ impl NeteaseCloudMusicGtk4Window {
         // 初始化我的页面
         let my_page = imp.my_page.get();
         my_page.set_sender(sender.clone());
-
-        // 初始化搜索单曲页
-        let search_song_page = imp.search_song_page.get();
-        search_song_page.set_sender(sender.clone());
-
-        // 初始化搜索歌手页
-        let search_singer_page = imp.search_singer_page.get();
-        search_singer_page.set_sender(sender.clone());
-
-        // 初始化搜索歌单页
-        let search_songlist_page = imp.search_songlist_page.get();
-        search_songlist_page.set_sender(sender.clone());
 
         // 初始化播放栏
         let player_controls = imp.player_controls.get();
@@ -567,17 +486,13 @@ impl NeteaseCloudMusicGtk4Window {
         discover.set_sender(sender.clone());
         discover.init_page();
 
-        // 初始化歌单页
-        let songlist_page = imp.songlist_page.get();
-        songlist_page.set_sender(sender.clone());
-
         // 初始化榜单
         sender.send(Action::GetToplist).unwrap();
         let toplist = imp.toplist.get();
         toplist.set_sender(sender.clone());
 
         // 初始化播放列表页
-        let playlist_lyrics_page = imp.playlist_lyrics_page.get();
+        let playlist_lyrics_page = imp.playlist_lyrics_page.get().unwrap();
         playlist_lyrics_page.set_sender(sender.clone());
     }
 
@@ -588,65 +503,137 @@ impl NeteaseCloudMusicGtk4Window {
 
     pub fn update_toplist(&self, list: Vec<SongInfo>) {
         let toplist = self.imp().toplist.get();
-        toplist.update_songs_list(list, |id| self.imp().user_like_song_contains(id));
+        toplist.update_songs_list(
+            &list,
+            &list
+                .iter()
+                .map(|si| self.imp().user_like_song_contains(&si.id))
+                .collect::<Vec<bool>>(),
+        );
     }
 
-    pub fn update_search_song_page(&self, list: Vec<SongInfo>) {
-        let search_song_page = self.imp().search_song_page.get();
-        search_song_page.update_songs(list, |id| self.imp().user_like_song_contains(id));
-    }
-
-    pub fn update_search_songlist_page(&self, list: Vec<SongList>) {
-        let search_songlist_page = self.imp().search_songlist_page.get();
-        search_songlist_page.update_songlist(list);
-    }
-
-    pub fn update_search_singer_page(&self, list: Vec<SingerInfo>) {
-        let search_singer_page = self.imp().search_singer_page.get();
-        search_singer_page.update_singer(list);
-    }
-
-    pub fn init_picks_songlist(&self) {
+    // page routing
+    fn page_widget_switch(&self, need_back: bool) {
         let imp = self.imp();
-        imp.label_title.set_label("全部歌单");
-        imp.switcher_title.set_visible(false);
-        imp.label_title.set_visible(true);
-        imp.back_button.set_visible(true);
-        imp.search_songlist_page
-            .init_page("全部歌单".to_owned(), SearchType::TopPicks);
-        imp.stack.set_visible_child_name("search_songlist_page");
+        let switcher_title = imp.switcher_title.get();
+        let label_title = imp.label_title.get();
+        let back_button = imp.back_button.get();
+
+        let visible = need_back;
+        back_button.set_visible(visible);
+        label_title.set_visible(visible);
+        switcher_title.set_visible(!visible);
+    }
+    pub fn page_set_info(&self, title: &str) {
+        let imp = self.imp();
+        let label_title = imp.label_title.get();
+
+        label_title.set_label(title);
+    }
+    // same name will clear old page
+    pub fn page_new_with_name(&self, name: &str, page: &impl glib::IsA<Widget>, title: &str) {
+        let imp = self.imp();
+        let stack = imp.page_stack.get().unwrap();
+        stack.set_transition_type(StackTransitionType::SlideUp);
+        let stack_page = stack.new_page_with_name(page, name);
+        stack_page.set_title(title);
+        self.page_set_info(title);
+        self.page_widget_switch(true);
+    }
+    pub fn page_new(&self, page: &impl glib::IsA<Widget>, title: &str) {
+        let imp = self.imp();
+        let stack = imp.page_stack.get().unwrap();
+        stack.set_transition_type(StackTransitionType::SlideUp);
+        let stack_page = stack.new_page(page);
+        stack_page.set_title(title);
+        self.page_set_info(title);
+        self.page_widget_switch(true);
+    }
+    pub fn page_back(&self) -> Option<Widget> {
+        let imp = self.imp();
+        let stack = imp.page_stack.get().unwrap();
+
+        stack.set_transition_type(StackTransitionType::UnderDown);
+        stack.back_page();
+
+        if stack.len() > 1 {
+            let top_page = stack.top_page();
+            self.page_set_info(top_page.title().unwrap().to_string().as_str());
+            self.page_widget_switch(true);
+        } else {
+            self.page_widget_switch(false);
+        }
+        None
+    }
+    pub fn page_cur_playlist_lyrics_page(&self) -> bool {
+        let imp = self.imp();
+        let page = imp.playlist_lyrics_page.get().unwrap();
+        let cur = &imp.page_stack.get().unwrap().top_page().child();
+        cur == page
     }
 
-    pub fn init_all_albums(&self) {
+    pub fn init_picks_songlist(&self) -> SearchSongListPage {
         let imp = self.imp();
-        imp.label_title.set_label("全部新碟");
-        imp.switcher_title.set_visible(false);
-        imp.label_title.set_visible(true);
-        imp.back_button.set_visible(true);
-        imp.search_songlist_page
-            .init_page("全部新碟".to_owned(), SearchType::AllAlbums);
-        imp.stack.set_visible_child_name("search_songlist_page");
+        let sender = imp.sender.get().unwrap().clone();
+        let page = SearchSongListPage::new();
+        page.set_sender(sender);
+        page.init_page("全部歌单", SearchType::TopPicks);
+        page
     }
 
-    pub fn init_search_song_page(&self, text: &str, search_type: SearchType) {
+    pub fn init_all_albums(&self) -> SearchSongListPage {
         let imp = self.imp();
-        imp.search_song_page.init_page(text.to_owned(), search_type);
-        imp.label_title.set_label(text);
-        imp.switcher_title.set_visible(false);
-        imp.label_title.set_visible(true);
-        imp.back_button.set_visible(true);
-        imp.stack.set_visible_child_name("search_song_page");
+        let sender = imp.sender.get().unwrap().clone();
+        let page = SearchSongListPage::new();
+        page.set_sender(sender);
+        page.init_page("全部新碟", SearchType::AllAlbums);
+        page
     }
 
-    pub fn init_search_songlist_page(&self, text: &str, search_type: SearchType) {
+    pub fn init_search_song_page(&self, text: &str, search_type: SearchType) -> SearchSongPage {
         let imp = self.imp();
-        imp.search_songlist_page
-            .init_page(text.to_owned(), search_type);
-        imp.label_title.set_label(text);
-        imp.switcher_title.set_visible(false);
-        imp.label_title.set_visible(true);
-        imp.back_button.set_visible(true);
-        imp.stack.set_visible_child_name("search_songlist_page");
+        let sender = imp.sender.get().unwrap().clone();
+        let page = SearchSongPage::new();
+        page.set_sender(sender);
+        page.init_page(text, search_type);
+        page
+    }
+
+    pub fn init_search_songlist_page(
+        &self,
+        text: &str,
+        search_type: SearchType,
+    ) -> SearchSongListPage {
+        let imp = self.imp();
+        let sender = imp.sender.get().unwrap().clone();
+        let page = SearchSongListPage::new();
+        page.set_sender(sender);
+        page.init_page(text, search_type);
+        page
+    }
+    pub fn init_search_singer_page(&self, text: &str) -> SearchSingerPage {
+        let imp = self.imp();
+        let sender = imp.sender.get().unwrap().clone();
+        let page = SearchSingerPage::new();
+        page.set_sender(sender);
+        page.init_page(text.to_string());
+        page
+    }
+
+    pub fn init_songlist_page(&self, songlist: &SongList) -> SonglistPage {
+        let sender = self.imp().sender.get().unwrap().clone();
+        let page = SonglistPage::new();
+        page.set_sender(sender);
+        page.init_songlist_info(songlist, self.is_logined());
+        page
+    }
+
+    pub fn update_search_song_page(&self, page: SearchSongPage, sis: Vec<SongInfo>) {
+        page.update_songs(&sis, &self.get_song_likes(&sis));
+    }
+
+    pub fn update_songlist_page(&self, page: SonglistPage, sis: Vec<SongInfo>, dy: DetailDynamic) {
+        page.init_songlist(&sis, dy, &self.get_song_likes(&sis));
     }
 
     pub fn switch_my_page_to_login(&self) {
@@ -665,30 +652,25 @@ impl NeteaseCloudMusicGtk4Window {
 
     pub fn init_playlist_lyrics_page(&self, sis: Vec<SongInfo>, si: SongInfo) {
         let imp = self.imp();
-        imp.playlist_lyrics_page
-            .init_page(sis, si, |id| imp.user_like_song_contains(id));
-        imp.label_title.set_label(&gettext("Play List&Lyrics"));
-        imp.switcher_title.set_visible(false);
-        imp.label_title.set_visible(true);
-        imp.back_button.set_visible(true);
-        imp.stack.set_visible_child_name("playlist_lyrics_page");
+        let page = imp.playlist_lyrics_page.get().unwrap();
+        page.init_page(&sis, si, &self.get_song_likes(&sis));
+
+        self.page_new(page, &gettext("Play List&Lyrics"));
     }
 
     pub fn update_lyrics(&self, lrc: String) {
         let imp = self.imp();
-        if let Some(name) = imp.stack.visible_child_name() {
-            if name == "playlist_lyrics_page" {
-                imp.playlist_lyrics_page.update_lyrics(lrc);
-            }
+        let page = imp.playlist_lyrics_page.get().unwrap();
+        if self.page_cur_playlist_lyrics_page() {
+            page.update_lyrics(lrc);
         }
     }
 
     pub fn updat_playlist_status(&self, index: usize) {
         let imp = self.imp();
-        if let Some(name) = imp.stack.visible_child_name() {
-            if name == "playlist_lyrics_page" {
-                imp.playlist_lyrics_page.switch_row(index as i32);
-            }
+        let page = imp.playlist_lyrics_page.get().unwrap();
+        if self.page_cur_playlist_lyrics_page() {
+            page.switch_row(index as i32);
         }
     }
 
@@ -703,7 +685,131 @@ impl NeteaseCloudMusicGtk4Window {
         self.imp().player_controls.get().gst_state_changed(state);
     }
     pub fn gst_cache_download_complete(&self, loc: String) {
-        self.imp().player_controls.get().gst_cache_download_complete(loc);
+        self.imp()
+            .player_controls
+            .get()
+            .gst_cache_download_complete(loc);
+    }
+
+    pub async fn action_search(
+        &self,
+        ncmapi: NcmClient,
+        text: String,
+        search_type: SearchType,
+        offset: u16,
+        limit: u16,
+    ) -> Option<SearchResult> {
+        let imp = self.imp();
+        let sender = imp.sender.get().unwrap().clone();
+        let window = self;
+
+        let res = match search_type {
+            SearchType::Song => ncmapi
+                .client
+                .search_song(text, offset, limit)
+                .await
+                .map(|res| {
+                    debug!("搜索歌曲：{:?}", res);
+                    let likes = window.get_song_likes(&res);
+                    SearchResult::Songs(res, likes)
+                })
+                .ok(),
+            SearchType::Singer => ncmapi
+                .client
+                .search_singer(text, offset, limit)
+                .await
+                .map(|res| {
+                    debug!("搜索歌手：{:?}", res);
+                    SearchResult::Singers(res)
+                })
+                .ok(),
+            SearchType::Album => ncmapi
+                .client
+                .search_album(text, offset, limit)
+                .await
+                .map(|res| {
+                    debug!("搜索专辑：{:?}", res);
+                    SearchResult::SongLists(res)
+                })
+                .ok(),
+            SearchType::Lyrics => ncmapi
+                .client
+                .search_lyrics(text, offset, limit)
+                .await
+                .map(|res| {
+                    debug!("搜索歌词：{:?}", res);
+                    let likes = window.get_song_likes(&res);
+                    SearchResult::Songs(res, likes)
+                })
+                .ok(),
+            SearchType::SongList => ncmapi
+                .client
+                .search_songlist(text, offset, limit)
+                .await
+                .map(|res| {
+                    debug!("搜索歌单：{:?}", res);
+                    SearchResult::SongLists(res)
+                })
+                .ok(),
+            SearchType::TopPicks => ncmapi
+                .client
+                .top_song_list("全部", "hot", offset, limit)
+                .await
+                .map(|res| {
+                    debug!("获取歌单：{:?}", res);
+                    SearchResult::SongLists(res)
+                })
+                .ok(),
+            SearchType::AllAlbums => ncmapi
+                .client
+                .new_albums("ALL", offset, limit)
+                .await
+                .map(|res| {
+                    debug!("获取专辑：{:?}", res);
+                    SearchResult::SongLists(res)
+                })
+                .ok(),
+            SearchType::Fm => ncmapi
+                .client
+                .personal_fm()
+                .await
+                .map(|res| {
+                    debug!("获取FM：{:?}", res);
+                    let likes = window.get_song_likes(&res);
+                    SearchResult::Songs(res, likes)
+                })
+                .ok(),
+            SearchType::LikeAlbums => ncmapi
+                .client
+                .album_sublist(offset, limit)
+                .await
+                .map(|res| {
+                    debug!("获取收藏的专辑：{:?}", res);
+                    SearchResult::SongLists(res)
+                })
+                .ok(),
+            SearchType::LikeSongList => {
+                let uid = window.get_uid();
+                ncmapi
+                    .client
+                    .user_song_list(uid, offset, limit)
+                    .await
+                    .map(|res| {
+                        debug!("获取收藏的歌单：{:?}", res);
+                        SearchResult::SongLists(res)
+                    })
+                    .ok()
+            }
+            _ => None,
+        };
+        if res.is_none() {
+            sender
+                .send(Action::AddToast(gettext(
+                    "Request for interface failed, please try again!",
+                )))
+                .unwrap();
+        }
+        res
     }
 }
 
@@ -796,39 +902,55 @@ impl NeteaseCloudMusicGtk4Window {
         imp.back_button.set_visible(true);
 
         let search_type = self.property::<SearchType>("search-type");
-        match search_type {
-            SearchType::Song => {
-                imp.search_song_page.init_page(text.to_owned(), search_type);
-                imp.stack.set_visible_child_name("search_song_page");
+
+        let page = match search_type {
+            SearchType::Lyrics | SearchType::Song => {
+                let page = self.init_search_song_page(&text, search_type);
+                Some(page.upcast::<Widget>())
             }
             SearchType::Singer => {
-                imp.search_singer_page.init_page(text.to_owned());
-                imp.stack.set_visible_child_name("search_singer_page");
+                let page = self.init_search_singer_page(&text);
+                Some(page.upcast::<Widget>())
             }
-            SearchType::Lyrics => {
-                imp.search_song_page.init_page(text.to_owned(), search_type);
-                imp.stack.set_visible_child_name("search_song_page");
+            SearchType::Album | SearchType::SongList => {
+                let page = self.init_search_songlist_page(&text, search_type);
+                Some(page.upcast::<Widget>())
             }
-            SearchType::Album => {
-                imp.search_songlist_page
-                    .init_page(text.to_owned(), search_type);
-                imp.stack.set_visible_child_name("search_songlist_page");
-            }
-            SearchType::SongList => {
-                imp.search_songlist_page
-                    .init_page(text.to_owned(), search_type);
-                imp.stack.set_visible_child_name("search_songlist_page");
-            }
-            _ => (),
+            _ => None,
+        };
+        if let Some(page) = page {
+            self.page_new_with_name("search", &page, text.as_str());
+            let page = glib::SendWeakRef::from(page.downgrade());
+            sender
+                .send(Action::Search(
+                    text,
+                    search_type,
+                    0,
+                    50,
+                    Arc::new(move |res| {
+                        if let Some(page) = page.upgrade() {
+                            match res {
+                                SearchResult::Songs(sis, likes) => {
+                                    page.downcast::<SearchSongPage>()
+                                        .unwrap()
+                                        .update_songs(&sis, &likes);
+                                }
+                                SearchResult::Singers(sgs) => {
+                                    page.downcast::<SearchSingerPage>()
+                                        .unwrap()
+                                        .update_singer(sgs);
+                                }
+                                SearchResult::SongLists(sls) => {
+                                    page.downcast::<SearchSongListPage>()
+                                        .unwrap()
+                                        .update_songlist(sls);
+                                }
+                            };
+                        }
+                    }),
+                ))
+                .unwrap();
         }
-        sender
-            .send(Action::Search(
-                text,
-                self.property::<SearchType>("search-type"),
-                0,
-                50,
-            ))
-            .unwrap();
     }
 }
 

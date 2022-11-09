@@ -83,9 +83,9 @@ impl SonglistPage {
 
     pub fn init_songlist(
         &self,
-        sis: Vec<SongInfo>,
+        sis: &[SongInfo],
         dy: DetailDynamic,
-        is_like_fn: impl Fn(&u64) -> bool,
+        likes: &[bool],
     ) {
         let imp = self.imp();
         let songs_list = imp.songs_list.get();
@@ -110,10 +110,10 @@ impl SonglistPage {
             }
         }
 
-        imp.playlist.replace(sis.clone());
+        imp.playlist.replace(sis.clone().to_vec());
         let sender = imp.sender.get().unwrap();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(&sis, is_like_fn);
+        songs_list.init_new_list(&sis, &likes);
     }
 }
 
@@ -190,12 +190,19 @@ mod imp {
             if let Some(pt) = page_type {
                 let sender = self.sender.get().unwrap();
                 if let Some(songlist) = &*self.songlist.borrow() {
+                    let s = glib::SendWeakRef::from(self.obj().downgrade());
+                    let like = self.like.get();
+                    let cb = Arc::new(move |_| {
+                        if let Some(s) = s.upgrade() {
+                            s.set_property("like", !like);
+                        }
+                    });
                     match pt {
                         DiscoverSubPage::SongList => sender
-                            .send(Action::LikeSongList(songlist.id, !self.like.get()))
+                            .send(Action::LikeSongList(songlist.id, !like, Some(cb)))
                             .unwrap(),
                         DiscoverSubPage::Album => sender
-                            .send(Action::LikeAlbum(songlist.id, !self.like.get()))
+                            .send(Action::LikeAlbum(songlist.id, !like, Some(cb)))
                             .unwrap(),
                     }
                 }

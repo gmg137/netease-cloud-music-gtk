@@ -40,26 +40,28 @@ impl SongListView {
         }
     }
 
-    pub fn init_new_list(&self, sis: &[SongInfo], is_like_fn: impl Fn(&u64) -> bool) {
+    pub fn init_new_list(&self, sis: &[SongInfo], likes: &[bool]) {
         let sender = self.imp().sender.get().unwrap().to_owned();
         let imp = self.imp();
 
         let listbox = imp.listbox.get();
         let no_act_like = self.property::<bool>("no-act-like");
-        sis.iter().for_each(|si: &SongInfo| {
-            let sender = sender.clone();
+        sis.iter()
+            .zip(likes.iter())
+            .for_each(|(si, like)| {
+                let sender = sender.clone();
 
-            let row = SonglistRow::new(sender.clone(), si);
-            row.set_property("like", is_like_fn(&si.id));
-            row.set_like_button_visible(!no_act_like);
+                let row = SonglistRow::new(sender.clone(), si);
+                row.set_property("like", like);
+                row.set_like_button_visible(!no_act_like);
 
-            let si = si.clone();
-            row.connect_activate(move |row| {
-                row.switch_image(true);
-                sender.send(Action::AddPlay(si.clone())).unwrap();
+                let si = si.clone();
+                row.connect_activate(move |row| {
+                    row.switch_image(true);
+                    sender.send(Action::AddPlay(si.clone())).unwrap();
+                });
+                listbox.append(&row);
             });
-            listbox.append(&row);
-        });
     }
 
     pub fn clear_list(&self) {
