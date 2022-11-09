@@ -144,9 +144,9 @@ checksum = "a2698f953def977c68f935bb0dfa959375ad4638570e969e2f1e9f433cbf1af6"
 
 [[package]]
 name = "cc"
-version = "1.0.74"
+version = "1.0.76"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "581f5dba903aac52ea3feb5ec4810848460ee833876f1f9b0fdeab1f19091574"
+checksum = "76a284da2e6fe2092f2353e51713435363112dfd60030e22add80be333fb928f"
 
 [[package]]
 name = "cfg-expr"
@@ -321,9 +321,9 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.9.1"
+version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c90bf5f19754d10198ccb95b70664fc925bd1fc090a0fd9a6ebc54acc8cd6272"
+checksum = "a12e6657c4c97ebab115a42dcee77225f7f482cdd841cf7088c657a42e9e00e7"
 dependencies = [
  "atty",
  "humantime",
@@ -866,25 +866,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "gstreamer-player"
+name = "gstreamer-play"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "796e053b45803544c37a150ae6cbedc8019bc5f410dff78aa6041e7a1a969f2b"
+checksum = "c10306f4665fab20777aa86ca77eb9bb4c3e9ae0e57b83ae829afede461dd4df"
 dependencies = [
  "bitflags",
  "glib 0.16.2",
  "gstreamer",
- "gstreamer-player-sys",
+ "gstreamer-play-sys",
  "gstreamer-video",
  "libc",
  "once_cell",
 ]
 
 [[package]]
-name = "gstreamer-player-sys"
+name = "gstreamer-play-sys"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7930b84f995cf393906ee8499d7bf643aba1899ace61e20fee0ea416ad532f32"
+checksum = "40438a38c5027da6f3e9d50d3862d11b877202fabd8e469f0d1888730167177a"
 dependencies = [
  "glib-sys 0.16.0",
  "gobject-sys 0.16.0",
@@ -1337,7 +1337,7 @@ dependencies = [
 [[package]]
 name = "netease-cloud-music-api"
 version = "1.1.0"
-source = "git+https://github.com/gmg137/netease-cloud-music-api.git#38f074935017f9be0ace15f4d4625bc3f2a192cf"
+source = "git+https://github.com/gmg137/netease-cloud-music-api.git#1fcce11c4798e8be0d845ffafa0b4439af116845"
 dependencies = [
  "anyhow",
  "base64",
@@ -1362,7 +1362,7 @@ dependencies = [
  "fastrand",
  "gettext-rs",
  "gstreamer",
- "gstreamer-player",
+ "gstreamer-play",
  "gtk4",
  "libadwaita",
  "log",
