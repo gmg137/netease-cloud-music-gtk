@@ -68,7 +68,6 @@ pub enum Action {
     PlayNextSong,
     Play(SongInfo),
     PlayStart(SongInfo),
-    DownloadSong(SongInfo),
     ToSongListPage(SongList),
     InitSongListPage(Vec<SongInfo>, DetailDynamic),
     ToAlbumPage(SongList),
@@ -604,7 +603,7 @@ impl NeteaseCloudMusicGtk4Application {
                                     .unwrap();
                             }
                         } else {
-                            sender.send(Action::DownloadSong(song_info)).unwrap();
+                            sender.send(Action::PlayStart(song_info)).unwrap();
                         }
                     });
                 } else {
@@ -614,26 +613,6 @@ impl NeteaseCloudMusicGtk4Application {
                     };
                     sender.send(Action::PlayStart(song_info)).unwrap();
                 }
-            }
-            Action::DownloadSong(song_info) => {
-                let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                let music_rate = window.settings().uint("music-rate");
-                let path = crate::path::get_music_cache_path(song_info.id, music_rate);
-                ctx.spawn_local(async move {
-                    if ncmapi
-                        .client
-                        .download_song(song_info.song_url.to_owned(), path.clone())
-                        .await
-                        .is_ok()
-                    {
-                        let song_info = SongInfo {
-                            song_url: format!("file://{}", path.to_str().unwrap().to_owned()),
-                            ..song_info
-                        };
-                        sender.send(Action::PlayStart(song_info)).unwrap();
-                    }
-                });
             }
             Action::PlayStart(song_info) => {
                 debug!("播放歌曲: {:?}", song_info);

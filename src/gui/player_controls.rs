@@ -19,7 +19,9 @@ use once_cell::sync::*;
 use crate::{application::Action, audio::*, path::CACHE};
 use std::{
     cell::Cell,
+    fs, path,
     sync::{Arc, Mutex},
+    thread,
     time::Duration,
 };
 
@@ -294,10 +296,10 @@ impl PlayerControls {
     pub fn gst_cache_download_complete(&self, loc: String) {
         if let Some(si) = self.get_current_song() {
             let rate = self.property::<u32>("music-rate");
-            let src = std::path::PathBuf::from(loc);
+            let src = path::PathBuf::from(loc);
             let dst = crate::path::get_music_cache_path(si.id, rate);
-            std::thread::spawn(|| {
-                if let Err(err) = std::fs::copy(src, dst) {
+            thread::spawn(|| {
+                if let Err(err) = fs::copy(src, dst) {
                     log::error!("{:?}", err);
                 }
             });
