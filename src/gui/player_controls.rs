@@ -189,12 +189,9 @@ impl PlayerControls {
             use gst::MessageView;
             if let MessageView::Element(ele) = msg.view() {
                 if let Some(stu) = ele.structure() {
-                    match stu.name() {
-                        "GstCacheDownloadComplete" => {
-                            let loc = stu.get::<String>("location").unwrap();
-                            sender.send(Action::GstCacheDownloadComplete(loc)).unwrap();
-                        }
-                        _ => (),
+                    if let "GstCacheDownloadComplete" = stu.name() {
+                        let loc = stu.get::<String>("location").unwrap();
+                        sender.send(Action::GstCacheDownloadComplete(loc)).unwrap();
                     }
                 }
             }
@@ -241,7 +238,7 @@ impl PlayerControls {
             sender.send(Action::PlayNextSong).unwrap();
         });
 
-        let sender = sender_.clone();
+        let sender = sender_;
         player_sig.connect_state_changed(move |_, state| {
             sender.send(Action::GstStateChanged(state)).unwrap();
         });
@@ -409,8 +406,8 @@ impl PlayerControls {
         match shuffle {
             true => self.set_loops(LoopsState::SHUFFLE),
             false => {
-                if let Some(status) = imp.mpris.get().unwrap().get_loop_status().ok() {
-                    self.set_loops(status.into());
+                if let Ok(status) = imp.mpris.get().unwrap().get_loop_status() {
+                    self.set_loops(status);
                 };
             }
         }

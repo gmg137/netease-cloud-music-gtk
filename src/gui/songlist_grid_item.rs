@@ -195,7 +195,7 @@ impl SongListGridItem {
 
     pub fn view_update_songlist(
         grid: gtk::GridView,
-        song_list: &Vec<SongList>,
+        song_list: &[SongList],
         pic_size: i32,
         sender: &Sender<Action>,
     ) {
@@ -210,7 +210,7 @@ impl SongListGridItem {
 
         let objs: Vec<SongListGridItem> = song_list
             .iter()
-            .map(|sl| SongListGridItem::new(&sl, &sender, &miss_icon))
+            .map(|sl| SongListGridItem::new(sl, sender, &miss_icon))
             .collect();
 
         if let Some(model) = grid.model() {
@@ -236,7 +236,7 @@ impl SongListGridItem {
     }
 
     pub fn set_texture_from_file(&self, path: &std::path::PathBuf) {
-        if let Some(paintable) = gtk::Image::from_file(&path).paintable() {
+        if let Some(paintable) = gtk::Image::from_file(path).paintable() {
             self.set_property("texture", paintable);
         }
     }
