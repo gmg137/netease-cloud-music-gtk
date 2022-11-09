@@ -46,22 +46,22 @@ impl SongListView {
 
         let listbox = imp.listbox.get();
         let no_act_like = self.property::<bool>("no-act-like");
-        sis.iter()
-            .zip(likes.iter())
-            .for_each(|(si, like)| {
-                let sender = sender.clone();
+        let no_act_album = self.property::<bool>("no-act-album");
+        sis.iter().zip(likes.iter()).for_each(|(si, like)| {
+            let sender = sender.clone();
 
-                let row = SonglistRow::new(sender.clone(), si);
-                row.set_property("like", like);
-                row.set_like_button_visible(!no_act_like);
+            let row = SonglistRow::new(sender.clone(), si);
+            row.set_property("like", like);
+            row.set_like_button_visible(!no_act_like);
+            row.set_album_button_visible(!no_act_album);
 
-                let si = si.clone();
-                row.connect_activate(move |row| {
-                    row.switch_image(true);
-                    sender.send(Action::AddPlay(si.clone())).unwrap();
-                });
-                listbox.append(&row);
+            let si = si.clone();
+            row.connect_activate(move |row| {
+                row.switch_image(true);
+                sender.send(Action::AddPlay(si.clone())).unwrap();
             });
+            listbox.append(&row);
+        });
     }
 
     pub fn clear_list(&self) {
@@ -117,6 +117,7 @@ mod imp {
         pub sender: OnceCell<Sender<Action>>,
 
         no_act_like: Cell<bool>,
+        no_act_album: Cell<bool>,
 
         content_margin: RefCell<Margin>,
     }
@@ -173,6 +174,7 @@ mod imp {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![
                     ParamSpecBoolean::builder("no-act-like").build(),
+                    ParamSpecBoolean::builder("no-act-album").build(),
                     ParamSpecInt::builder("s-content-margin-top").build(),
                     ParamSpecInt::builder("s-content-margin-bottom").build(),
                 ]
@@ -185,6 +187,10 @@ mod imp {
                 "no-act-like" => {
                     let val = value.get().unwrap();
                     self.no_act_like.replace(val);
+                }
+                "no-act-album" => {
+                    let val = value.get().unwrap();
+                    self.no_act_album.replace(val);
                 }
                 "s-content-margin-top" => {
                     let val = value.get().unwrap();
@@ -201,6 +207,7 @@ mod imp {
         fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
                 "no-act-like" => self.no_act_like.get().to_value(),
+                "no-act-album" => self.no_act_album.get().to_value(),
                 "s-content-margin-top" => self.content_margin.borrow().top.to_value(),
                 "s-content-margin-bottom" => self.content_margin.borrow().bottom.to_value(),
                 _ => unimplemented!(),

@@ -92,6 +92,7 @@ impl SonglistPage {
         match dy {
             DetailDynamic::Album(dy) => {
                 self.set_property("like", dy.is_sub);
+                imp.songs_list.set_property("no-act-album", true);
                 imp.page_type.replace(Some(DiscoverSubPage::Album));
                 imp.num_label.get().set_label(&gettext!(
                     "{} songs, {} favs",
@@ -101,6 +102,7 @@ impl SonglistPage {
             }
             DetailDynamic::SongList(dy) => {
                 self.set_property("like", dy.subscribed);
+                imp.songs_list.set_property("no-act-album", false);
                 imp.page_type.replace(Some(DiscoverSubPage::SongList));
                 imp.num_label.get().set_label(&gettext!(
                     "{} songs, {} favs",

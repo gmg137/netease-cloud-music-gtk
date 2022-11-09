@@ -9,7 +9,7 @@ use gtk::{glib, CompositeTemplate, *};
 
 use crate::application::Action;
 use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Sender, Value};
-use ncm_api::SongInfo;
+use ncm_api::{SongInfo, SongList};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
@@ -53,6 +53,11 @@ impl SonglistRow {
     pub fn set_like_button_visible(&self, visible: bool) {
         let imp = self.imp();
         imp.like_button.set_visible(visible);
+    }
+
+    pub fn set_album_button_visible(&self, visible: bool) {
+        let imp = self.imp();
+        imp.album_button.set_visible(visible);
     }
 
     fn set_name(&self, label: &str) {
@@ -101,6 +106,21 @@ impl SonglistRow {
             ))
             .unwrap();
     }
+
+    #[template_callback]
+    fn album_button_clicked_cb(&self) {
+        let imp = self.imp();
+        let sender = imp.sender.get().unwrap();
+        let songlist = SongList {
+            id: imp.album_id.get().to_owned(),
+            name: imp.album_label.label().to_string(),
+            cover_img_url: imp.cover_url.borrow().to_owned(),
+            author: String::new(),
+        };
+        sender
+            .send(Action::ToAlbumPage(songlist.to_owned()))
+            .unwrap();
+    }
 }
 
 mod imp {
@@ -122,6 +142,9 @@ mod imp {
         pub duration_label: TemplateChild<Label>,
         #[template_child]
         pub like_button: TemplateChild<Button>,
+        #[template_child]
+        pub album_button: TemplateChild<Button>,
+
 
         pub sender: OnceCell<Sender<Action>>,
         pub song_id: Cell<u64>,
