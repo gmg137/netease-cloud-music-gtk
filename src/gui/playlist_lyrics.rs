@@ -31,12 +31,12 @@ impl PlayListLyricsPage {
         self.imp().sender.set(sender).unwrap();
     }
 
-    pub fn init_page(&self, sis: Vec<SongInfo>, si: SongInfo, is_like_fn: impl Fn(&u64) -> bool) {
+    pub fn init_page(&self, sis: &[SongInfo], si: SongInfo, likes: &[bool]) {
         let imp = self.imp();
         // 删除旧内容
         let songs_list = imp.songs_list.get();
         songs_list.clear_list();
-        self.update_playlist(sis, si, is_like_fn);
+        self.update_playlist(&sis, si, &likes);
 
         let lyrics_text_view = imp.lyrics_text_view.get();
         let buffer = lyrics_text_view.buffer();
@@ -46,16 +46,16 @@ impl PlayListLyricsPage {
 
     pub fn update_playlist(
         &self,
-        sis: Vec<SongInfo>,
+        sis: &[SongInfo],
         current_song: SongInfo,
-        is_like_fn: impl Fn(&u64) -> bool,
+        likes: &[bool]
     ) {
         let imp = self.imp();
-        imp.playlist.replace(sis.clone());
+        imp.playlist.replace(sis.clone().to_vec());
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(&sis, is_like_fn);
+        songs_list.init_new_list(&sis, &likes);
 
         let i: i32 = {
             let mut i: i32 = 0;

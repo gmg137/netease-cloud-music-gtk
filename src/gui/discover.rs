@@ -194,13 +194,13 @@ mod imp {
         #[template_callback]
         fn top_picks_cb(&self) {
             let sender = self.sender.get().unwrap();
-            sender.send(Action::InitTopPicksSongList).unwrap();
+            sender.send(Action::ToTopPicksPage).unwrap();
         }
 
         #[template_callback]
         fn new_albums_cb(&self) {
             let sender = self.sender.get().unwrap();
-            sender.send(Action::InitAllAlbums).unwrap();
+            sender.send(Action::ToAllAlbumsPage).unwrap();
         }
 
         fn show_relative_page(carousel: adw::Carousel, delta: f64) {

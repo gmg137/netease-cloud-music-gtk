@@ -9,8 +9,9 @@ pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, 
 use ncm_api::SongList;
 use once_cell::sync::{Lazy, OnceCell};
 
-use crate::{application::Action, gui::SongListGridItem, model::SearchType};
+use crate::{application::Action, gui::SongListGridItem, model::{SearchType, SearchResult}};
 use std::cell::{Cell, RefCell};
+use std::sync::Arc;
 
 glib::wrapper! {
     pub struct SearchSongListPage(ObjectSubclass<imp::SearchSongListPage>)
@@ -27,7 +28,7 @@ impl SearchSongListPage {
         self.imp().sender.set(sender).unwrap();
     }
 
-    pub fn init_page(&self, keyword: String, search_type: SearchType) {
+    pub fn init_page(&self, keyword: &str, search_type: SearchType) {
         let imp = self.imp();
         let songlist_grid = imp.songlist_grid.get();
         SongListGridItem::view_clear(songlist_grid);
@@ -166,12 +167,20 @@ impl SearchSongListPage {
             let sender = self.imp().sender.get().unwrap();
             if position == gtk::PositionType::Bottom {
                 self.set_property("update", false);
+                let s = glib::SendWeakRef::from(self.downgrade());
                 sender
                     .send(Action::Search(
                         self.property("keyword"),
                         self.property("search-type"),
                         self.property::<i32>("offset") as u16,
                         50,
+                        Arc::new(move |sls| {
+                            if let Some(s) = s.upgrade() {
+                                if let SearchResult::SongLists(sls) = sls {
+                                    s.update_songlist(sls);
+                                }
+                            }
+                        })
                     ))
                     .unwrap_or(());
                 sender
