@@ -126,17 +126,17 @@
                                     </object>
                                 </child>
                                 <child>
-                                    <object class="GtkImage">
+                                    <object class="GtkButton">
                                         <property name="halign">end</property>
                                         <property name="valign">end</property>
                                         <property name="hexpand">true</property>
                                         <property name="icon-name">view-more-symbolic</property>
                                         <property name="tooltip-text" translatable="yes">View More</property>
-                                        <child>
-                                            <object class="GtkGestureClick">
-                                                <signal name="pressed" handler="top_picks_cb" swapped="true" />
-                                            </object>
-                                        </child>
+                                        <signal name="clicked" handler="top_picks_cb" swapped="true" />
+                                        <style>
+                                            <class name="flat" />
+                                            <class name="image-button" />
+                                        </style>
                                     </object>
                                 </child>
                             </object>
@@ -193,17 +193,17 @@
                                     </object>
                                 </child>
                                 <child>
-                                    <object class="GtkImage">
+                                    <object class="GtkButton">
                                         <property name="halign">end</property>
                                         <property name="valign">end</property>
                                         <property name="hexpand">true</property>
                                         <property name="icon-name">view-more-symbolic</property>
                                         <property name="tooltip-text" translatable="yes">View More</property>
-                                        <child>
-                                            <object class="GtkGestureClick">
-                                                <signal name="pressed" handler="new_albums_cb" swapped="true" />
-                                            </object>
-                                        </child>
+                                        <signal name="clicked" handler="new_albums_cb" swapped="true" />
+                                        <style>
+                                            <class name="flat" />
+                                            <class name="image-button" />
+                                        </style>
                                     </object>
                                 </child>
                             </object>
