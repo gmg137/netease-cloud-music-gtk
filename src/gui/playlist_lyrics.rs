@@ -50,7 +50,7 @@ impl PlayListLyricsPage {
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(sis, likes);
+        songs_list.init_new_list(sis, likes, true);
 
         let i: i32 = {
             let mut i: i32 = 0;

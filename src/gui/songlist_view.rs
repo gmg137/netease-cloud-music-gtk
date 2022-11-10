@@ -40,7 +40,7 @@ impl SongListView {
         }
     }
 
-    pub fn init_new_list(&self, sis: &[SongInfo], likes: &[bool]) {
+    pub fn init_new_list(&self, sis: &[SongInfo], likes: &[bool], update_lyrics: bool) {
         let sender = self.imp().sender.get().unwrap().to_owned();
         let imp = self.imp();
 
@@ -59,6 +59,9 @@ impl SongListView {
             row.connect_activate(move |row| {
                 row.switch_image(true);
                 sender.send(Action::AddPlay(si.clone())).unwrap();
+                if update_lyrics {
+                    sender.send(Action::GetLyrics(si.clone())).unwrap();
+                }
             });
             listbox.append(&row);
         });
