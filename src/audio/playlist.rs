@@ -122,6 +122,15 @@ impl PlayList {
     }
 
     pub fn get_position(&self) -> usize {
+        if let LoopsState::SHUFFLE = self.loops {
+            if let Some(song) = self.current_song() {
+                for (p, si) in self.list.iter().enumerate() {
+                    if si.id == song.id {
+                        return p;
+                    }
+                }
+            }
+        }
         self.position
     }
 
