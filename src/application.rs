@@ -855,8 +855,8 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::ToSingerSongsPage(singer) => {
                 let title = &singer.name;
-                let page = window.init_search_song_page(&title, SearchType::SingerSongs);
-                window.page_new(&page, &title);
+                let page = window.init_search_song_page(title, SearchType::SingerSongs);
+                window.page_new(&page, title);
                 let page = page.downgrade();
 
                 let sender = imp.sender.clone();

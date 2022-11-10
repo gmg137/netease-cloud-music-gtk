@@ -49,9 +49,7 @@ impl PageStack {
         let page = stack_page.child();
         ctx.spawn_local(async move {
             glib::timeout_future(std::time::Duration::from_millis(500)).await;
-            if page.parent().is_some()
-                && stack.borrow().iter().find(|p| p.child() == page).is_none()
-            {
+            if page.parent().is_some() && !stack.borrow().iter().any(|p| p.child() == page) {
                 gtk_stack.remove(&page);
             }
         });
@@ -62,12 +60,10 @@ impl PageStack {
         let page = page.clone().upcast::<gtk::Widget>();
         let stack_page = if let Some(idx) = stack.iter().position(|p| p.child() == page) {
             stack.remove(idx)
+        } else if page.parent().is_none() {
+            self.gtk_stack.add_child(&page)
         } else {
-            if page.parent().is_none() {
-                self.gtk_stack.add_child(&page)
-            } else {
-                self.gtk_stack.page(&page)
-            }
+            self.gtk_stack.page(&page)
         };
 
         stack.push(stack_page.clone());

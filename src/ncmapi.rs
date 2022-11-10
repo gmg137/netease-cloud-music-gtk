@@ -197,3 +197,9 @@ impl NcmClient {
         }
     }
 }
+
+impl Default for NcmClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}

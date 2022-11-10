@@ -81,12 +81,7 @@ impl SonglistPage {
         imp.songs_list.clear_list();
     }
 
-    pub fn init_songlist(
-        &self,
-        sis: &[SongInfo],
-        dy: DetailDynamic,
-        likes: &[bool],
-    ) {
+    pub fn init_songlist(&self, sis: &[SongInfo], dy: DetailDynamic, likes: &[bool]) {
         let imp = self.imp();
         let songs_list = imp.songs_list.get();
         match dy {
@@ -112,10 +107,10 @@ impl SonglistPage {
             }
         }
 
-        imp.playlist.replace(sis.clone().to_vec());
+        imp.playlist.replace(Clone::clone(&sis).to_vec());
         let sender = imp.sender.get().unwrap();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(&sis, &likes);
+        songs_list.init_new_list(sis, likes);
     }
 }
 

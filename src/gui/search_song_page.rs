@@ -14,7 +14,7 @@ use once_cell::sync::{Lazy, OnceCell};
 
 use crate::application::Action;
 use crate::gui::songlist_view::SongListView;
-use crate::model::{SearchType, SearchResult};
+use crate::model::{SearchResult, SearchType};
 use gettextrs::gettext;
 use std::{
     cell::{Cell, RefCell},
@@ -47,7 +47,7 @@ impl SearchSongPage {
             | SearchType::CloudDisk
             | SearchType::Fm => {
                 title_clamp.set_visible(true);
-                imp.title_label.set_label(&keyword);
+                imp.title_label.set_label(keyword);
             }
             _ => {
                 title_clamp.set_visible(false);
@@ -75,7 +75,7 @@ impl SearchSongPage {
         let offset = self.property::<i32>("offset") + sis.len() as i32;
         self.set_property("offset", offset);
         let imp = self.imp();
-        let mut playlist = sis.clone().to_vec();
+        let mut playlist = Clone::clone(&sis).to_vec();
         (*imp.playlist).borrow_mut().append(&mut playlist);
         imp.num_label.get().set_label(&gettext!("{} songs", offset));
 
@@ -83,7 +83,7 @@ impl SearchSongPage {
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
 
-        songs_list.init_new_list(&sis, &likes);
+        songs_list.init_new_list(sis, likes);
     }
 }
 
@@ -273,7 +273,7 @@ impl SearchSongPage {
                                     s.update_songs(&sis, &likes);
                                 }
                             }
-                        })
+                        }),
                     ))
                     .unwrap_or(());
                 sender

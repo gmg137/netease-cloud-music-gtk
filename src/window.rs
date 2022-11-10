@@ -267,7 +267,7 @@ impl NeteaseCloudMusicGtk4Window {
         let action_back = SimpleAction::new("back-button", None);
         self.add_action(&action_back);
 
-        let sender = sender_.clone();
+        let sender = sender_;
         action_back.connect_activate(move |_, _| {
             sender.send(Action::PageBack).unwrap();
         });

@@ -117,9 +117,7 @@ impl SonglistRow {
             cover_img_url: imp.cover_url.borrow().to_owned(),
             author: String::new(),
         };
-        sender
-            .send(Action::ToAlbumPage(songlist.to_owned()))
-            .unwrap();
+        sender.send(Action::ToAlbumPage(songlist)).unwrap();
     }
 }
 
@@ -144,7 +142,6 @@ mod imp {
         pub like_button: TemplateChild<Button>,
         #[template_child]
         pub album_button: TemplateChild<Button>,
-
 
         pub sender: OnceCell<Sender<Action>>,
         pub song_id: Cell<u64>,

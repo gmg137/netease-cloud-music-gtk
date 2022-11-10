@@ -36,7 +36,7 @@ impl PlayListLyricsPage {
         // 删除旧内容
         let songs_list = imp.songs_list.get();
         songs_list.clear_list();
-        self.update_playlist(&sis, si, &likes);
+        self.update_playlist(sis, si, likes);
 
         let lyrics_text_view = imp.lyrics_text_view.get();
         let buffer = lyrics_text_view.buffer();
@@ -44,18 +44,13 @@ impl PlayListLyricsPage {
         lyrics_text_view.set_buffer(Some(&buffer));
     }
 
-    pub fn update_playlist(
-        &self,
-        sis: &[SongInfo],
-        current_song: SongInfo,
-        likes: &[bool]
-    ) {
+    pub fn update_playlist(&self, sis: &[SongInfo], current_song: SongInfo, likes: &[bool]) {
         let imp = self.imp();
-        imp.playlist.replace(sis.clone().to_vec());
+        imp.playlist.replace(Clone::clone(&sis).to_vec());
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(&sis, &likes);
+        songs_list.init_new_list(sis, likes);
 
         let i: i32 = {
             let mut i: i32 = 0;
