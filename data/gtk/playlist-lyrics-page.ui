@@ -11,7 +11,6 @@
                         <property name="margin-top">20</property>
                         <property name="margin-bottom">20</property>
                         <property name="margin-start">20</property>
-                        <property name="margin-end">20</property>
                         <property name="s-content-margin-top">0</property>
                         <property name="s-content-margin-bottom">0</property>
                         <property name="width-request">500</property>
@@ -21,6 +20,7 @@
                     <object class="GtkScrolledWindow">
                         <property name="margin-top">20</property>
                         <property name="margin-bottom">20</property>
+                        <property name="margin-start">20</property>
                         <property name="margin-end">20</property>
                         <property name="width-request">500</property>
                         <child>
