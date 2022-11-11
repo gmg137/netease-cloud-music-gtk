@@ -728,20 +728,20 @@ impl NeteaseCloudMusicGtk4Application {
                             callback(());
                         }
                         sender
-                            .send(Action::AddToast(gettext(if is_like {
-                                "Song list have been collected!"
+                            .send(Action::AddToast(if is_like {
+                                gettext("Song list have been collected!")
                             } else {
-                                "Song list have been uncollected!"
-                            })))
+                                gettext("Song list have been uncollected!")
+                            }))
                             .unwrap();
                     } else {
                         error!("收藏/取消收藏歌单失败: {:?}", id);
                         sender
-                            .send(Action::AddToast(gettext(if is_like {
-                                "Failed to collect song list!"
+                            .send(Action::AddToast(if is_like {
+                                gettext("Failed to collect song list!")
                             } else {
-                                "Failed to uncollect song list!"
-                            })))
+                                gettext("Failed to uncollect song list!")
+                            }))
                             .unwrap();
                     }
                 });
@@ -756,20 +756,20 @@ impl NeteaseCloudMusicGtk4Application {
                             callback(());
                         }
                         sender
-                            .send(Action::AddToast(gettext(if is_like {
-                                "Album have been collected!"
+                            .send(Action::AddToast(if is_like {
+                                gettext("Album have been collected!")
                             } else {
-                                "Album have been uncollected!"
-                            })))
+                                gettext("Album have been uncollected!")
+                            }))
                             .unwrap();
                     } else {
                         error!("收藏/取消收藏专辑失败: {:?}", id);
                         sender
-                            .send(Action::AddToast(gettext(if is_like {
-                                "Failed to collect album!"
+                            .send(Action::AddToast(if is_like {
+                                gettext("Failed to collect album!")
                             } else {
-                                "Failed to uncollect album!"
-                            })))
+                                gettext("Failed to uncollect album!")
+                            }))
                             .unwrap();
                     }
                 });
@@ -782,11 +782,11 @@ impl NeteaseCloudMusicGtk4Application {
                         debug!("收藏/取消收藏歌曲: {:?}", id);
                         window.set_like_song(id, is_like);
                         sender
-                            .send(Action::AddToast(gettext(if is_like {
-                                "Songs have been collected!"
+                            .send(Action::AddToast(if is_like {
+                                gettext("Songs have been collected!")
                             } else {
-                                "Songs have been uncollected!"
-                            })))
+                                gettext("Songs have been uncollected!")
+                            }))
                             .unwrap();
                         if let Some(callback) = callback {
                             callback(());
@@ -794,11 +794,11 @@ impl NeteaseCloudMusicGtk4Application {
                     } else {
                         error!("收藏/取消收藏歌曲失败: {:?}", id);
                         sender
-                            .send(Action::AddToast(gettext(if is_like {
-                                "Failed to collect songs!"
+                            .send(Action::AddToast(if is_like {
+                                gettext("Failed to collect songs!")
                             } else {
-                                "Failed to uncollect songs!"
-                            })))
+                                gettext("Failed to uncollect songs!")
+                            }))
                             .unwrap();
                     }
                 });

@@ -9,6 +9,7 @@ data/gtk/user-menus.ui
 data/gtk/help-overlay.ui
 data/gtk/player-controls.ui
 data/gtk/songlist-page.ui
+data/gtk/songlist-row.ui
 data/gtk/toplist.ui
 data/gtk/my-page.ui
 data/gtk/playlist-lyrics-page.ui
