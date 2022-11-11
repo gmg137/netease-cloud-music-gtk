@@ -534,7 +534,7 @@ impl NeteaseCloudMusicGtk4Window {
     pub fn page_new_with_name(&self, name: &str, page: &impl glib::IsA<Widget>, title: &str) {
         let imp = self.imp();
         let stack = imp.page_stack.get().unwrap();
-        stack.set_transition_type(StackTransitionType::SlideUp);
+        // stack.set_transition_type(StackTransitionType::SlideLeft);
         let stack_page = stack.new_page_with_name(page, name);
         stack_page.set_title(title);
         self.page_set_info(title);
@@ -543,7 +543,7 @@ impl NeteaseCloudMusicGtk4Window {
     pub fn page_new(&self, page: &impl glib::IsA<Widget>, title: &str) {
         let imp = self.imp();
         let stack = imp.page_stack.get().unwrap();
-        stack.set_transition_type(StackTransitionType::SlideUp);
+        // stack.set_transition_type(StackTransitionType::SlideLeft);
         let stack_page = stack.new_page(page);
         stack_page.set_title(title);
         self.page_set_info(title);
@@ -553,7 +553,7 @@ impl NeteaseCloudMusicGtk4Window {
         let imp = self.imp();
         let stack = imp.page_stack.get().unwrap();
 
-        stack.set_transition_type(StackTransitionType::UnderDown);
+        // stack.set_transition_type(StackTransitionType::UnderRight);
         stack.back_page();
 
         if stack.len() > 1 {
