@@ -23,14 +23,13 @@ dependency('libadwaita-1', version: '>=1.1.0')
 dependency('gstreamer-1.0', version: '>= 1.16')
 dependency('gstreamer-base-1.0', version: '>= 1.16')
 dependency('gstreamer-audio-1.0', version: '>= 1.16')
-dependency('gstreamer-player-1.0', version: '>= 1.16')
+dependency('gstreamer-play-1.0', version: '>= 1.16')
 dependency('gstreamer-plugins-base-1.0', version: '>= 1.16')
 dependency('gstreamer-plugins-bad-1.0', version: '>= 1.16')
 dependency('gstreamer-bad-audio-1.0', version: '>= 1.16')
 
 cargo_sources = files(
   'Cargo.toml',
-  'Cargo.lock',
 )
 
 subdir('data')
