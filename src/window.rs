@@ -712,17 +712,17 @@ impl NeteaseCloudMusicGtk4Window {
                     debug!("搜索歌曲：{:?}", res);
                     let likes = window.get_song_likes(&res);
                     SearchResult::Songs(res, likes)
-                })
-                .ok(),
-            SearchType::Singer => ncmapi
-                .client
-                .search_singer(text, offset, limit)
-                .await
-                .map(|res| {
-                    debug!("搜索歌手：{:?}", res);
-                    SearchResult::Singers(res)
-                })
-                .ok(),
+                }),
+            SearchType::Singer => {
+                ncmapi
+                    .client
+                    .search_singer(text, offset, limit)
+                    .await
+                    .map(|res| {
+                        debug!("搜索歌手：{:?}", res);
+                        SearchResult::Singers(res)
+                    })
+            }
             SearchType::Album => ncmapi
                 .client
                 .search_album(text, offset, limit)
@@ -730,18 +730,18 @@ impl NeteaseCloudMusicGtk4Window {
                 .map(|res| {
                     debug!("搜索专辑：{:?}", res);
                     SearchResult::SongLists(res)
-                })
-                .ok(),
-            SearchType::Lyrics => ncmapi
-                .client
-                .search_lyrics(text, offset, limit)
-                .await
-                .map(|res| {
-                    debug!("搜索歌词：{:?}", res);
-                    let likes = window.get_song_likes(&res);
-                    SearchResult::Songs(res, likes)
-                })
-                .ok(),
+                }),
+            SearchType::Lyrics => {
+                ncmapi
+                    .client
+                    .search_lyrics(text, offset, limit)
+                    .await
+                    .map(|res| {
+                        debug!("搜索歌词：{:?}", res);
+                        let likes = window.get_song_likes(&res);
+                        SearchResult::Songs(res, likes)
+                    })
+            }
             SearchType::SongList => ncmapi
                 .client
                 .search_songlist(text, offset, limit)
@@ -749,8 +749,7 @@ impl NeteaseCloudMusicGtk4Window {
                 .map(|res| {
                     debug!("搜索歌单：{:?}", res);
                     SearchResult::SongLists(res)
-                })
-                .ok(),
+                }),
             SearchType::TopPicks => ncmapi
                 .client
                 .top_song_list("全部", "hot", offset, limit)
@@ -758,36 +757,26 @@ impl NeteaseCloudMusicGtk4Window {
                 .map(|res| {
                     debug!("获取歌单：{:?}", res);
                     SearchResult::SongLists(res)
-                })
-                .ok(),
-            SearchType::AllAlbums => ncmapi
-                .client
-                .new_albums("ALL", offset, limit)
-                .await
-                .map(|res| {
-                    debug!("获取专辑：{:?}", res);
-                    SearchResult::SongLists(res)
-                })
-                .ok(),
-            SearchType::Fm => ncmapi
-                .client
-                .personal_fm()
-                .await
-                .map(|res| {
-                    debug!("获取FM：{:?}", res);
-                    let likes = window.get_song_likes(&res);
-                    SearchResult::Songs(res, likes)
-                })
-                .ok(),
-            SearchType::LikeAlbums => ncmapi
-                .client
-                .album_sublist(offset, limit)
-                .await
-                .map(|res| {
-                    debug!("获取收藏的专辑：{:?}", res);
-                    SearchResult::SongLists(res)
-                })
-                .ok(),
+                }),
+            SearchType::AllAlbums => {
+                ncmapi
+                    .client
+                    .new_albums("ALL", offset, limit)
+                    .await
+                    .map(|res| {
+                        debug!("获取专辑：{:?}", res);
+                        SearchResult::SongLists(res)
+                    })
+            }
+            SearchType::Fm => ncmapi.client.personal_fm().await.map(|res| {
+                debug!("获取FM：{:?}", res);
+                let likes = window.get_song_likes(&res);
+                SearchResult::Songs(res, likes)
+            }),
+            SearchType::LikeAlbums => ncmapi.client.album_sublist(offset, limit).await.map(|res| {
+                debug!("获取收藏的专辑：{:?}", res);
+                SearchResult::SongLists(res)
+            }),
             SearchType::LikeSongList => {
                 let uid = window.get_uid();
                 ncmapi
@@ -798,18 +787,18 @@ impl NeteaseCloudMusicGtk4Window {
                         debug!("获取收藏的歌单：{:?}", res);
                         SearchResult::SongLists(res)
                     })
-                    .ok()
             }
-            _ => None,
+            _ => Err(anyhow::anyhow!("")),
         };
-        if res.is_none() {
+        if let Err(err) = &res {
+            error!("{:?}", err);
             sender
                 .send(Action::AddToast(gettext(
                     "Request for interface failed, please try again!",
                 )))
                 .unwrap();
         }
-        res
+        res.ok()
     }
 }
 
