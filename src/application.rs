@@ -131,6 +131,7 @@ mod imp {
         pub sender: Sender<Action>,
         pub receiver: RefCell<Option<Receiver<Action>>>,
         pub unikey: Arc<RwLock<String>>,
+        pub ncmapi: RefCell<Option<NcmClient>>,
     }
 
     #[glib::object_subclass]
@@ -143,12 +144,14 @@ mod imp {
             let receiver = RefCell::new(Some(r));
             let window = OnceCell::new();
             let unikey = Arc::new(RwLock::new(String::new()));
+            let ncmapi = RefCell::new(None);
 
             Self {
                 window,
                 sender,
                 receiver,
                 unikey,
+                ncmapi,
             }
         }
     }
@@ -237,13 +240,23 @@ impl NeteaseCloudMusicGtk4Application {
         }
 
         let window = imp.window.get().unwrap().upgrade().unwrap();
-        let mut ncmapi = self.init_ncmapi(NcmClient::new());
+        let ncmapi = {
+            let ncmapi_opt = { imp.ncmapi.borrow().as_ref().cloned() };
+            if let Some(ncmapi) = ncmapi_opt {
+                ncmapi
+            } else {
+                let ncmapi = self.init_ncmapi(NcmClient::new());
+                imp.ncmapi.replace(Some(ncmapi.clone()));
+                ncmapi
+            }
+        };
 
         match action {
             Action::CheckLogin(user_menu, logined_cookie_jar) => {
                 let sender = imp.sender.clone();
                 let ctx = glib::MainContext::default();
-                ncmapi = self.init_ncmapi(NcmClient::from_cookie_jar(logined_cookie_jar));
+                let ncmapi = self.init_ncmapi(NcmClient::from_cookie_jar(logined_cookie_jar));
+                let s = self.clone();
 
                 ctx.spawn_local(async move {
                     if !window.is_logined() {
@@ -251,8 +264,8 @@ impl NeteaseCloudMusicGtk4Application {
                             debug!("获取用户信息成功: {:?}", login_info);
                             window.set_uid(login_info.uid);
 
-                            ncmapi.set_cookie_jar_to_global();
-                            ncmapi.save_global_cookie_jar_to_file();
+                            ncmapi.save_cookie_jar_to_file();
+                            s.imp().ncmapi.replace(Some(ncmapi));
 
                             sender
                                 .send(Action::InitUserInfo(login_info.to_owned()))
@@ -269,17 +282,22 @@ impl NeteaseCloudMusicGtk4Application {
                             sender
                                 .send(Action::AddToast(gettext("Login failed!")))
                                 .unwrap();
-                            NcmClient::clean_global_cookie_jar_and_file();
+
+                            s.imp().ncmapi.replace(None);
+                            NcmClient::clean_cookie_file();
                         }
                     }
                 });
             }
             Action::Logout => {
                 let sender = imp.sender.clone();
+                let s = self.clone();
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
                     ncmapi.client.logout().await;
-                    NcmClient::clean_global_cookie_jar_and_file();
+
+                    s.imp().ncmapi.replace(None);
+                    NcmClient::clean_cookie_file();
 
                     window.logout();
                     window.switch_my_page_to_logout();
@@ -610,9 +628,10 @@ impl NeteaseCloudMusicGtk4Application {
                 if !path.exists() {
                     let ctx = glib::MainContext::default();
                     ctx.spawn_local(async move {
-                        ncmapi.set_rate(music_rate);
                         if song_info.song_url.is_empty() {
-                            if let Ok(song_url) = ncmapi.songs_url(&[song_info.id]).await {
+                            if let Ok(song_url) =
+                                ncmapi.songs_url(&[song_info.id], music_rate).await
+                            {
                                 debug!("获取歌曲播放链接: {:?}", song_url);
                                 if let Some(song_url) = song_url.get(0) {
                                     let song_info = SongInfo {

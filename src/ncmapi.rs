@@ -6,14 +6,13 @@
 use anyhow::Result;
 use cookie_store::CookieStore;
 use ncm_api::{CookieBuilder, CookieJar, MusicApi, SongUrl};
-use once_cell::sync::OnceCell;
 
 use crate::path::CACHE;
 use log::error;
 use std::{fs, io, path::PathBuf};
 
 const COOKIE_FILE: &str = "cookies.json";
-static COOKIE_JAR: OnceCell<CookieJar> = OnceCell::new();
+const MAX_CONS: usize = 32;
 
 pub const BASE_URL_LIST: [&str; 12] = [
     "https://music.163.com/",
@@ -30,29 +29,21 @@ pub const BASE_URL_LIST: [&str; 12] = [
     "https://music.163.com/openapi/clientlog",
 ];
 
+#[derive(Clone)]
 pub struct NcmClient {
     pub client: MusicApi,
-    rate: u32,
 }
 
 impl NcmClient {
-    const DEFAULT_RATE: u32 = 320000;
-
     pub fn new() -> Self {
-        if let Some(global_cookie_jar) = COOKIE_JAR.get() {
-            Self::from_cookie_jar(global_cookie_jar.to_owned())
-        } else {
-            Self {
-                client: MusicApi::new(),
-                rate: Self::DEFAULT_RATE,
-            }
+        Self {
+            client: MusicApi::new(MAX_CONS),
         }
     }
 
     pub fn from_cookie_jar(cookie_jar: CookieJar) -> Self {
         Self {
-            client: MusicApi::from_cookie_jar(cookie_jar),
-            rate: Self::DEFAULT_RATE,
+            client: MusicApi::from_cookie_jar(cookie_jar, MAX_CONS),
         }
     }
 
@@ -60,18 +51,18 @@ impl NcmClient {
         self.client.set_proxy(&proxy)
     }
 
-    pub fn set_rate(&mut self, item: u32) {
-        let rate = match item {
+    pub fn get_api_rate(item: u32) -> u32 {
+        match item {
             0 => 128000,
             1 => 192000,
             2 => 320000,
             3 => 999000,
             4 => 1900000,
             _ => 320000,
-        };
-        self.rate = rate;
+        }
     }
 
+    /*
     pub fn set_cookie_jar_to_global(&self) {
         if let Some(cookie_jar) = self.client.cookie_jar() {
             match COOKIE_JAR.get() {
@@ -89,6 +80,7 @@ impl NcmClient {
             }
         }
     }
+    */
 
     pub fn cookie_file_path() -> PathBuf {
         crate::path::DATA.clone().join(COOKIE_FILE)
@@ -122,7 +114,7 @@ impl NcmClient {
         None
     }
 
-    pub fn save_global_cookie_jar_to_file(&self) {
+    pub fn save_cookie_jar_to_file(&self) {
         if let Some(cookie_jar) = self.client.cookie_jar() {
             match fs::File::create(&Self::cookie_file_path()) {
                 Err(err) => error!("{:?}", err),
@@ -151,10 +143,7 @@ impl NcmClient {
         }
     }
 
-    pub fn clean_global_cookie_jar_and_file() {
-        if let Some(cookie_jar) = COOKIE_JAR.get() {
-            cookie_jar.clear();
-        }
+    pub fn clean_cookie_file() {
         if let Err(err) = fs::remove_file(&crate::path::DATA.clone().join(COOKIE_FILE)) {
             match err.kind() {
                 io::ErrorKind::NotFound => (),
@@ -171,8 +160,10 @@ impl NcmClient {
         Ok((path, qrinfo.1))
     }
 
-    pub async fn songs_url(&self, ids: &[u64]) -> Result<Vec<SongUrl>> {
-        self.client.songs_url(ids, &self.rate.to_string()).await
+    pub async fn songs_url(&self, ids: &[u64], rate: u32) -> Result<Vec<SongUrl>> {
+        self.client
+            .songs_url(ids, &Self::get_api_rate(rate).to_string())
+            .await
     }
 
     pub async fn get_lyrics(&self, id: u64) -> Result<String> {
