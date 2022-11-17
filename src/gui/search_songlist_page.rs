@@ -9,7 +9,11 @@ pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, 
 use ncm_api::SongList;
 use once_cell::sync::{Lazy, OnceCell};
 
-use crate::{application::Action, gui::SongListGridItem, model::{SearchType, SearchResult}};
+use crate::{
+    application::Action,
+    gui::SongListGridItem,
+    model::{SearchResult, SearchType},
+};
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;
 
@@ -163,7 +167,8 @@ mod imp {
 impl SearchSongListPage {
     #[template_callback]
     fn scrolled_edge_cb(&self, position: PositionType) {
-        if self.property("update") {
+        let offset = self.property::<i32>("offset");
+        if self.property("update") && offset % 50 == 0 {
             let sender = self.imp().sender.get().unwrap();
             if position == gtk::PositionType::Bottom {
                 self.set_property("update", false);
@@ -172,7 +177,7 @@ impl SearchSongListPage {
                     .send(Action::Search(
                         self.property("keyword"),
                         self.property("search-type"),
-                        self.property::<i32>("offset") as u16,
+                        offset as u16,
                         50,
                         Arc::new(move |sls| {
                             if let Some(s) = s.upgrade() {
@@ -180,7 +185,7 @@ impl SearchSongListPage {
                                     s.update_songlist(sls);
                                 }
                             }
-                        })
+                        }),
                     ))
                     .unwrap_or(());
                 sender

@@ -256,7 +256,8 @@ impl SearchSongPage {
             SearchType::CloudDisk => return,
             _ => (),
         }
-        if self.property("update") {
+        let offset = self.property::<i32>("offset");
+        if self.property("update") && offset % 50 == 0 {
             let sender = self.imp().sender.get().unwrap();
             if position == gtk::PositionType::Bottom {
                 self.set_property("update", false);
@@ -265,7 +266,7 @@ impl SearchSongPage {
                     .send(Action::Search(
                         self.property("keyword"),
                         self.property("search-type"),
-                        self.property::<i32>("offset") as u16,
+                        offset as u16,
                         50,
                         Arc::new(move |sis| {
                             if let Some(s) = s.upgrade() {
