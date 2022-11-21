@@ -76,7 +76,7 @@ impl MprisController {
         Ok(match self.mpris.get_loop_status()?.as_str() {
             "None" => LoopsState::NONE,
             "Track" => LoopsState::ONE,
-            "Playlists" => LoopsState::LOOP,
+            "Playlist" => LoopsState::LOOP,
             _ => LoopsState::NONE,
         })
     }
