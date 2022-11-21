@@ -496,6 +496,10 @@ impl NeteaseCloudMusicGtk4Window {
         // 初始化播放列表页
         let playlist_lyrics_page = imp.playlist_lyrics_page.get().unwrap();
         playlist_lyrics_page.set_sender(sender.clone());
+
+        let page_stack = imp.page_stack.get().unwrap();
+        page_stack.set_transition_type(StackTransitionType::Crossfade);
+        page_stack.set_transition_duration(100); // default 200
     }
 
     pub fn init_toplist(&self, list: Vec<TopList>) {

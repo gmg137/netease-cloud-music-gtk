@@ -119,6 +119,10 @@ impl PageStack {
         self.gtk_stack.set_transition_type(transition);
     }
 
+    pub fn set_transition_duration(&self, milliseconds: u32) {
+        self.gtk_stack.set_transition_duration(milliseconds);
+    }
+
     pub fn len(&self) -> usize {
         self.stack.borrow().len()
     }
