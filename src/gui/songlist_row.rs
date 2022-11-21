@@ -40,7 +40,7 @@ impl SonglistRow {
         self.set_name(&si.name);
         self.set_singer(&si.singer);
         self.set_album(&si.album);
-        self.set_duration(&si.duration);
+        self.set_duration(si.duration);
     }
 
     pub fn get_song_info(&self) -> Option<SongInfo> {
@@ -77,9 +77,10 @@ impl SonglistRow {
         imp.album_label.set_label(label);
     }
 
-    fn set_duration(&self, label: &str) {
+    fn set_duration(&self, duration: u64) {
         let imp = self.imp();
-        imp.duration_label.set_label(label);
+        let label = format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60);
+        imp.duration_label.set_label(&label);
     }
 }
 

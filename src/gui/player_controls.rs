@@ -718,7 +718,7 @@ mod imp {
                         album: String::new(),
                         album_id: 0,
                         pic_url: String::new(),
-                        duration: String::new(),
+                        duration: 0,
                         song_url: String::new(),
                     })
                     .to_owned();

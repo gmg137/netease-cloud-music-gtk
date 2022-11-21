@@ -141,6 +141,21 @@ pub enum DiscoverSubPage {
     Album,
 }
 
+#[derive(Debug, Clone)]
+pub enum SongListDetail {
+    PlayList(ncm_api::PlayListDetail, ncm_api::PlayListDetailDynamic),
+    Album(ncm_api::AlbumDetail, ncm_api::AlbumDetailDynamic),
+}
+
+impl SongListDetail {
+    pub fn sis(&self) -> &Vec<SongInfo> {
+        match self {
+            Self::PlayList(d, ..) => &d.songs,
+            Self::Album(d, ..) => &d.songs,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, glib::Enum)]
 #[repr(i32)]
 #[enum_type(name = "SearchType")]

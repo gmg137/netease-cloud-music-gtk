@@ -51,6 +51,14 @@
                                     </object>
                                 </child>
                                 <child>
+                                    <object class="GtkLabel" id="time_label">
+                                        <property name="label"></property>
+                                        <property name="halign">start</property>
+                                        <property name="valign">end</property>
+                                        <property name="visible">False</property>
+                                    </object>
+                                </child>
+                                <child>
                                     <object class="GtkBox">
                                         <property name="halign">fill</property>
                                         <property name="valign">end</property>

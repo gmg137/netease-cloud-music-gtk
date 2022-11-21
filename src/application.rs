@@ -5,8 +5,8 @@ use glib::{clone, timeout_future, timeout_future_seconds, MainContext, Receiver,
 use gtk::{gio, glib, prelude::*};
 use log::*;
 use ncm_api::{
-    AlbumDetailDynamic, BannersInfo, CookieJar, DetailDynamic, LoginInfo, SingerInfo, SongInfo,
-    SongList, SongListDetailDynamic, TopList,
+    AlbumDetailDynamic, BannersInfo, CookieJar, LoginInfo, PlayListDetailDynamic, SingerInfo,
+    SongInfo, SongList, TopList,
 };
 use once_cell::sync::OnceCell;
 use std::fs;
@@ -693,7 +693,7 @@ impl NeteaseCloudMusicGtk4Application {
                 window.play(song_info);
             }
             Action::ToSongListPage(songlist) => {
-                let page = window.init_songlist_page(&songlist);
+                let page = window.init_songlist_page(&songlist, false);
                 window.page_new(&page, &songlist.name);
                 let page = page.downgrade();
 
@@ -702,16 +702,15 @@ impl NeteaseCloudMusicGtk4Application {
                 ctx.spawn_local(async move {
                     let detal_dynamic_as = ncmapi.client.songlist_detail_dynamic(songlist.id);
                     match ncmapi.client.song_list_detail(songlist.id).await {
-                        Ok(sis) => {
-                            debug!("获取歌单详情: {:?}", sis);
-                            let dy = DetailDynamic::SongList(
-                                detal_dynamic_as.await.unwrap_or_else(|err| {
-                                    error!("{:?}", err);
-                                    SongListDetailDynamic::default()
-                                }),
-                            );
+                        Ok(detail) => {
+                            debug!("获取歌单详情: {:?}", detail);
+                            let dy = detal_dynamic_as.await.unwrap_or_else(|err| {
+                                error!("{:?}", err);
+                                PlayListDetailDynamic::default()
+                            });
+                            let detail = SongListDetail::PlayList(detail, dy);
                             if let Some(page) = page.upgrade() {
-                                window.update_songlist_page(page, sis, dy);
+                                window.update_songlist_page(page, &detail);
                             }
                         }
                         Err(err) => {
@@ -726,7 +725,7 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::ToAlbumPage(songlist) => {
-                let page = window.init_songlist_page(&songlist);
+                let page = window.init_songlist_page(&songlist, true);
                 window.page_new(&page, &songlist.name);
                 let page = page.downgrade();
 
@@ -735,16 +734,15 @@ impl NeteaseCloudMusicGtk4Application {
                 ctx.spawn_local(async move {
                     let detal_dynamic_as = ncmapi.client.album_detail_dynamic(songlist.id);
                     match ncmapi.client.album(songlist.id).await {
-                        Ok(sis) => {
-                            debug!("获取专辑详情: {:?}", sis);
-                            let dy = DetailDynamic::Album(detal_dynamic_as.await.unwrap_or_else(
-                                |err| {
-                                    error!("{:?}", err);
-                                    AlbumDetailDynamic::default()
-                                },
-                            ));
+                        Ok(detail) => {
+                            debug!("获取专辑详情: {:?}", detail);
+                            let dy = detal_dynamic_as.await.unwrap_or_else(|err| {
+                                error!("{:?}", err);
+                                AlbumDetailDynamic::default()
+                            });
+                            let detail = SongListDetail::Album(detail, dy);
                             if let Some(page) = page.upgrade() {
-                                window.update_songlist_page(page, sis, dy);
+                                window.update_songlist_page(page, &detail);
                             }
                         }
                         Err(err) => {
@@ -871,9 +869,9 @@ impl NeteaseCloudMusicGtk4Application {
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
                     match ncmapi.client.song_list_detail(id).await {
-                        Ok(sis) => {
-                            debug!("获取榜单 {} 详情：{:?}", id, sis);
-                            sender.send(Action::UpdateTopList(sis)).unwrap();
+                        Ok(detail) => {
+                            debug!("获取榜单 {} 详情：{:?}", id, detail);
+                            sender.send(Action::UpdateTopList(detail.songs)).unwrap();
                         }
                         Err(err) => {
                             error!("获取榜单 {} 失败! {:?}", id, err);
@@ -973,16 +971,20 @@ impl NeteaseCloudMusicGtk4Application {
                         Ok(sls) => {
                             debug!("获取心动歌单：{:?}", sls);
                             if !sls.is_empty() {
-                                if let Ok(sis) = ncmapi.client.song_list_detail(sls[0].id).await {
-                                    if let Some(page) = page.upgrade() {
-                                        window.update_search_song_page(page, sis);
+                                match ncmapi.client.song_list_detail(sls[0].id).await {
+                                    Ok(detail) => {
+                                        if let Some(page) = page.upgrade() {
+                                            window.update_search_song_page(page, detail.songs);
+                                        }
                                     }
-                                } else {
-                                    sender
-                                        .send(Action::AddToast(gettext(
-                                            "Failed to get song list details!",
-                                        )))
-                                        .unwrap();
+                                    Err(err) => {
+                                        error!("{:?}", err);
+                                        sender
+                                            .send(Action::AddToast(gettext(
+                                                "Failed to get song list details!",
+                                            )))
+                                            .unwrap();
+                                    }
                                 }
                             }
                         }

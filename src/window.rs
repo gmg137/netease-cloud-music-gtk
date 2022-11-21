@@ -13,7 +13,7 @@ use gtk::{
     glib, CompositeTemplate,
 };
 use log::*;
-use ncm_api::{BannersInfo, DetailDynamic, LoginInfo, SongInfo, SongList, TopList};
+use ncm_api::{BannersInfo, LoginInfo, SongInfo, SongList, TopList};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
@@ -626,11 +626,11 @@ impl NeteaseCloudMusicGtk4Window {
         page
     }
 
-    pub fn init_songlist_page(&self, songlist: &SongList) -> SonglistPage {
+    pub fn init_songlist_page(&self, songlist: &SongList, is_album: bool) -> SonglistPage {
         let sender = self.imp().sender.get().unwrap().clone();
         let page = SonglistPage::new();
         page.set_sender(sender);
-        page.init_songlist_info(songlist, self.is_logined());
+        page.init_songlist_info(songlist, is_album, self.is_logined());
         page
     }
 
@@ -638,8 +638,8 @@ impl NeteaseCloudMusicGtk4Window {
         page.update_songs(&sis, &self.get_song_likes(&sis));
     }
 
-    pub fn update_songlist_page(&self, page: SonglistPage, sis: Vec<SongInfo>, dy: DetailDynamic) {
-        page.init_songlist(&sis, dy, &self.get_song_likes(&sis));
+    pub fn update_songlist_page(&self, page: SonglistPage, detail: &SongListDetail) {
+        page.init_songlist(detail, &self.get_song_likes(detail.sis()));
     }
 
     pub fn switch_my_page_to_login(&self) {
