@@ -144,9 +144,7 @@ mod imp {
                     ParamSpecEnum::builder("search-type", SearchType::default())
                         .explicit_notify()
                         .build(),
-                    ParamSpecObject::builder::<Toast>("toast")
-                        .construct_only()
-                        .build(),
+                    ParamSpecObject::builder::<Toast>("toast").build(),
                     ParamSpecUInt64::builder("uid").build(),
                 ]
             });
@@ -270,11 +268,6 @@ impl NeteaseCloudMusicGtk4Window {
         let sender = sender_;
         action_back.connect_activate(move |_, _| {
             sender.send(Action::PageBack).unwrap();
-        });
-
-        let toast = self.property::<Toast>("toast");
-        toast.connect_dismissed(|toast| {
-            toast.set_title("");
         });
     }
 
@@ -403,15 +396,24 @@ impl NeteaseCloudMusicGtk4Window {
     }
 
     pub fn add_toast(&self, mes: String) {
-        let toast = self.property::<Toast>("toast");
-        if let Some(title) = toast.title() {
-            if title == mes {
-                return;
-            }
-            toast.dismiss();
-        }
-        toast.set_title(&mes);
+        let pre = self.property::<Toast>("toast");
+
+        let toast = Toast::builder()
+            .title(&mes)
+            .priority(adw::ToastPriority::High)
+            .build();
         self.imp().toast_overlay.add_toast(&toast);
+        self.set_property("toast", toast);
+        
+        // seems that dismiss will clear something used by animation
+        // cause adw_animation_skip emit 'done' segfault on closure(https://github.com/gmg137/netease-cloud-music-gtk/issues/202)
+        // delay to wait for animation skipped/done
+        let ctx = glib::MainContext::default();
+        ctx.spawn_local(async move {
+            glib::timeout_future(std::time::Duration::from_millis(500)).await;
+            // removed from overlay toast queue by signal
+            pre.dismiss();
+        });
     }
 
     pub fn add_carousel(&self, banner: BannersInfo) {
