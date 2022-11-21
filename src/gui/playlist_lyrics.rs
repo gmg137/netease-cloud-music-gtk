@@ -5,7 +5,7 @@
 //
 use adw::subclass::prelude::BinImpl;
 use gettextrs::gettext;
-use glib::{ParamSpec, Sender, Value};
+use glib::{closure_local, ParamSpec, Sender, Value};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::SongInfo;
 use once_cell::sync::Lazy;
@@ -14,7 +14,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::application::Action;
-use crate::gui::songlist_view::SongListView;
+use crate::gui::{songlist_row::SonglistRow, songlist_view::SongListView};
 
 glib::wrapper! {
     pub struct PlayListLyricsPage(ObjectSubclass<imp::PlayListLyricsPage>)
@@ -27,8 +27,19 @@ impl PlayListLyricsPage {
         glib::Object::new(&[])
     }
 
-    pub fn set_sender(&self, sender: Sender<Action>) {
+    pub fn set_sender(&self, sender_: Sender<Action>) {
+        let sender = sender_.clone();
         self.imp().sender.set(sender).unwrap();
+
+        let sender = sender_;
+        self.imp()
+            .songs_list
+            .get()
+            .connect_row_activated(closure_local!(move |_: SongListView, row: SonglistRow| {
+                if let Some(si) = row.get_song_info() {
+                    sender.send(Action::UpdateLyrics(si)).unwrap();
+                }
+            }));
     }
 
     pub fn init_page(&self, sis: &[SongInfo], si: SongInfo, likes: &[bool]) {
@@ -50,7 +61,7 @@ impl PlayListLyricsPage {
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(sis, likes, true);
+        songs_list.init_new_list(sis, likes);
 
         let i: i32 = {
             let mut i: i32 = 0;

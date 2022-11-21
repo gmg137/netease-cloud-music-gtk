@@ -8,7 +8,10 @@ use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, *};
 
 use crate::{application::Action, gui::songlist_row::SonglistRow};
-use glib::{ParamSpec, ParamSpecBoolean, ParamSpecInt, Sender, Value};
+use glib::{
+    clone, subclass::Signal, ParamSpec, ParamSpecBoolean, ParamSpecInt, RustClosure, Sender,
+    SignalHandlerId, Value,
+};
 use ncm_api::SongInfo;
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
@@ -40,7 +43,7 @@ impl SongListView {
         }
     }
 
-    pub fn init_new_list(&self, sis: &[SongInfo], likes: &[bool], update_lyrics: bool) {
+    pub fn init_new_list(&self, sis: &[SongInfo], likes: &[bool]) {
         let sender = self.imp().sender.get().unwrap().to_owned();
         let imp = self.imp();
 
@@ -56,13 +59,11 @@ impl SongListView {
             row.set_album_button_visible(!no_act_album);
 
             let si = si.clone();
-            row.connect_activate(move |row| {
+            row.connect_activate(clone!(@weak self as s => move |row| {
                 row.switch_image(true);
                 sender.send(Action::AddPlay(si.clone())).unwrap();
-                if update_lyrics {
-                    sender.send(Action::GetLyrics(si.clone())).unwrap();
-                }
-            });
+                s.emit_row_activated(row);
+            }));
             listbox.append(&row);
         });
     }
@@ -89,6 +90,14 @@ impl SongListView {
             }
             listbox.emit_by_name_with_values("row-activated", &[row.to_value()]);
         }
+    }
+
+    pub fn emit_row_activated(&self, row: &SonglistRow) {
+        self.emit_by_name::<()>("row-activated", &[&row]);
+    }
+
+    pub fn connect_row_activated(&self, f: RustClosure) -> SignalHandlerId {
+        self.connect_closure("row-activated", false, f)
     }
 }
 
@@ -171,6 +180,15 @@ mod imp {
                 .build();
             obj.bind_property("s-content-margin-bottom", &clamp, "margin-bottom")
                 .build();
+        }
+
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
+                vec![Signal::builder("row-activated")
+                    .param_types([SonglistRow::static_type()])
+                    .build()]
+            });
+            SIGNALS.as_ref()
         }
 
         fn properties() -> &'static [ParamSpec] {

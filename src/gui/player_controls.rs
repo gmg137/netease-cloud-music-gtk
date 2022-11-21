@@ -596,7 +596,7 @@ mod imp {
                 if let Some(song_info) = playlist.prev_song() {
                     sender.send(Action::Play(song_info.to_owned())).unwrap();
                     sender
-                        .send(Action::GetLyrics(song_info.to_owned()))
+                        .send(Action::UpdateLyrics(song_info.to_owned()))
                         .unwrap();
                     sender
                         .send(Action::UpdatePlayListStatus(playlist.get_position()))
@@ -635,7 +635,7 @@ mod imp {
                 if let Some(song_info) = playlist.next_song() {
                     sender.send(Action::Play(song_info.to_owned())).unwrap();
                     sender
-                        .send(Action::GetLyrics(song_info.to_owned()))
+                        .send(Action::UpdateLyrics(song_info.to_owned()))
                         .unwrap();
                     sender
                         .send(Action::UpdatePlayListStatus(playlist.get_position()))

@@ -95,9 +95,8 @@ pub enum Action {
 
     // playlist
     ToPlayListLyricsPage(Vec<SongInfo>, SongInfo),
-    UpdateLyrics(String),
+    UpdateLyrics(SongInfo),
     UpdatePlayListStatus(usize),
-    GetLyrics(SongInfo),
 
     // page routing
     ToTopPicksPage,
@@ -1108,30 +1107,21 @@ impl NeteaseCloudMusicGtk4Application {
                 let sender = imp.sender.clone();
                 if !window.page_cur_playlist_lyrics_page() {
                     window.init_playlist_lyrics_page(sis, si.to_owned());
-                    sender.send(Action::GetLyrics(si)).unwrap();
+                    sender.send(Action::UpdateLyrics(si)).unwrap();
                 } else {
                     sender.send(Action::PageBack).unwrap();
                 }
             }
-            Action::GetLyrics(si) => {
-                let sender = imp.sender.clone();
+            Action::UpdateLyrics(si) => {
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
-                    match ncmapi.get_lyrics(si.id).await {
-                        Ok(lrc) => {
-                            debug!("获取歌词：{:?}", lrc);
-                            sender.send(Action::UpdateLyrics(lrc)).unwrap();
-                        }
-                        Err(..) => {
-                            sender
-                                .send(Action::UpdateLyrics(gettext("No lyrics found!")))
-                                .unwrap();
-                        }
-                    }
+                    let lrc = ncmapi
+                        .get_lyrics(si.id)
+                        .await
+                        .unwrap_or(gettext("No lyrics found!"));
+                    debug!("获取歌词：{:?}", lrc);
+                    window.update_lyrics(lrc);
                 });
-            }
-            Action::UpdateLyrics(lrc) => {
-                window.update_lyrics(lrc);
             }
             Action::UpdatePlayListStatus(index) => {
                 window.updat_playlist_status(index);
