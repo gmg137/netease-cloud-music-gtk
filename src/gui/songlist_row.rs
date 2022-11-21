@@ -34,15 +34,17 @@ impl SonglistRow {
     }
 
     pub fn set_from_song_info(&self, si: &SongInfo) {
-        self.imp().song_id.replace(si.id);
-        self.imp().album_id.replace(si.album_id);
-        self.imp().cover_url.replace(si.pic_url.to_owned());
+        self.imp().song_info.replace(Some(si.clone()));
 
         self.set_tooltip_text(Some(&si.name));
         self.set_name(&si.name);
         self.set_singer(&si.singer);
         self.set_album(&si.album);
         self.set_duration(&si.duration);
+    }
+
+    pub fn get_song_info(&self) -> Option<SongInfo> {
+        self.imp().song_info.borrow().as_ref().cloned()
     }
 
     pub fn switch_image(&self, visible: bool) {
@@ -92,11 +94,12 @@ impl SonglistRow {
     fn like_button_clicked_cb(&self) {
         let imp = self.imp();
         let sender = imp.sender.get().unwrap();
+        let si = { imp.song_info.borrow().clone().unwrap() };
         let s_send = SendWeakRef::from(self.downgrade());
         let like = imp.like.get();
         sender
             .send(Action::LikeSong(
-                imp.song_id.get().to_owned(),
+                si.id,
                 !like,
                 Some(Arc::new(move |_| {
                     if let Some(s) = s_send.upgrade() {
@@ -111,10 +114,11 @@ impl SonglistRow {
     fn album_button_clicked_cb(&self) {
         let imp = self.imp();
         let sender = imp.sender.get().unwrap();
+        let si = { imp.song_info.borrow().clone().unwrap() };
         let songlist = SongList {
-            id: imp.album_id.get().to_owned(),
-            name: imp.album_label.label().to_string(),
-            cover_img_url: imp.cover_url.borrow().to_owned(),
+            id: si.id.clone(),
+            name: si.name,
+            cover_img_url: si.pic_url.clone(),
             author: String::new(),
         };
         sender.send(Action::ToAlbumPage(songlist)).unwrap();
@@ -144,9 +148,7 @@ mod imp {
         pub album_button: TemplateChild<Button>,
 
         pub sender: OnceCell<Sender<Action>>,
-        pub song_id: Cell<u64>,
-        pub album_id: Cell<u64>,
-        pub cover_url: RefCell<String>,
+        pub song_info: RefCell<Option<SongInfo>>,
         pub like: Cell<bool>,
     }
 

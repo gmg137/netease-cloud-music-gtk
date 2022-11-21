@@ -110,7 +110,7 @@ impl SonglistPage {
         imp.playlist.replace(Clone::clone(&sis).to_vec());
         let sender = imp.sender.get().unwrap();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(sis, likes, false);
+        songs_list.init_new_list(sis, likes);
     }
 }
 
