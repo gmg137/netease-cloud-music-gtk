@@ -6,11 +6,14 @@
 use gettextrs::gettext;
 use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Sender, Value};
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
-use ncm_api::{DetailDynamic, SongInfo, SongList};
+use ncm_api::{SongInfo, SongList};
 use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{
-    application::Action, gui::songlist_view::SongListView, model::DiscoverSubPage, path::CACHE,
+    application::Action,
+    gui::songlist_view::SongListView,
+    model::{DiscoverSubPage, SongListDetail},
+    path::CACHE,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -34,10 +37,14 @@ impl SonglistPage {
         self.imp().sender.set(sender).unwrap();
     }
 
-    pub fn init_songlist_info(&self, songlist: &SongList, is_logined: bool) {
+    pub fn init_songlist_info(&self, songlist: &SongList, is_album: bool, is_logined: bool) {
         let imp = self.imp();
         let sender = imp.sender.get().unwrap();
         imp.songlist.replace(Some(songlist.to_owned()));
+
+        if is_album {
+            imp.time_label.set_visible(true);
+        }
 
         // 判断是否显示收藏按钮
         let like_button = imp.like_button.get();
@@ -81,28 +88,44 @@ impl SonglistPage {
         imp.songs_list.clear_list();
     }
 
-    pub fn init_songlist(&self, sis: &[SongInfo], dy: DetailDynamic, likes: &[bool]) {
+    pub fn init_songlist(&self, detail: &SongListDetail, likes: &[bool]) {
         let imp = self.imp();
         let songs_list = imp.songs_list.get();
-        match dy {
-            DetailDynamic::Album(dy) => {
+
+        let sis = detail.sis();
+
+        match detail {
+            SongListDetail::Album(detail, dy) => {
                 self.set_property("like", dy.is_sub);
                 imp.songs_list.set_property("no-act-album", true);
                 imp.page_type.replace(Some(DiscoverSubPage::Album));
-                imp.num_label.get().set_label(&gettext!(
-                    "{} songs, {} favs",
-                    sis.len(),
-                    dy.sub_count
+                {
+                    let year = detail.publish_time as f64 / (1000.0 * 60.0 * 60.0 * 24.0 * 365.25)
+                        + 1970.0;
+                    let duration_min = sis
+                        .iter()
+                        .fold(0u64, |v, next| v + next.duration / (1000 * 60));
+
+                    imp.time_label.set_label(&format!(
+                        "{}, {}",
+                        year as u64,
+                        gettext!("{} min", duration_min),
+                    ));
+                }
+                imp.num_label.set_label(&format!(
+                    "{}, {}",
+                    gettext!("{} songs", sis.len()),
+                    gettext!("{} favs", dy.sub_count)
                 ));
             }
-            DetailDynamic::SongList(dy) => {
+            SongListDetail::PlayList(_detail, dy) => {
                 self.set_property("like", dy.subscribed);
                 imp.songs_list.set_property("no-act-album", false);
                 imp.page_type.replace(Some(DiscoverSubPage::SongList));
-                imp.num_label.get().set_label(&gettext!(
-                    "{} songs, {} favs",
-                    sis.len(),
-                    dy.booked_count
+                imp.num_label.set_label(&format!(
+                    "{}, {}",
+                    gettext!("{} songs", sis.len()),
+                    gettext!("{} favs", dy.booked_count)
                 ));
             }
         }
@@ -131,6 +154,8 @@ mod imp {
         pub cover_image: TemplateChild<Image>,
         #[template_child(id = "title_label")]
         pub title_label: TemplateChild<Label>,
+        #[template_child(id = "time_label")]
+        pub time_label: TemplateChild<Label>,
         #[template_child(id = "num_label")]
         pub num_label: TemplateChild<Label>,
         #[template_child(id = "play_button")]
