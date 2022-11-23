@@ -116,7 +116,7 @@ impl SonglistRow {
         let sender = imp.sender.get().unwrap();
         let si = { imp.song_info.borrow().clone().unwrap() };
         let songlist = SongList {
-            id: si.id.clone(),
+            id: si.album_id,
             name: si.name,
             cover_img_url: si.pic_url.clone(),
             author: String::new(),
