@@ -15,9 +15,11 @@ use ncm_api::{SongInfo, TopList};
 use once_cell::sync::OnceCell;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::Arc;
 
-use crate::{application::Action, gui::songlist_view::SongListView, path::CACHE};
+use crate::{
+    application::Action,
+    gui::{NcmImageSource, NcmPaintable, SongListView},
+};
 
 glib::wrapper! {
     pub struct TopListView(ObjectSubclass<imp::TopListView>)
@@ -42,7 +44,7 @@ impl TopListView {
 
     pub fn init_sidebar(&self, list: Vec<TopList>) {
         let sidebar = self.imp().sidebar.get();
-        let sender = self.imp().sender.get().unwrap();
+        let _sender = self.imp().sender.get().unwrap();
 
         let mut select = false;
         for t in &list {
@@ -51,29 +53,14 @@ impl TopListView {
                 .title(&t.name)
                 .subtitle(&t.update)
                 .build();
-            let mut path = CACHE.clone();
-            path.push(format!("{}-toplist.jpg", t.id));
-            let image = gtk::Image::from_icon_name("image-missing-symbolic");
 
-            // download cover
-            if !path.exists() {
-                let image = glib::SendWeakRef::from(image.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        t.cover.to_owned(),
-                        path.to_owned(),
-                        140,
-                        140,
-                        Some(Arc::new(move |_| {
-                            image.upgrade().unwrap().set_from_file(Some(&path));
-                        })),
-                    ))
-                    .unwrap();
-            } else {
-                image.set_from_file(Some(&path));
-            }
+            let paintable = NcmPaintable::new(&self.display());
+            paintable.set_source(NcmImageSource::TopList(t.id, t.cover.clone()));
+            let image = gtk::Image::builder()
+                .paintable(&paintable)
+                .pixel_size(40)
+                .build();
 
-            image.set_pixel_size(40);
             action.add_prefix(&image);
             sidebar.append(&action);
             if !select {
@@ -173,10 +160,11 @@ mod imp {
                     .unwrap()
                     .send(Action::GetToplistSongsList(info.id))
                     .unwrap();
-                let mut path = CACHE.clone();
 
-                path.push(format!("{}-toplist.jpg", info.id));
-                self.cover_image.set_from_file(Some(path));
+                self.cover_image.paintable().unwrap().set_property(
+                    "source",
+                    NcmImageSource::TopList(info.id, String::new()).to_gobj(),
+                );
 
                 let title = self.title_label.get();
                 title.set_label(&info.name);
@@ -187,6 +175,9 @@ mod imp {
     impl ObjectImpl for TopListView {
         fn constructed(&self) {
             self.parent_constructed();
+            let obj = self.obj();
+            self.cover_image
+                .set_paintable(Some(&NcmPaintable::new(&obj.display())));
         }
     }
     impl WidgetImpl for TopListView {}

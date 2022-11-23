@@ -55,7 +55,7 @@ impl SearchSongListPage {
         );
 
         SongListGridItem::view_setup_factory(grid.clone(), 140, show_author);
-        SongListGridItem::view_update_songlist(grid, &song_list, 140, sender);
+        SongListGridItem::view_update_songlist(grid, &song_list, sender);
 
         self.set_property("offset", offset + song_list_len as i32);
     }
