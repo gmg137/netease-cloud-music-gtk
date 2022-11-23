@@ -3,7 +3,11 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use crate::{application::Action, model::UserMenuChild};
+use crate::{
+    application::Action,
+    gui::{NcmImageSource, NcmPaintable},
+    model::UserMenuChild,
+};
 use adw::*;
 use gettextrs::gettext;
 use glib::{clone, Sender};
@@ -12,6 +16,7 @@ use gtk::{
     traits::{ButtonExt, WidgetExt},
     *,
 };
+use ncm_api::LoginInfo;
 use once_cell::sync::OnceCell;
 use std::cell::Cell;
 use std::path::PathBuf;
@@ -67,6 +72,9 @@ impl UserMenus {
 
         let sender = OnceCell::new();
         sender.set(send).unwrap();
+
+        avatar.set_custom_image(Some(&NcmPaintable::new(&avatar.display())));
+
         let s = Self {
             qrbox,
             qrimage,
@@ -153,13 +161,11 @@ impl UserMenus {
         self.refresh_button.set_visible(true);
     }
 
-    pub fn set_user_avatar(&self, path: PathBuf) {
-        if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(path) {
-            let image = Image::from_pixbuf(Some(&pixbuf));
-            if let Some(paintable) = image.paintable() {
-                self.avatar.set_custom_image(Some(&paintable));
-            }
-        }
+    pub fn set_user_avatar(&self, li: &LoginInfo) {
+        self.avatar.custom_image().unwrap().set_property(
+            "source",
+            NcmImageSource::UserAvatar(li.uid, li.avatar_url.clone()).to_gobj(),
+        )
     }
 
     pub fn set_user_name(&self, name: String) {

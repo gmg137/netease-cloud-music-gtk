@@ -19,6 +19,7 @@ mod songlist_view;
 mod theme_selector;
 mod toplist;
 mod user_menus;
+mod ncm_paintable;
 
 pub use discover::*;
 pub use my_page::*;
@@ -35,3 +36,4 @@ pub use songlist_view::*;
 pub use theme_selector::*;
 pub use toplist::*;
 pub use user_menus::*;
+pub use ncm_paintable::*;

@@ -6,6 +6,7 @@ mod model;
 mod ncmapi;
 mod path;
 mod window;
+mod background;
 
 use self::application::NeteaseCloudMusicGtk4Application;
 use self::window::NeteaseCloudMusicGtk4Window;

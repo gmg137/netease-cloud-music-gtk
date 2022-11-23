@@ -9,9 +9,11 @@ pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, *};
 use ncm_api::SongList;
 use once_cell::sync::Lazy;
 
-use crate::application::Action;
+use crate::{
+    application::Action,
+    gui::{NcmImageSource, NcmImageSourceObject, NcmPaintable},
+};
 use std::cell::{Cell, RefCell};
-use std::sync::Arc;
 
 glib::wrapper! {
     pub struct SongListGridItem(ObjectSubclass<imp::SongListGridItem>);
@@ -29,46 +31,29 @@ impl From<SongListGridItem> for SongList {
 }
 
 impl SongListGridItem {
-    pub fn new(sl: &SongList, sender: &Sender<Action>, icon: &gtk::IconPaintable) -> Self {
+    pub fn new(sl: &SongList) -> Self {
         let s: Self = glib::Object::builder()
             .property("id", &sl.id)
             .property("name", &sl.name)
             .property("pic-url", &sl.cover_img_url)
             .property("author", &sl.author)
-            .property("texture", &icon)
+            .property(
+                "source",
+                &NcmImageSource::SongList(sl.id, sl.cover_img_url.clone()).to_gobj(),
+            )
             .build();
-
-        let mut path = crate::path::CACHE.clone();
-        path.push(format!("{}-songlist.jpg", sl.id));
-
-        // download cover
-        if !path.exists() {
-            let s = glib::SendWeakRef::from(s.downgrade());
-            sender
-                .send(Action::DownloadImage(
-                    sl.cover_img_url.to_owned(),
-                    path.to_owned(),
-                    140,
-                    140,
-                    Some(Arc::new(move |_| {
-                        if let Some(s) = s.upgrade() {
-                            s.set_texture_from_file(&path);
-                        }
-                    })),
-                ))
-                .unwrap();
-        } else {
-            s.set_texture_from_file(&path);
-        }
         s
     }
 
     fn create(pic_size: i32) -> (gtk::Box, gtk::Image, gtk::Label, gtk::Label) {
         let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
+        let paintable = NcmPaintable::new(&boxs.display());
+
         let image = gtk::Image::builder()
             .pixel_size(pic_size)
             .icon_name("image-missing")
+            .paintable(&paintable)
             .build();
 
         let frame = gtk::Frame::builder()
@@ -113,31 +98,15 @@ impl SongListGridItem {
         song_list: &Vec<SongList>,
         pic_size: i32,
         show_author: bool,
-        sender: &Sender<Action>,
+        _sender: &Sender<Action>,
     ) {
         for sl in song_list {
             let (boxs, image, label, label_author) = Self::create(pic_size);
-            let mut path = crate::path::CACHE.clone();
-            path.push(format!("{}-songlist.jpg", sl.id));
-            // download cover
-            if !path.exists() {
-                let image = glib::SendWeakRef::from(image.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        sl.cover_img_url.to_owned(),
-                        path.to_owned(),
-                        140,
-                        140,
-                        Some(Arc::new(move |_| {
-                            if let Some(image) = image.upgrade() {
-                                image.set_from_file(Some(&path));
-                            }
-                        })),
-                    ))
-                    .unwrap();
-            } else {
-                image.set_from_file(Some(&path));
-            }
+
+            image.paintable().unwrap().set_property(
+                "source",
+                NcmImageSource::SongList(sl.id, sl.cover_img_url.clone()).to_gobj(),
+            );
 
             label.set_label(&sl.name);
             label_author.set_label(&sl.author);
@@ -157,34 +126,35 @@ impl SongListGridItem {
         let factory = SignalListItemFactory::new();
 
         factory.connect_setup(move |_, list_item| {
-            let (boxs, _, _, label_author) = Self::create(pic_size);
+            let (boxs, image, label, label_author) = Self::create(pic_size);
             label_author.set_visible(show_author);
             list_item.set_child(Some(&boxs));
-        });
-        factory.connect_bind(move |_, list_item| {
-            let songlist_object = list_item
-                .item()
-                .unwrap()
-                .downcast::<SongListGridItem>()
-                .unwrap();
 
+            let exp = list_item.property_expression("item");
+            exp.chain_property::<SongListGridItem>("name")
+                .bind(&label, "label", Widget::NONE);
+            exp.chain_property::<SongListGridItem>("author").bind(
+                &label_author,
+                "label",
+                Widget::NONE,
+            );
+            exp.chain_property::<SongListGridItem>("source").bind(
+                &image.paintable().unwrap(),
+                "source",
+                Widget::NONE,
+            );
+        });
+        // factory.connect_bind(move |_, list_item| {});
+        factory.connect_unbind(move |_, list_item| {
             let frame = list_item.child().unwrap().first_child().unwrap();
             let image = frame.first_child().unwrap();
             let label = frame.next_sibling().unwrap();
             let label_author = label.next_sibling().unwrap();
-
-            songlist_object
-                .bind_property("name", &label, "label")
-                .sync_create()
-                .build();
-            songlist_object
-                .bind_property("author", &label_author, "label")
-                .sync_create()
-                .build();
-            songlist_object
-                .bind_property("texture", &image, "paintable")
-                .sync_create()
-                .build();
+            label.set_property("label", "");
+            label_author.set_property("label", "");
+            image
+                .property::<gdk::Paintable>("paintable")
+                .set_property("source", None::<NcmImageSourceObject>);
         });
         grid.set_factory(Some(&factory));
     }
@@ -196,21 +166,11 @@ impl SongListGridItem {
     pub fn view_update_songlist(
         grid: gtk::GridView,
         song_list: &[SongList],
-        pic_size: i32,
-        sender: &Sender<Action>,
+        _sender: &Sender<Action>,
     ) {
-        let miss_icon = gtk::IconTheme::for_display(&grid.display()).lookup_icon(
-            "image-missing",
-            &[],
-            pic_size,
-            1,
-            TextDirection::Ltr,
-            IconLookupFlags::PRELOAD,
-        );
-
         let objs: Vec<SongListGridItem> = song_list
             .iter()
-            .map(|sl| SongListGridItem::new(sl, sender, &miss_icon))
+            .map(|sl| SongListGridItem::new(sl))
             .collect();
 
         if let Some(model) = grid.model() {
@@ -252,7 +212,7 @@ mod imp {
         name: RefCell<String>,
         pic_url: RefCell<String>,
         author: RefCell<String>,
-        pub texture: RefCell<Option<gdk::Paintable>>,
+        source: RefCell<Option<NcmImageSourceObject>>,
     }
     #[glib::object_subclass]
     impl ObjectSubclass for SongListGridItem {
@@ -272,7 +232,7 @@ mod imp {
                     ParamSpecString::builder("name").build(),
                     ParamSpecString::builder("pic-url").build(),
                     ParamSpecString::builder("author").build(),
-                    ParamSpecObject::builder::<gdk::Paintable>("texture").build(),
+                    ParamSpecObject::builder::<NcmImageSourceObject>("source").build(),
                 ]
             });
             PROPERTIES.as_ref()
@@ -296,9 +256,9 @@ mod imp {
                     let val = value.get().unwrap();
                     self.author.replace(val);
                 }
-                "texture" => {
+                "source" => {
                     let val = value.get().unwrap();
-                    self.texture.replace(val);
+                    self.source.replace(val);
                 }
                 _ => unimplemented!(),
             }
@@ -310,7 +270,7 @@ mod imp {
                 "name" => self.name.borrow().to_value(),
                 "pic-url" => self.pic_url.borrow().to_value(),
                 "author" => self.author.borrow().to_value(),
-                "texture" => self.texture.borrow().to_value(),
+                "source" => self.source.borrow().to_value(),
                 _ => unimplemented!(),
             }
         }
