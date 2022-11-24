@@ -5,6 +5,9 @@
         <property name="focusable">False</property>
         <property name="selectable">False</property>
         <property name="height-request">59</property>
+        <style>
+            <class name="song_row" />
+        </style>
         <child>
             <object class="GtkBox">
                 <property name="focusable">False</property>

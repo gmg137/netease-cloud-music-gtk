@@ -342,6 +342,16 @@ impl PlayerControls {
     }
 
     pub fn add_list(&self, list: Vec<SongInfo>) {
+        let settings = self.settings();
+        let not_ignore_grey = settings.get("not-ignore-grey");
+        let list: Vec<SongInfo> = if not_ignore_grey {
+            list
+        } else {
+            list.into_iter()
+                .filter(|si| si.copyright.playable())
+                .collect()
+        };
+
         if let Ok(mut playlist) = self.imp().playlist.lock() {
             playlist.add_list(list);
         }
@@ -720,6 +730,7 @@ mod imp {
                         pic_url: String::new(),
                         duration: 0,
                         song_url: String::new(),
+                        copyright: ncm_api::SongCopyright::Unknown,
                     })
                     .to_owned();
                 let sender = self.sender.get().unwrap().clone();

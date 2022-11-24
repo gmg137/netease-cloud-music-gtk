@@ -39,3 +39,11 @@ flowboxchild:active {
   margin-right: 24px;
   padding: 6px;
 }
+
+.song_row label {
+	opacity: 0.5;
+}
+
+.song_row.activatable label {
+	opacity: 1;
+}
