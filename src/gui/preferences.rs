@@ -46,6 +46,12 @@ impl NeteaseCloudMusicGtk4Preferences {
             .flags(SettingsBindFlags::DEFAULT)
             .build();
 
+        let not_ignore_grey_switch = self.imp().not_ignore_grey_switch.get();
+        self.settings()
+            .bind("not-ignore-grey", &not_ignore_grey_switch, "state")
+            .flags(SettingsBindFlags::DEFAULT)
+            .build();
+
         let entry = self.imp().proxy_entry.get();
         self.settings()
             .bind("proxy-address", &entry, "text")
@@ -66,7 +72,10 @@ impl NeteaseCloudMusicGtk4Preferences {
     }
 
     pub fn set_cache_size_label(&self, size: f64, unit: String) {
-        self.imp().cache_clear.get().set_property("subtitle", format!("{:.1} {}", size, unit));
+        self.imp()
+            .cache_clear
+            .get()
+            .set_property("subtitle", format!("{:.1} {}", size, unit));
     }
 }
 
@@ -90,6 +99,8 @@ mod imp {
         pub exit_switch: TemplateChild<Switch>,
         #[template_child]
         pub mute_start_switch: TemplateChild<Switch>,
+        #[template_child]
+        pub not_ignore_grey_switch: TemplateChild<Switch>,
         #[template_child]
         pub proxy_entry: TemplateChild<Entry>,
         #[template_child]

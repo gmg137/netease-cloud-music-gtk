@@ -185,6 +185,7 @@ mod imp {
                     pic_url: banner.pic_url.to_owned(),
                     duration: banner.duration.to_owned(),
                     song_url: "".to_owned(),
+                    copyright: ncm_api::SongCopyright::Unknown,
                 };
                 let sender = self.sender.get().unwrap();
                 sender.send(Action::AddPlay(song_info)).unwrap();

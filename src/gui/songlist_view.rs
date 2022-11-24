@@ -3,6 +3,7 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
+use gio::Settings;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, *};
@@ -43,9 +44,19 @@ impl SongListView {
         }
     }
 
+    fn setup_settings(&self) {
+        let settings = Settings::new(crate::APP_ID);
+
+        self.imp()
+            .settings
+            .set(settings)
+            .expect("Could not set `Settings`.");
+    }
+
     pub fn init_new_list(&self, sis: &[SongInfo], likes: &[bool]) {
-        let sender = self.imp().sender.get().unwrap().to_owned();
         let imp = self.imp();
+        let sender = imp.sender.get().unwrap().to_owned();
+        let settings = imp.settings.get().unwrap();
 
         let listbox = imp.listbox.get();
         let no_act_like = self.property::<bool>("no-act-like");
@@ -60,12 +71,32 @@ impl SongListView {
 
             let si = si.clone();
             row.connect_activate(clone!(@weak self as s => move |row| {
-                row.switch_image(true);
-                sender.send(Action::AddPlay(si.clone())).unwrap();
-                s.emit_row_activated(row);
+                if row.is_activatable() || row.not_ignore_grey() {
+                    row.switch_image(true);
+                    sender.send(Action::AddPlay(si.clone())).unwrap();
+                    s.emit_row_activated(row);
+                }
             }));
+
+            settings
+                .bind("not-ignore-grey", &row, "not-ignore-grey")
+                .get_only()
+                .build();
             listbox.append(&row);
         });
+    }
+
+    pub fn get_songinfo_list(&self) -> Vec<SongInfo> {
+        let listbox = self.imp().listbox.get();
+        let mut sis: Vec<SongInfo> = vec![];
+        if let Some(mut child) = listbox.first_child() {
+            while let Some(next) = child.next_sibling() {
+                let row = child.downcast::<SonglistRow>().unwrap();
+                sis.push(row.get_song_info().unwrap());
+                child = next;
+            }
+        }
+        sis
     }
 
     pub fn clear_list(&self) {
@@ -127,6 +158,7 @@ mod imp {
         pub listbox: TemplateChild<ListBox>,
 
         pub sender: OnceCell<Sender<Action>>,
+        pub settings: OnceCell<Settings>,
 
         no_act_like: Cell<bool>,
         no_act_album: Cell<bool>,
@@ -158,6 +190,8 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
+
+            obj.setup_settings();
 
             // clear old actived row
             let old_select_row = Rc::new(RefCell::new(-1));

@@ -40,6 +40,20 @@
                         </child>
                         <child>
                             <object class="AdwActionRow">
+                                <property name="title" translatable="yes">Not ignore grey song</property>
+                                <property name="subtitle" translatable="yes">Always try to play grey song</property>
+                                <property name="use_underline">True</property>
+                                <property name="activatable-widget">not_ignore_grey_switch</property>
+                                <child>
+                                    <object class="GtkSwitch" id="not_ignore_grey_switch">
+                                        <property name="valign">center</property>
+                                        <property name="state">False</property>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="AdwActionRow">
                                 <property name="title" translatable="yes">Network Proxy</property>
                                 <property name="subtitle" translatable="yes">http/https/socks4/socks4a/socks5/socks5h</property>
                                 <property name="use_underline">True</property>

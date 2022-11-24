@@ -41,6 +41,12 @@ impl SonglistRow {
         self.set_singer(&si.singer);
         self.set_album(&si.album);
         self.set_duration(si.duration);
+
+        self.set_activatable(si.copyright.playable());
+    }
+
+    pub fn not_ignore_grey(&self) -> bool {
+        self.property("not_ignore_grey")
     }
 
     pub fn get_song_info(&self) -> Option<SongInfo> {
@@ -150,7 +156,9 @@ mod imp {
 
         pub sender: OnceCell<Sender<Action>>,
         pub song_info: RefCell<Option<SongInfo>>,
+
         pub like: Cell<bool>,
+        pub not_ignore_grey: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -189,8 +197,12 @@ mod imp {
         }
 
         fn properties() -> &'static [ParamSpec] {
-            static PROPERTIES: Lazy<Vec<ParamSpec>> =
-                Lazy::new(|| vec![ParamSpecBoolean::builder("like").readwrite().build()]);
+            static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
+                vec![
+                    ParamSpecBoolean::builder("like").build(),
+                    ParamSpecBoolean::builder("not-ignore-grey").build(),
+                ]
+            });
             PROPERTIES.as_ref()
         }
 
@@ -200,14 +212,19 @@ mod imp {
                     let like = value.get().expect("The value needs to be of type `bool`.");
                     self.like.replace(like);
                 }
-                _ => unimplemented!(),
+                "not-ignore-grey" => {
+                    let val: bool = value.get().unwrap();
+                    self.not_ignore_grey.replace(val);
+                }
+                n => unimplemented!("{}", n),
             }
         }
 
         fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
                 "like" => self.like.get().to_value(),
-                _ => unimplemented!(),
+                "not-ignore-grey" => self.not_ignore_grey.get().to_value(),
+                n => unimplemented!("{}", n),
             }
         }
     }

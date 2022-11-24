@@ -48,5 +48,9 @@
             <default>1.0</default>
             <summary>Volume</summary>
         </key>
+        <key name="not-ignore-grey" type="b">
+            <default>false</default>
+            <summary>Always try to play grey song</summary>
+        </key>
     </schema>
 </schemalist>

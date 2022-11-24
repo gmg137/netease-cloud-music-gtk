@@ -6,7 +6,7 @@
 use gettextrs::gettext;
 use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Sender, Value};
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
-use ncm_api::{SongInfo, SongList};
+use ncm_api::{SongList};
 use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{
@@ -130,7 +130,6 @@ impl SonglistPage {
             }
         }
 
-        imp.playlist.replace(Clone::clone(&sis).to_vec());
         let sender = imp.sender.get().unwrap();
         songs_list.set_sender(sender.clone());
         songs_list.init_new_list(sis, likes);
@@ -166,7 +165,6 @@ mod imp {
         #[template_child(id = "songs_list")]
         pub songs_list: TemplateChild<SongListView>,
 
-        pub playlist: Rc<RefCell<Vec<SongInfo>>>,
         pub songlist: Rc<RefCell<Option<SongList>>>,
         pub page_type: Rc<RefCell<Option<DiscoverSubPage>>>,
 
@@ -196,9 +194,9 @@ mod imp {
         #[template_callback]
         fn play_button_clicked_cb(&self) {
             let sender = self.sender.get().unwrap();
-            if !self.playlist.borrow().is_empty() {
-                let playlist = &*self.playlist.borrow();
-                sender.send(Action::AddPlayList(playlist.clone())).unwrap();
+            let playlist = self.songs_list.get_songinfo_list();
+            if !playlist.is_empty() {
+                sender.send(Action::AddPlayList(playlist)).unwrap();
             } else {
                 sender
                     .send(Action::AddToast(gettext("This is an empty song list！")))
