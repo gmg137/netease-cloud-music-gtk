@@ -2,4 +2,3 @@
 /build
 **/*.rs.bk
 /src/config.rs
-/Cargo.lock
