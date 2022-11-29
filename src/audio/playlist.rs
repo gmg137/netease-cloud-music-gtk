@@ -146,7 +146,8 @@ impl PlayList {
                     self.position += 1;
                     Some(song)
                 } else {
-                    None
+                    self.position = 0;
+                    self.shuffle.get(0)
                 }
             }
             LoopsState::LOOP => {
