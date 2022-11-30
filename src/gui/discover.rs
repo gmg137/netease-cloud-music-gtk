@@ -9,10 +9,7 @@ use ncm_api::{BannersInfo, SongInfo, SongList};
 use once_cell::sync::OnceCell;
 use std::sync::{Arc, RwLock};
 
-use crate::{
-    application::Action,
-    gui::{NcmImageSource, NcmPaintable, SongListGridItem},
-};
+use crate::{application::Action, gui::SongListGridItem, path::CACHE};
 
 glib::wrapper! {
     pub struct Discover(ObjectSubclass<imp::Discover>)
@@ -87,9 +84,15 @@ impl Discover {
             carousel.scroll_to(&widget, false);
         }
 
-        let paintable = NcmPaintable::new(&self.display());
-        paintable.set_source(NcmImageSource::Banner(banner.id, banner.pic.clone()));
-        let image = gtk::Picture::for_paintable(&paintable);
+        let mut path = CACHE.clone();
+        path.push(format!("{}-banner.jpg", banner.id));
+
+        // 图片加载方式已验证，必须这样才能实现。
+        let image = gtk::gdk_pixbuf::Pixbuf::from_file(path).unwrap();
+        let image = image
+            .scale_simple(730, 283, gtk::gdk_pixbuf::InterpType::Bilinear)
+            .unwrap();
+        let image = gtk::Picture::for_pixbuf(&image);
         image.set_halign(gtk::Align::Center);
         image.set_valign(gtk::Align::Fill);
         image.set_width_request(730);

@@ -11,7 +11,6 @@ use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{
     application::Action,
-    gui::{NcmImageSource, NcmPaintable},
     model::{SearchResult, SearchType},
     path::CACHE,
 };
@@ -61,9 +60,31 @@ impl SearchSingerPage {
             let mut path = CACHE.clone();
             path.push(format!("{}-singer.jpg", si.id));
             let avatar = adw::Avatar::new(140, Some(&si.name), true);
-            let paintable = NcmPaintable::new(&self.display());
-            paintable.set_source(NcmImageSource::Singer(si.id, si.pic_url.clone()));
-            avatar.set_custom_image(Some(&paintable));
+
+            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
+                let image = Image::from_pixbuf(Some(&pixbuf));
+                if let Some(paintable) = image.paintable() {
+                    avatar.set_custom_image(Some(&paintable));
+                }
+            } else {
+                let avatar = glib::SendWeakRef::from(avatar.downgrade());
+                sender
+                    .send(Action::DownloadImage(
+                        si.pic_url.to_owned(),
+                        path.to_owned(),
+                        140,
+                        140,
+                        Some(Arc::new(move |_| {
+                            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
+                                let image = Image::from_pixbuf(Some(&pixbuf));
+                                if let Some(paintable) = image.paintable() {
+                                    avatar.upgrade().unwrap().set_custom_image(Some(&paintable));
+                                }
+                            }
+                        })),
+                    ))
+                    .unwrap();
+            }
 
             let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
             boxs.append(&avatar);

@@ -4,15 +4,16 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use gettextrs::gettext;
-use glib::{ParamSpec, ParamSpecBoolean, Sender, Value};
+use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Sender, Value};
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
-use ncm_api::SongList;
+use ncm_api::{SongList};
 use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{
     application::Action,
-    gui::{NcmImageSource, NcmPaintable, SongListView},
+    gui::songlist_view::SongListView,
     model::{DiscoverSubPage, SongListDetail},
+    path::CACHE,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -38,7 +39,7 @@ impl SonglistPage {
 
     pub fn init_songlist_info(&self, songlist: &SongList, is_album: bool, is_logined: bool) {
         let imp = self.imp();
-        let _sender = imp.sender.get().unwrap();
+        let sender = imp.sender.get().unwrap();
         imp.songlist.replace(Some(songlist.to_owned()));
 
         if is_album {
@@ -57,10 +58,25 @@ impl SonglistPage {
 
         // 设置专辑图
         let cover_image = imp.cover_image.get();
-        cover_image.paintable().unwrap().set_property(
-            "source",
-            NcmImageSource::SongList(songlist.id, songlist.cover_img_url.clone()).to_gobj(),
-        );
+        let mut path = CACHE.clone();
+        path.push(format!("{}-songlist.jpg", songlist.id));
+        if !path.exists() {
+            cover_image.set_from_icon_name(Some("image-missing-symbolic"));
+            let cover_image = SendWeakRef::from(imp.cover_image.get().downgrade());
+            sender
+                .send(Action::DownloadImage(
+                    songlist.cover_img_url.to_owned(),
+                    path.to_owned(),
+                    140,
+                    140,
+                    Some(Arc::new(move |_| {
+                        cover_image.upgrade().unwrap().set_from_file(Some(&path));
+                    })),
+                ))
+                .unwrap();
+        } else {
+            cover_image.set_from_file(Some(&path));
+        }
 
         // 设置标题
         let title = imp.title_label.get();
@@ -218,9 +234,6 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
-
-            self.cover_image
-                .set_paintable(Some(&NcmPaintable::new(&obj.display())));
 
             obj.bind_property("like", &self.like_button.get(), "icon_name")
                 .transform_to(|_, v: bool| {

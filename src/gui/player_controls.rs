@@ -6,7 +6,7 @@
 use gettextrs::gettext;
 use gio::Settings;
 use glib::{
-    ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum, ParamSpecUInt,
+    ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum, ParamSpecUInt, SendWeakRef,
     Sender, Value,
 };
 use gst::ClockTime;
@@ -16,16 +16,13 @@ use mpris_player::PlaybackStatus;
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::*;
 
-use crate::{
-    application::Action,
-    audio::*,
-    gui::{NcmImageSource, NcmPaintable},
-};
+use crate::{application::Action, audio::*, path::CACHE};
 use std::{
     cell::Cell,
     fs, path,
     sync::{Arc, Mutex},
     thread,
+    time::Duration,
 };
 
 glib::wrapper! {
@@ -140,12 +137,30 @@ impl PlayerControls {
 
     pub fn init_play_info(&self, song_info: SongInfo) {
         let imp = self.imp();
-
         let cover_image = imp.cover_image.get();
-        cover_image.paintable().unwrap().set_property(
-            "source",
-            NcmImageSource::SongList(song_info.album_id, song_info.pic_url.clone()).to_gobj(),
-        );
+        let mut path_cover = CACHE.clone();
+        path_cover.push(format!("{}-cover.jpg", song_info.album_id));
+        if path_cover.exists() {
+            cover_image.set_from_file(Some(&path_cover));
+        } else {
+            cover_image.set_from_icon_name(Some("image-missing-symbolic"));
+            let sender = imp.sender.get().unwrap().clone();
+            let cover_image = SendWeakRef::from(imp.cover_image.get().downgrade());
+            sender
+                .send(Action::DownloadImage(
+                    song_info.pic_url.to_owned(),
+                    path_cover.to_owned(),
+                    50,
+                    50,
+                    Some(Arc::new(move |_| {
+                        cover_image
+                            .upgrade()
+                            .unwrap()
+                            .set_from_file(Some(&path_cover));
+                    })),
+                ))
+                .unwrap();
+        }
 
         let title_label = imp.title_label.get();
         title_label.set_label(&song_info.name);
@@ -475,15 +490,35 @@ impl PlayerControls {
     fn cover_clicked_cb(&self) {
         let sender = self.imp().sender.get().unwrap().clone();
         if let Some(songinfo) = self.get_current_song() {
-            let songlist = SongList {
-                id: songinfo.album_id,
-                name: songinfo.album,
-                cover_img_url: songinfo.pic_url,
-                author: String::new(),
-            };
-            sender
-                .send(Action::ToAlbumPage(songlist.to_owned()))
-                .unwrap();
+            let mut path = CACHE.clone();
+            path.push(format!("{}-songlist.jpg", songinfo.album_id));
+            if sender
+                .send(Action::DownloadImage(
+                    songinfo.pic_url.to_owned(),
+                    path.to_owned(),
+                    140,
+                    140,
+                    None,
+                ))
+                .is_ok()
+            {
+                let songlist = SongList {
+                    id: songinfo.album_id,
+                    name: songinfo.album,
+                    cover_img_url: songinfo.pic_url,
+                    author: String::new(),
+                };
+                let path = path.to_owned();
+                glib::timeout_add_local(Duration::from_millis(100), move || {
+                    if path.exists() {
+                        sender
+                            .send(Action::ToAlbumPage(songlist.to_owned()))
+                            .unwrap();
+                        return Continue(false);
+                    }
+                    Continue(true)
+                });
+            }
         }
     }
 }
@@ -720,9 +755,6 @@ mod imp {
             obj.setup_mpris();
 
             obj.setup_notify_connect();
-
-            self.cover_image
-                .set_paintable(Some(&NcmPaintable::new(&obj.display())));
 
             obj.load_settings();
             obj.bind_shortcut();

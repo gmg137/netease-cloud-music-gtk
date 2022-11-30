@@ -5,7 +5,7 @@ use glib::{clone, timeout_future, timeout_future_seconds, MainContext, Receiver,
 use gtk::{gio, glib, prelude::*};
 use log::*;
 use ncm_api::{
-    AlbumDetailDynamic, CookieJar, LoginInfo, PlayListDetailDynamic, SingerInfo,
+    AlbumDetailDynamic, BannersInfo, CookieJar, LoginInfo, PlayListDetailDynamic, SingerInfo,
     SongInfo, SongList, TopList,
 };
 use once_cell::sync::OnceCell;
@@ -15,12 +15,7 @@ use std::time::Duration;
 use std::{cell::RefCell, sync::Arc};
 
 use crate::{
-    background::{Background, BgAction},
-    config::VERSION,
-    gui::{NcmImageSource, NcmPaintableLoader, NeteaseCloudMusicGtk4Preferences},
-    model::*,
-    ncmapi::*,
-    path::CACHE,
+    config::VERSION, gui::NeteaseCloudMusicGtk4Preferences, model::*, ncmapi::*, path::CACHE,
     NeteaseCloudMusicGtk4Window,
 };
 
@@ -47,11 +42,11 @@ pub enum Action {
 
     // (关键字，搜索类型，起始点，数量)
     Search(String, SearchType, u16, u16, ActionCallback<SearchResult>),
+    // (url,path,width,height)
+    DownloadImage(String, PathBuf, u16, u16, Option<ActionCallback>),
     LikeSongList(u64, bool, Option<ActionCallback>),
     LikeAlbum(u64, bool, Option<ActionCallback>),
     LikeSong(u64, bool, Option<ActionCallback>),
-    BgDownloadImage(NcmImageSource),
-    ImageDownloaded(NcmImageSource, gtk::gdk::Texture),
 
     // play
     AddPlay(SongInfo),
@@ -65,6 +60,7 @@ pub enum Action {
     CheckLogin(UserMenuChild, CookieJar),
     Logout,
     InitUserInfo(LoginInfo),
+    SetAvatar(PathBuf),
     SwitchUserMenuToPhone,
     SwitchUserMenuToQr,
     SwitchUserMenuToUser(LoginInfo, UserMenuChild),
@@ -80,6 +76,8 @@ pub enum Action {
 
     // discover
     InitCarousel,
+    AddCarousel(BannersInfo),
+    DownloadBanners(BannersInfo),
     InitTopPicks,
     SetupTopPicks(Vec<SongList>),
     InitNewAlbums,
@@ -133,8 +131,6 @@ mod imp {
         pub receiver: RefCell<Option<Receiver<Action>>>,
         pub unikey: Arc<RwLock<String>>,
         pub ncmapi: RefCell<Option<NcmClient>>,
-        pub background: Background,
-        pub paintable_loader: NcmPaintableLoader,
     }
 
     #[glib::object_subclass]
@@ -148,8 +144,6 @@ mod imp {
             let window = OnceCell::new();
             let unikey = Arc::new(RwLock::new(String::new()));
             let ncmapi = RefCell::new(None);
-            let background = Background::new(sender.clone());
-            let paintable_loader = NcmPaintableLoader::init(sender.clone());
 
             Self {
                 window,
@@ -157,8 +151,6 @@ mod imp {
                 receiver,
                 unikey,
                 ncmapi,
-                background,
-                paintable_loader,
             }
         }
     }
@@ -470,12 +462,31 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::SwitchUserMenuToUser(login_info, menu) => {
-                window.set_avatar(&login_info);
-                window.switch_user_menu_to_user(login_info, menu);
+                let window = imp.window.get().unwrap().upgrade().unwrap();
+                window.switch_user_menu_to_user(login_info.clone(), menu);
+                let sender = imp.sender.clone();
+                let avatar_url = login_info.avatar_url;
+                let mut path = CACHE.clone();
+                path.push("avatar.jpg");
+                let ctx = glib::MainContext::default();
+                ctx.spawn_local(async move {
+                    if ncmapi
+                        .client
+                        .download_img(avatar_url, path.clone(), 50, 50)
+                        .await
+                        .is_ok()
+                    {
+                        sender.send(Action::SetAvatar(path)).unwrap();
+                    }
+                });
             }
             Action::AddToast(mes) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.add_toast(mes);
+            }
+            Action::SetAvatar(path) => {
+                let window = imp.window.get().unwrap().upgrade().unwrap();
+                window.set_avatar(path);
             }
             Action::InitCarousel => {
                 let sender = imp.sender.clone();
@@ -485,7 +496,7 @@ impl NeteaseCloudMusicGtk4Application {
                         Ok(banners) => {
                             debug!("获取轮播信息: {:?}", banners);
                             for banner in banners {
-                                window.add_carousel(banner);
+                                sender.send(Action::DownloadBanners(banner)).unwrap();
                             }
 
                             // auto check login after banners
@@ -503,6 +514,26 @@ impl NeteaseCloudMusicGtk4Application {
                         }
                     }
                 });
+            }
+            Action::DownloadBanners(banner) => {
+                let sender = imp.sender.clone();
+                let mut path = CACHE.clone();
+                path.push(format!("{}-banner.jpg", banner.id));
+                let ctx = glib::MainContext::default();
+                ctx.spawn_local(async move {
+                    if ncmapi
+                        .client
+                        .download_img(banner.pic.to_owned(), path, 730, 283)
+                        .await
+                        .is_ok()
+                    {
+                        sender.send(Action::AddCarousel(banner)).unwrap();
+                    }
+                });
+            }
+            Action::AddCarousel(banner) => {
+                let window = imp.window.get().unwrap().upgrade().unwrap();
+                window.add_carousel(banner);
             }
             Action::InitTopPicks => {
                 let sender = imp.sender.clone();
@@ -539,15 +570,20 @@ impl NeteaseCloudMusicGtk4Application {
                     }
                 });
             }
-            Action::BgDownloadImage(source) => {
-                let bg_sender = self.imp().background.sender();
-                bg_sender
-                    .send(BgAction::DownloadImage(ncmapi, source))
-                    .unwrap();
-            }
-            Action::ImageDownloaded(source, tex) => {
-                let loader = &self.imp().paintable_loader;
-                loader.reg_new_texture(source, tex);
+            Action::DownloadImage(url, path, width, height, callback) => {
+                let ctx = glib::MainContext::default();
+                ctx.spawn_local(async move {
+                    if ncmapi
+                        .client
+                        .download_img(url, path, width, height)
+                        .await
+                        .is_ok()
+                    {
+                        if let Some(cb) = callback {
+                            cb(());
+                        }
+                    }
+                });
             }
             Action::SetupTopPicks(song_list) => {
                 let window = imp.window.get().unwrap().upgrade().unwrap();
