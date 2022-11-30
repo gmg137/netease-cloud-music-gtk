@@ -26,11 +26,14 @@
                 <child>
                     <object class="GtkBox">
                         <property name="orientation">vertical</property>
-                        <property name="margin-top">20</property>
+                        <property name="spacing">20</property>
                         <child>
                             <object class="AdwClamp">
+                                <property name="margin-top">20</property>
+                                <property name="margin-start">20</property>
+                                <property name="margin-end">20</property>
                                 <property name="maximum-size">1000</property>
-                                <property name="margin-bottom">20</property>
+                                <property name="tightening-threshold">730</property>
                                 <child>
                                     <object class="GtkBox">
                                         <property name="halign">fill</property>
