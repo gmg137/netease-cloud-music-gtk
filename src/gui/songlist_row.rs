@@ -124,8 +124,8 @@ impl SonglistRow {
         let si = { imp.song_info.borrow().clone().unwrap() };
         let songlist = SongList {
             id: si.album_id,
-            name: si.name,
-            cover_img_url: si.pic_url.clone(),
+            name: si.album,
+            cover_img_url: si.pic_url,
             author: String::new(),
         };
         sender.send(Action::ToAlbumPage(songlist)).unwrap();
