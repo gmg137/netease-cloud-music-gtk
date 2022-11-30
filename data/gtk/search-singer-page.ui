@@ -5,8 +5,6 @@
         <property name="valign">fill</property>
         <property name="halign">fill</property>
         <property name="orientation">vertical</property>
-        <property name="margin-top">20</property>
-        <property name="margin-bottom">20</property>
         <property name="spacing">20</property>
         <child>
             <object class="GtkScrolledWindow">

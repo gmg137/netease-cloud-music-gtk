@@ -5,8 +5,6 @@
         <property name="valign">fill</property>
         <property name="halign">fill</property>
         <property name="orientation">vertical</property>
-        <property name="margin-top">20</property>
-        <property name="margin-bottom">20</property>
         <property name="spacing">20</property>
         <child>
             <object class="AdwClamp" id="title_clamp">
@@ -33,6 +31,7 @@
                                         <property name="valign">end</property>
                                         <property name="max-width-chars">27</property>
                                         <property name="ellipsize">end</property>
+                                        <property name="margin-top">20</property>
                                         <style>
                                             <class name="title-1" />
                                         </style>
