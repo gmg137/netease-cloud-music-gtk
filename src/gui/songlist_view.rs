@@ -90,10 +90,15 @@ impl SongListView {
         let listbox = self.imp().listbox.get();
         let mut sis: Vec<SongInfo> = vec![];
         if let Some(mut child) = listbox.first_child() {
-            while let Some(next) = child.next_sibling() {
-                let row = child.downcast::<SonglistRow>().unwrap();
+            loop {
+                let row = child.clone().downcast::<SonglistRow>().unwrap();
                 sis.push(row.get_song_info().unwrap());
-                child = next;
+
+                if let Some(next) = child.next_sibling() {
+                    child = next;
+                } else {
+                    break;
+                }
             }
         }
         sis
@@ -139,14 +144,6 @@ mod imp {
 
     use super::*;
 
-    #[derive(Debug, Default)]
-    struct Margin {
-        top: i32,
-        bottom: i32,
-        //left: i32,
-        //right: i32,
-    }
-
     #[derive(Debug, Default, CompositeTemplate)]
     #[template(resource = "/com/gitee/gmg137/NeteaseCloudMusicGtk4/gtk/songlist-view.ui")]
     pub struct SongListView {
@@ -162,8 +159,6 @@ mod imp {
 
         no_act_like: Cell<bool>,
         no_act_album: Cell<bool>,
-
-        content_margin: RefCell<Margin>,
     }
 
     #[glib::object_subclass]
@@ -208,12 +203,6 @@ mod imp {
                     }
                 }
             });
-
-            let clamp = self.adw_clamp.get();
-            obj.bind_property("s-content-margin-top", &clamp, "margin-top")
-                .build();
-            obj.bind_property("s-content-margin-bottom", &clamp, "margin-bottom")
-                .build();
         }
 
         fn signals() -> &'static [Signal] {
@@ -230,8 +219,10 @@ mod imp {
                 vec![
                     ParamSpecBoolean::builder("no-act-like").build(),
                     ParamSpecBoolean::builder("no-act-album").build(),
-                    ParamSpecInt::builder("s-content-margin-top").build(),
-                    ParamSpecInt::builder("s-content-margin-bottom").build(),
+                    ParamSpecInt::builder("clamp-margin-top").build(),
+                    ParamSpecInt::builder("clamp-margin-bottom").build(),
+                    ParamSpecInt::builder("clamp-maximum-size").build(),
+                    ParamSpecInt::builder("clamp-tightening-threshold").build(),
                 ]
             });
             PROPERTIES.as_ref()
@@ -247,15 +238,23 @@ mod imp {
                     let val = value.get().unwrap();
                     self.no_act_album.replace(val);
                 }
-                "s-content-margin-top" => {
+                "clamp-margin-top" => {
                     let val = value.get().unwrap();
-                    self.content_margin.borrow_mut().top = val;
+                    self.adw_clamp.set_margin_top(val);
                 }
-                "s-content-margin-bottom" => {
+                "clamp-margin-bottom" => {
                     let val = value.get().unwrap();
-                    self.content_margin.borrow_mut().bottom = val;
+                    self.adw_clamp.set_margin_bottom(val);
                 }
-                _ => unimplemented!(),
+                "clamp-maximum-size" => {
+                    let val = value.get().unwrap();
+                    self.adw_clamp.set_maximum_size(val);
+                }
+                "clamp-tightening-threshold" => {
+                    let val = value.get().unwrap();
+                    self.adw_clamp.set_tightening_threshold(val);
+                }
+                n => unimplemented!("{}", n),
             }
         }
 
@@ -263,9 +262,11 @@ mod imp {
             match pspec.name() {
                 "no-act-like" => self.no_act_like.get().to_value(),
                 "no-act-album" => self.no_act_album.get().to_value(),
-                "s-content-margin-top" => self.content_margin.borrow().top.to_value(),
-                "s-content-margin-bottom" => self.content_margin.borrow().bottom.to_value(),
-                _ => unimplemented!(),
+                "clamp-margin-top" => self.adw_clamp.margin_top().to_value(),
+                "clamp-margin-bottom" => self.adw_clamp.margin_bottom().to_value(),
+                "clamp-maximum-size" => self.adw_clamp.maximum_size().to_value(),
+                "clamp-tightening-threshold" => self.adw_clamp.tightening_threshold().to_value(),
+                n => unimplemented!("{}", n),
             }
         }
     }

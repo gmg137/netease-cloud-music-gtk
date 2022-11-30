@@ -5,6 +5,7 @@
         <property name="valign">fill</property>
         <property name="halign">center</property>
         <property name="orientation">vertical</property>
+        <property name="spacing">30</property>
         <child>
             <object class="AdwClamp">
                 <property name="halign">fill</property>
@@ -188,7 +189,6 @@
             <object class="GtkBox">
                 <property name="halign">fill</property>
                 <property name="valign">fill</property>
-                <property name="margin-top">30</property>
                 <property name="orientation">vertical</property>
                 <property name="spacing">12</property>
                 <property name="hexpand">true</property>
@@ -218,33 +218,38 @@
                     </object>
                 </child>
                 <child>
-                    <object class="GtkSeparator">
-                        <property name="valign">start</property>
-                        <property name="sensitive">False</property>
-                        <property name="can_focus">False</property>
-                    </object>
-                </child>
-                <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkBox">
+                        <property name="orientation">vertical</property>
                         <child>
-                            <object class="GtkViewport">
+                            <object class="GtkSeparator">
+                                <property name="valign">start</property>
+                                <property name="sensitive">False</property>
+                                <property name="can_focus">False</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkScrolledWindow">
                                 <child>
-                                    <object class="AdwClamp">
-                                        <property name="vexpand">true</property>
-                                        <property name="hexpand">true</property>
-                                        <property name="maximum-size">1000</property>
-                                        <property name="margin-top">20</property>
-                                        <property name="margin-bottom">20</property>
-                                        <property name="tightening-threshold">730</property>
+                                    <object class="GtkViewport">
                                         <child>
-                                            <object class="GtkFlowBox" id="rec_grid">
-                                                <property name="hexpand">True</property>
-                                                <property name="valign">start</property>
-                                                <property name="max-children-per-line">4</property>
-                                                <property name="min-children-per-line">3</property>
-                                                <property name="homogeneous">False</property>
-                                                <property name="selection-mode">none</property>
-                                                <property name="activate-on-single-click">True</property>
+                                            <object class="AdwClamp">
+                                                <property name="vexpand">true</property>
+                                                <property name="hexpand">true</property>
+                                                <property name="maximum-size">1000</property>
+                                                <property name="margin-top">20</property>
+                                                <property name="margin-bottom">20</property>
+                                                <property name="tightening-threshold">730</property>
+                                                <child>
+                                                    <object class="GtkFlowBox" id="rec_grid">
+                                                        <property name="hexpand">True</property>
+                                                        <property name="valign">start</property>
+                                                        <property name="max-children-per-line">4</property>
+                                                        <property name="min-children-per-line">3</property>
+                                                        <property name="homogeneous">False</property>
+                                                        <property name="selection-mode">none</property>
+                                                        <property name="activate-on-single-click">True</property>
+                                                    </object>
+                                                </child>
                                             </object>
                                         </child>
                                     </object>
