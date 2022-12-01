@@ -40,10 +40,23 @@ flowboxchild:active {
   padding: 6px;
 }
 
-.song_row label {
+.singer_page gridview {
+  padding: 20px;
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
+.singer_page gridview > child {
+  margin: 12px;
+  margin-left: 24px;
+  margin-right: 24px;
+  padding: 6px;
+}
+
+.song_row .row_label {
 	opacity: 0.5;
 }
 
-.song_row.activatable label {
+.song_row.activatable .row_label {
 	opacity: 1;
 }

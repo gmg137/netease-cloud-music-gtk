@@ -13,7 +13,6 @@ use crate::{
     application::Action,
     gui::{NcmImageSource, NcmPaintable},
     model::{SearchResult, SearchType},
-    path::CACHE,
 };
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;
@@ -57,13 +56,17 @@ impl SearchSingerPage {
         let singer_grid = self.imp().singer_grid.get();
         let mut row = (offset / 5) + 1;
         let mut col = 1;
+
         for si in singer {
-            let mut path = CACHE.clone();
-            path.push(format!("{}-singer.jpg", si.id));
             let avatar = adw::Avatar::new(140, Some(&si.name), true);
             let paintable = NcmPaintable::new(&self.display());
+            paintable.connect_texture_loaded(
+                glib::closure_local!(@watch avatar  => move |s: NcmPaintable, _:gdk::Texture| {
+                    avatar.set_custom_image(Some(&s));
+                }),
+            );
             paintable.set_source(NcmImageSource::Singer(si.id, si.pic_url.clone()));
-            avatar.set_custom_image(Some(&paintable));
+            self.imp().paintables.borrow_mut().push(paintable);
 
             let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
             boxs.append(&avatar);
@@ -86,7 +89,7 @@ impl SearchSingerPage {
             avatar.add_controller(&gesture_click);
             let sender = sender.clone();
             gesture_click.connect_pressed(move |_, _, _, _| {
-                sender.send(Action::ToSingerSongsPage(si.clone())).unwrap();
+                sender.send(Action::ToSingerPage(si.clone())).unwrap();
             });
         }
         self.set_property("offset", offset + singer_len as i32);
@@ -112,6 +115,8 @@ mod imp {
         update: Cell<bool>,
         offset: Cell<i32>,
         keyword: RefCell<String>,
+
+        pub paintables: RefCell<Vec<NcmPaintable>>,
 
         pub sender: OnceCell<Sender<Action>>,
     }

@@ -177,6 +177,7 @@ mod imp {
                     id: banner.id.to_owned(),
                     name: banner.name.to_owned(),
                     singer: banner.singer.to_owned(),
+                    singer_id: 0,
                     album: banner.album.to_owned(),
                     album_id: banner.album_id.to_owned(),
                     pic_url: banner.pic_url.to_owned(),

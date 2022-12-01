@@ -8,17 +8,17 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, *};
 
-use crate::{application::Action, gui::songlist_row::SonglistRow};
+use crate::{
+    application::Action,
+    gui::{SongRowFlags, SonglistRow},
+};
 use glib::{
-    clone, subclass::Signal, ParamSpec, ParamSpecBoolean, ParamSpecInt, RustClosure, Sender,
-    SignalHandlerId, Value,
+    clone, subclass::Signal, ParamSpec, ParamSpecBoolean, ParamSpecFlags, ParamSpecInt,
+    RustClosure, Sender, SignalHandlerId, Value,
 };
 use ncm_api::SongInfo;
 use once_cell::sync::{Lazy, OnceCell};
-use std::{
-    cell::{Cell, RefCell},
-    rc::Rc,
-};
+use std::{cell::RefCell, rc::Rc};
 
 glib::wrapper! {
     pub struct SongListView(ObjectSubclass<imp::SongListView>)
@@ -53,21 +53,29 @@ impl SongListView {
             .expect("Could not set `Settings`.");
     }
 
+    pub fn remove_flags(&self, flags: SongRowFlags) {
+        let cur_flags: SongRowFlags = self.property("flags");
+        self.set_property("flags", cur_flags.difference(flags));
+    }
+    pub fn add_flags(&self, flags: SongRowFlags) {
+        let cur_flags: SongRowFlags = self.property("flags");
+        self.set_property("flags", cur_flags | flags);
+    }
+
     pub fn init_new_list(&self, sis: &[SongInfo], likes: &[bool]) {
         let imp = self.imp();
         let sender = imp.sender.get().unwrap().to_owned();
         let settings = imp.settings.get().unwrap();
 
         let listbox = imp.listbox.get();
-        let no_act_like = self.property::<bool>("no-act-like");
-        let no_act_album = self.property::<bool>("no-act-album");
         sis.iter().zip(likes.iter()).for_each(|(si, like)| {
             let sender = sender.clone();
 
             let row = SonglistRow::new(sender.clone(), si);
             row.set_property("like", like);
-            row.set_like_button_visible(!no_act_like);
-            row.set_album_button_visible(!no_act_album);
+            self.bind_property("flags", &row, "flags")
+                .sync_create()
+                .build();
 
             let si = si.clone();
             row.connect_activate(clone!(@weak self as s => move |row| {
@@ -157,8 +165,7 @@ mod imp {
         pub sender: OnceCell<Sender<Action>>,
         pub settings: OnceCell<Settings>,
 
-        no_act_like: Cell<bool>,
-        no_act_album: Cell<bool>,
+        flags: RefCell<SongRowFlags>,
     }
 
     #[glib::object_subclass]
@@ -185,6 +192,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
+            self.flags.replace(SongRowFlags::all());
 
             obj.setup_settings();
 
@@ -217,6 +225,9 @@ mod imp {
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![
+                    ParamSpecFlags::builder("flags")
+                        .default_value(SongRowFlags::all())
+                        .build(),
                     ParamSpecBoolean::builder("no-act-like").build(),
                     ParamSpecBoolean::builder("no-act-album").build(),
                     ParamSpecInt::builder("clamp-margin-top").build(),
@@ -230,13 +241,9 @@ mod imp {
 
         fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
             match pspec.name() {
-                "no-act-like" => {
-                    let val = value.get().unwrap();
-                    self.no_act_like.replace(val);
-                }
-                "no-act-album" => {
-                    let val = value.get().unwrap();
-                    self.no_act_album.replace(val);
+                "flags" => {
+                    let flags: SongRowFlags = value.get().unwrap();
+                    self.flags.replace(flags);
                 }
                 "clamp-margin-top" => {
                     let val = value.get().unwrap();
@@ -260,8 +267,7 @@ mod imp {
 
         fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
-                "no-act-like" => self.no_act_like.get().to_value(),
-                "no-act-album" => self.no_act_album.get().to_value(),
+                "flags" => self.flags.borrow().to_value(),
                 "clamp-margin-top" => self.adw_clamp.margin_top().to_value(),
                 "clamp-margin-bottom" => self.adw_clamp.margin_bottom().to_value(),
                 "clamp-maximum-size" => self.adw_clamp.maximum_size().to_value(),

@@ -13,7 +13,7 @@ use ncm_api::SongInfo;
 use once_cell::sync::{Lazy, OnceCell};
 
 use crate::application::Action;
-use crate::gui::songlist_view::SongListView;
+use crate::gui::{SongListView, SongRowFlags};
 use crate::model::{SearchResult, SearchType};
 use gettextrs::gettext;
 use std::{
@@ -55,12 +55,10 @@ impl SearchSongPage {
         }
         match search_type {
             SearchType::CloudDisk => {
-                imp.songs_list.set_property("no-act-like", true);
-                imp.songs_list.set_property("no-act-album", true);
+                imp.songs_list.remove_flags(SongRowFlags::ACT_LIKE | SongRowFlags::ACT_ALBUM);
             }
             _ => {
-                imp.songs_list.set_property("no-act-like", false);
-                imp.songs_list.set_property("no-act-album", false);
+                imp.songs_list.add_flags(SongRowFlags::ACT_LIKE | SongRowFlags::ACT_ALBUM);
             }
         }
         self.set_property("offset", 0);

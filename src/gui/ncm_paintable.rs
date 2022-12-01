@@ -164,6 +164,13 @@ impl NcmPaintable {
     pub fn set_disconnect_lookup(&self, closure: glib::RustClosure) {
         self.imp().disconnect_lookup.replace(Some(closure));
     }
+
+    pub fn emit_texture_loaded(&self, tex: &gdk::Texture) {
+        self.emit_by_name::<()>("texture-loaded", &[&tex]);
+    }
+    pub fn connect_texture_loaded(&self, closure: glib::RustClosure) -> SignalHandlerId {
+        self.connect_closure("texture-loaded", false, closure)
+    }
 }
 
 impl NcmImageSourceObject {
@@ -304,7 +311,10 @@ mod imp {
         fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
             match pspec.name() {
                 "texture" => {
-                    let val = value.get().unwrap();
+                    let val: Option<gdk::Texture> = value.get().unwrap();
+                    if let Some(val) = &val {
+                        self.obj().emit_texture_loaded(val);
+                    }
                     self.texture.replace(val);
                     self.obj().invalidate_contents();
                 }
@@ -337,6 +347,14 @@ mod imp {
                 "source" => self.source.borrow().to_value(),
                 n => unimplemented!("{}", n),
             }
+        }
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
+                vec![Signal::builder("texture-loaded")
+                    .param_types([gdk::Texture::static_type()])
+                    .build()]
+            });
+            SIGNALS.as_ref()
         }
     }
 
@@ -381,6 +399,4 @@ mod imp {
             }
         }
     }
-
-    impl LayoutManagerImpl for NcmPaintable {}
 }

@@ -690,6 +690,7 @@ mod imp {
                         id: 0,
                         name: String::new(),
                         singer: String::new(),
+                        singer_id: 0,
                         album: String::new(),
                         album_id: 0,
                         pic_url: String::new(),

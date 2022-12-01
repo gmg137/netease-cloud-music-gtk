@@ -13,7 +13,7 @@ use gtk::{
     glib, CompositeTemplate,
 };
 use log::*;
-use ncm_api::{BannersInfo, LoginInfo, SongInfo, SongList, TopList};
+use ncm_api::{BannersInfo, LoginInfo, SingerInfo, SongInfo, SongList, TopList};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
@@ -404,7 +404,7 @@ impl NeteaseCloudMusicGtk4Window {
             .build();
         self.imp().toast_overlay.add_toast(&toast);
         self.set_property("toast", toast);
-        
+
         // seems that dismiss will clear something used by animation
         // cause adw_animation_skip emit 'done' segfault on closure(https://github.com/gmg137/netease-cloud-music-gtk/issues/202)
         // delay to wait for animation skipped/done
@@ -631,6 +631,14 @@ impl NeteaseCloudMusicGtk4Window {
         let page = SonglistPage::new();
         page.set_sender(sender);
         page.init_songlist_info(songlist, is_album, self.is_logined());
+        page
+    }
+
+    pub fn init_singer_page(&self, singer: &SingerInfo) -> SingerPage {
+        let sender = self.imp().sender.get().unwrap().clone();
+        let page = SingerPage::new();
+        page.init(sender);
+        page.update_singer_detail(&singer.clone().into());
         page
     }
 

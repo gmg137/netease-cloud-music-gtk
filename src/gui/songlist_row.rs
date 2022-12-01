@@ -8,13 +8,27 @@ use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, *};
 
 use crate::application::Action;
-use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Sender, Value};
-use ncm_api::{SongInfo, SongList};
+use glib::{clone, ParamSpec, ParamSpecBoolean, ParamSpecFlags, SendWeakRef, Sender, Value};
+use ncm_api::{SingerInfo, SongInfo, SongList};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
+    collections::HashMap,
     sync::Arc,
 };
+
+#[glib::flags(name = "SongRowFlags")]
+pub enum SongRowFlags {
+    ACT_LIKE = 0b00000001,
+    ACT_ALBUM = 0b00000010,
+    ACT_SINGER = 0b00000100,
+}
+
+impl Default for SongRowFlags {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
 
 glib::wrapper! {
     pub struct SonglistRow(ObjectSubclass<imp::SonglistRow>)
@@ -63,11 +77,6 @@ impl SonglistRow {
         imp.like_button.set_visible(visible);
     }
 
-    pub fn set_album_button_visible(&self, visible: bool) {
-        let imp = self.imp();
-        imp.album_button.set_visible(visible);
-    }
-
     fn set_name(&self, label: &str) {
         let imp = self.imp();
         imp.title_label.set_label(label);
@@ -87,6 +96,53 @@ impl SonglistRow {
         let imp = self.imp();
         let label = format!("{:0>2}:{:0>2}", duration / 1000 / 60, duration / 1000 % 60);
         imp.duration_label.set_label(&label);
+    }
+
+    fn action_view_album(&self) {
+        let imp = self.imp();
+        let sender = imp.sender.get().unwrap();
+        let si = { imp.song_info.borrow().clone().unwrap() };
+        let songlist = SongList {
+            id: si.album_id,
+            name: si.album,
+            cover_img_url: si.pic_url,
+            author: String::new(),
+        };
+        sender.send(Action::ToAlbumPage(songlist)).unwrap();
+    }
+
+    fn action_view_singer(&self) {
+        let imp = self.imp();
+        let sender = imp.sender.get().unwrap();
+        let si = { imp.song_info.borrow().clone().unwrap() };
+        let singer = SingerInfo {
+            id: si.singer_id,
+            name: si.singer,
+            pic_url: String::new(),
+        };
+        sender.send(Action::ToSingerPage(singer)).unwrap();
+    }
+
+    fn setup_action_group(&self) {
+        let imp = self.imp();
+        let mut action = gio::SimpleAction::new("view-album", None);
+        action.connect_activate(clone!(@weak self as s => move |_,_| {
+            s.action_view_album();
+        }));
+        imp.actions
+            .borrow_mut()
+            .insert(SongRowFlags::ACT_ALBUM, action.clone());
+
+        action = gio::SimpleAction::new("view-singer", None);
+        imp.action_group.add_action(&action);
+        action.connect_activate(clone!(@weak self as s => move |_,_| {
+            s.action_view_singer();
+        }));
+        imp.actions
+            .borrow_mut()
+            .insert(SongRowFlags::ACT_SINGER, action.clone());
+
+        self.insert_action_group("songrow", Some(&imp.action_group));
     }
 }
 
@@ -116,20 +172,13 @@ impl SonglistRow {
             ))
             .unwrap();
     }
+}
 
-    #[template_callback]
-    fn album_button_clicked_cb(&self) {
-        let imp = self.imp();
-        let sender = imp.sender.get().unwrap();
-        let si = { imp.song_info.borrow().clone().unwrap() };
-        let songlist = SongList {
-            id: si.album_id,
-            name: si.album,
-            cover_img_url: si.pic_url,
-            author: String::new(),
-        };
-        sender.send(Action::ToAlbumPage(songlist)).unwrap();
-    }
+fn build_menu() -> gio::Menu {
+    let menu = gio::Menu::new();
+    menu.append(Some("View album"), Some("songrow.view-album"));
+    menu.append(Some("View singer"), Some("songrow.view-singer"));
+    menu
 }
 
 mod imp {
@@ -152,13 +201,18 @@ mod imp {
         #[template_child]
         pub like_button: TemplateChild<Button>,
         #[template_child]
-        pub album_button: TemplateChild<Button>,
+        pub menu_button: TemplateChild<MenuButton>,
 
         pub sender: OnceCell<Sender<Action>>,
         pub song_info: RefCell<Option<SongInfo>>,
 
         pub like: Cell<bool>,
         pub not_ignore_grey: Cell<bool>,
+
+        pub action_group: gio::SimpleActionGroup,
+        pub actions: RefCell<HashMap<SongRowFlags, gio::SimpleAction>>,
+
+        flags: RefCell<SongRowFlags>,
     }
 
     #[glib::object_subclass]
@@ -182,6 +236,17 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj();
 
+            obj.setup_action_group();
+
+            self.menu_button.set_create_popup_func(move |s| {
+                let pop = gtk::PopoverMenu::builder()
+                    .menu_model(&build_menu())
+                    .build();
+                s.set_popover(Some(&pop));
+            });
+
+            obj.set_property("flags", SongRowFlags::all());
+
             obj.bind_property("like", &self.like_button.get(), "icon_name")
                 .transform_to(|_, v: bool| {
                     Some(
@@ -199,6 +264,9 @@ mod imp {
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![
+                    ParamSpecFlags::builder("flags")
+                        .default_value(SongRowFlags::all())
+                        .build(),
                     ParamSpecBoolean::builder("like").build(),
                     ParamSpecBoolean::builder("not-ignore-grey").build(),
                 ]
@@ -208,6 +276,22 @@ mod imp {
 
         fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
             match pspec.name() {
+                "flags" => {
+                    let flags: SongRowFlags = value.get().unwrap();
+                    let action_group = &self.action_group;
+                    self.actions.borrow().iter().for_each(|(k, v)| {
+                        if flags.contains(*k) {
+                            action_group.add_action(v);
+                        } else {
+                            if action_group.has_action(&v.name()) {
+                                action_group.remove_action(&v.name());
+                            }
+                        }
+                    });
+                    self.obj()
+                        .set_like_button_visible(flags.contains(SongRowFlags::ACT_LIKE));
+                    self.flags.replace(flags);
+                }
                 "like" => {
                     let like = value.get().expect("The value needs to be of type `bool`.");
                     self.like.replace(like);
@@ -222,6 +306,7 @@ mod imp {
 
         fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
+                "flags" => self.flags.borrow().to_value(),
                 "like" => self.like.get().to_value(),
                 "not-ignore-grey" => self.not_ignore_grey.get().to_value(),
                 n => unimplemented!("{}", n),

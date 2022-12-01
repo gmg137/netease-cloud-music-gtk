@@ -44,6 +44,9 @@
                                 <property name="max_width_chars">90</property>
                                 <property name="justify">fill</property>
                                 <property name="margin-start">9</property>
+                                <style>
+                                    <class name="row_label" />
+                                </style>
                             </object>
                         </child>
                     </object>
@@ -61,6 +64,9 @@
                                 <property name="ellipsize">end</property>
                                 <property name="max_width_chars">90</property>
                                 <property name="justify">fill</property>
+                                <style>
+                                    <class name="row_label" />
+                                </style>
                             </object>
                         </child>
                     </object>
@@ -80,6 +86,9 @@
                                 <property name="ellipsize">end</property>
                                 <property name="max_width_chars">90</property>
                                 <property name="justify">fill</property>
+                                <style>
+                                    <class name="row_label" />
+                                </style>
                             </object>
                         </child>
                         <child>
@@ -92,6 +101,9 @@
                                 <attributes>
                                     <attribute name="font-features" value="tnum=1" />
                                 </attributes>
+                                <style>
+                                    <class name="row_label" />
+                                </style>
                             </object>
                         </child>
                         <child>
@@ -107,12 +119,10 @@
                             </object>
                         </child>
                         <child>
-                            <object class="GtkButton" id="album_button">
+                            <object class="GtkMenuButton" id="menu_button">
                                 <property name="halign">end</property>
                                 <property name="valign">center</property>
-                                <property name="icon-name">media-optical-cd-audio-symbolic</property>
-                                <property name="tooltip-text" translatable="yes">View album</property>
-                                <signal name="clicked" handler="album_button_clicked_cb" swapped="true" />
+                                <property name="icon-name">open-menu-symbolic</property>
                                 <style>
                                     <class name="flat" />
                                 </style>

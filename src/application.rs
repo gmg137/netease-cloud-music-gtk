@@ -5,8 +5,8 @@ use glib::{clone, timeout_future, timeout_future_seconds, MainContext, Receiver,
 use gtk::{gio, glib, prelude::*};
 use log::*;
 use ncm_api::{
-    AlbumDetailDynamic, CookieJar, LoginInfo, PlayListDetailDynamic, SingerInfo,
-    SongInfo, SongList, TopList,
+    AlbumDetailDynamic, CookieJar, LoginInfo, PlayListDetailDynamic, SingerInfo, SongInfo,
+    SongList, TopList,
 };
 use once_cell::sync::OnceCell;
 use std::fs;
@@ -17,7 +17,7 @@ use std::{cell::RefCell, sync::Arc};
 use crate::{
     background::{Background, BgAction},
     config::VERSION,
-    gui::{NcmImageSource, NcmPaintableLoader, NeteaseCloudMusicGtk4Preferences},
+    gui::{NcmImageSource, NcmPaintableLoader, NeteaseCloudMusicGtk4Preferences, SingerPage},
     model::*,
     ncmapi::*,
     path::CACHE,
@@ -34,11 +34,6 @@ impl<Targ> std::fmt::Debug for dyn ActionCallbackTr<Targ> {
 }
 // wrapper dyn Fn(Targ) => ActionCallback<Targ>
 // Note: we can capture glib object with glib::SendWeakRef, but only valied in MainContext thread
-
-// callback is needed as there is no way to lookup the sender object
-// alternative methods:
-//   unique id for sender object, and store a map
-//   sender object create new (sender, receiver) and attach, then action send back
 pub type ActionCallback<Targ = ()> = Arc<dyn ActionCallbackTr<Targ>>;
 
 #[derive(Debug, Clone)]
@@ -100,12 +95,15 @@ pub enum Action {
     UpdateLyrics(SongInfo),
     UpdatePlayListStatus(usize),
 
+    // singer page
+    UpdateSingerPageAlbum(glib::SendWeakRef<SingerPage>), // offset, limit
+
     // page routing
     ToTopPicksPage,
     ToAllAlbumsPage,
+    ToSingerPage(SingerInfo),
     ToSongListPage(SongList),
     ToAlbumPage(SongList),
-    ToSingerSongsPage(SingerInfo),
     ToMyPageDailyRec,
     ToMyPageHeartbeat,
     ToMyPageFm,
@@ -867,32 +865,57 @@ impl NeteaseCloudMusicGtk4Application {
                     }
                 });
             }
-            Action::ToSingerSongsPage(singer) => {
+            Action::ToSingerPage(singer) => {
                 let title = &singer.name;
-                let page = window.init_search_song_page(title, SearchType::SingerSongs);
-                window.page_new(&page, title);
+                let page = window.init_singer_page(&singer);
+                window.page_new(&page, &title);
                 let page = page.downgrade();
-
                 let sender = imp.sender.clone();
+
                 let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
-                    match ncmapi.client.singer_songs(singer.id).await {
-                        Ok(sis) => {
-                            debug!("获取歌手单曲：{:?}", sis);
-                            if let Some(page) = page.upgrade() {
-                                window.update_search_song_page(page, sis);
+                {
+                    let sender = sender.clone();
+                    let ncmapi = ncmapi.clone();
+                    let page = page.clone();
+                    ctx.spawn_local(async move {
+                        match ncmapi.client.singer_detail(singer.id).await {
+                            Ok(detail) => {
+                                debug!("获取歌手详情：{:?}", detail);
+                                if let Some(page) = page.upgrade() {
+                                    page.update_singer_detail(&detail);
+                                }
+                            }
+                            Err(err) => {
+                                error!("{:?}", err);
+                                sender
+                                    .send(Action::AddToast(gettext(
+                                        "Request for interface failed, please try again!",
+                                    )))
+                                    .unwrap();
                             }
                         }
-                        Err(err) => {
-                            error!("{:?}", err);
-                            sender
-                                .send(Action::AddToast(gettext(
-                                    "Request for interface failed, please try again!",
-                                )))
-                                .unwrap();
+                    });
+                }
+                {
+                    ctx.spawn_local(async move {
+                        match ncmapi.client.singer_top_songs(singer.id).await {
+                            Ok((sis, _more)) => {
+                                debug!("获取歌手top歌曲：{:?}", sis);
+                                if let Some(page) = page.upgrade() {
+                                    page.update_songs(&sis, &window.get_song_likes(&sis));
+                                }
+                            }
+                            Err(err) => {
+                                error!("{:?}", err);
+                                sender
+                                    .send(Action::AddToast(gettext(
+                                        "Request for interface failed, please try again!",
+                                    )))
+                                    .unwrap();
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
             Action::ToMyPageDailyRec => {
                 let title = gettext("Daily Recommendation");
@@ -1091,6 +1114,31 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::UpdatePlayListStatus(index) => {
                 window.updat_playlist_status(index);
+            }
+            Action::UpdateSingerPageAlbum(page) => {
+                let limit = 30;
+                let (ok, id, offset) = {
+                    if let Some(page) = page.clone().upgrade() {
+                        (true, page.singer_id().unwrap(), page.album_offset())
+                    } else {
+                        (false, 0, 0)
+                    }
+                };
+                if ok {
+                    let ctx = glib::MainContext::default();
+                    ctx.spawn_local(async move {
+                        match ncmapi.client.singer_albums(id, offset, limit).await {
+                            Ok((sls, _more)) => {
+                                if let Some(page) = page.upgrade() {
+                                    page.update_albums(&sls);
+                                }
+                            }
+                            Err(err) => {
+                                error!("{:?}", err);
+                            }
+                        };
+                    });
+                }
             }
             Action::GstPositionUpdate(sec) => {
                 window.gst_position_update(sec);

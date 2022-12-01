@@ -105,8 +105,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            let obj = self.obj();
-            obj.set_widget_name("songlist_page");
+            let _obj = self.obj();
         }
 
         fn properties() -> &'static [ParamSpec] {

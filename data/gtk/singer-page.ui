@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <requires lib="gtk" version="4.0" />
+    <template class="SingerPage" parent="GtkBox">
+        <property name="valign">fill</property>
+        <property name="halign">fill</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">20</property>
+        <style>
+            <class name="singer_page" />
+        </style>
+        <child>
+            <object class="AdwClamp">
+                <property name="hexpand">true</property>
+                <property name="margin-top">20</property>
+                <property name="margin-start">20</property>
+                <property name="margin-end">20</property>
+                <property name="maximum-size">1000</property>
+                <property name="tightening-threshold">730</property>
+                <child>
+                    <object class="GtkBox">
+                        <property name="halign">fill</property>
+                        <property name="valign">fill</property>
+                        <property name="hexpand">true</property>
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">12</property>
+                        <child>
+                            <object class="AdwAvatar" id="avatar">
+                                <property name="halign">fill</property>
+                                <property name="valign">fill</property>
+                                <property name="size">140</property>
+                                <property name="show-initials">True</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkBox">
+                                <property name="orientation">vertical</property>
+                                <property name="halign">fill</property>
+                                <property name="valign">end</property>
+                                <property name="spacing">2</property>
+                                <child>
+                                    <object class="GtkLabel" id="title_label">
+                                        <property name="label">Title</property>
+                                        <property name="halign">start</property>
+                                        <property name="valign">end</property>
+                                        <property name="max-width-chars">27</property>
+                                        <property name="ellipsize">end</property>
+                                        <property name="margin-bottom">10</property>
+                                        <style>
+                                            <class name="title-1" />
+                                        </style>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="GtkBox">
+                                        <property name="halign">fill</property>
+                                        <property name="valign">end</property>
+                                        <property name="spacing">7</property>
+                                        <property name="orientation">horizontal</property>
+                                        <child>
+                                            <object class="GtkStackSwitcher" id="switcher">
+                                                <property name="halign">start</property>
+                                                <property name="valign">center</property>
+                                                <property name="stack">stack</property>
+                                            </object>
+                                        </child>
+                                        <child>
+                                            <object class="GtkButton" id="play_button">
+                                                <property name="halign">end</property>
+                                                <property name="valign">center</property>
+                                                <property name="hexpand">true</property>
+                                                <property name="icon-name">media-playback-start-symbolic</property>
+                                                <property name="tooltip-text" translatable="yes">Play songs list</property>
+                                                <signal name="clicked" handler="play_button_clicked_cb" swapped="true" />
+                                                <style>
+                                                    <class name="circular" />
+                                                </style>
+                                            </object>
+                                        </child>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+            </object>
+        </child>
+        <child>
+            <object class="GtkStack" id="stack">
+                <child>
+                    <object class="GtkStackPage">
+                        <property name="name">songs</property>
+                        <property name="title" translatable="yes">Songs</property>
+                        <property name="child">
+                            <object class="SongListView" id="songs_list">
+                            </object>
+                        </property>
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkStackPage">
+                        <property name="name">albums</property>
+                        <property name="title" translatable="yes">Albums</property>
+                        <property name="child">
+                            <object class="GtkScrolledWindow">
+                                <signal name="edge-overshot" handler="album_scrolled_edge_cb" swapped="true" />
+                                <child>
+                                    <object class="AdwClampScrollable">
+                                        <property name="vexpand">true</property>
+                                        <property name="hexpand">true</property>
+                                        <property name="margin-start">20</property>
+                                        <property name="margin-end">20</property>
+                                        <property name="maximum-size">1000</property>
+                                        <property name="tightening-threshold">730</property>
+                                        <child>
+                                            <object class="GtkGridView" id="songlist_grid">
+                                                <signal name="activate" handler="album_activate_cb" swapped="true" />
+                                                <property name="hexpand">True</property>
+                                                <property name="vexpand">True</property>
+                                                <property name="single-click-activate">True</property>
+                                            </object>
+                                        </child>
+                                    </object>
+                                </child>
+                            </object>
+                        </property>
+                    </object>
+                </child>
+            </object>
+        </child>
+    </template>
+
+</interface>

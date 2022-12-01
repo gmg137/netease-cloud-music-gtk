@@ -11,7 +11,7 @@ use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{
     application::Action,
-    gui::{NcmImageSource, NcmPaintable, SongListView},
+    gui::{NcmImageSource, NcmPaintable, SongListView, SongRowFlags},
     model::{DiscoverSubPage, SongListDetail},
 };
 use std::{
@@ -49,10 +49,10 @@ impl SonglistPage {
         let like_button = imp.like_button.get();
         if is_logined {
             like_button.set_visible(true);
-            imp.songs_list.set_property("no-act-like", false);
+            imp.songs_list.add_flags(SongRowFlags::ACT_LIKE);
         } else {
             like_button.set_visible(false);
-            imp.songs_list.set_property("no-act-like", true);
+            imp.songs_list.remove_flags(SongRowFlags::ACT_LIKE);
         }
 
         // 设置专辑图
@@ -81,18 +81,25 @@ impl SonglistPage {
         match detail {
             SongListDetail::Album(detail, dy) => {
                 self.set_property("like", dy.is_sub);
-                imp.songs_list.set_property("no-act-album", true);
+                imp.songs_list.remove_flags(SongRowFlags::ACT_ALBUM);
                 imp.page_type.replace(Some(DiscoverSubPage::Album));
                 {
-                    let year = detail.publish_time as f64 / (1000.0 * 60.0 * 60.0 * 24.0 * 365.25)
-                        + 1970.0;
+                    let year = if detail.publish_time > 0 {
+                        let year = detail.publish_time as f64
+                            / (1000.0 * 60.0 * 60.0 * 24.0 * 365.25)
+                            + 1970.0;
+                        format!("{}", year as u64)
+                    } else {
+                        "-".to_string()
+                    };
+
                     let duration_min = sis
                         .iter()
                         .fold(0u64, |v, next| v + next.duration / (1000 * 60));
 
                     imp.time_label.set_label(&format!(
                         "{}, {}",
-                        year as u64,
+                        year,
                         gettext!("{} min", duration_min),
                     ));
                 }
@@ -104,7 +111,7 @@ impl SonglistPage {
             }
             SongListDetail::PlayList(_detail, dy) => {
                 self.set_property("like", dy.subscribed);
-                imp.songs_list.set_property("no-act-album", false);
+                imp.songs_list.add_flags(SongRowFlags::ACT_ALBUM);
                 imp.page_type.replace(Some(DiscoverSubPage::SongList));
                 imp.num_label.set_label(&format!(
                     "{}, {}",
