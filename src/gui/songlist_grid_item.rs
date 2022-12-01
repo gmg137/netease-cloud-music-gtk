@@ -9,9 +9,11 @@ pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, *};
 use ncm_api::SongList;
 use once_cell::sync::Lazy;
 
-use crate::application::Action;
-use std::cell::{Cell, RefCell};
-use std::sync::Arc;
+use crate::{application::Action, model::NcmImageSource};
+use std::{
+    cell::{Cell, RefCell},
+    path::PathBuf,
+};
 
 glib::wrapper! {
     pub struct SongListGridItem(ObjectSubclass<imp::SongListGridItem>);
@@ -43,20 +45,8 @@ impl SongListGridItem {
 
         // download cover
         if !path.exists() {
-            let s = glib::SendWeakRef::from(s.downgrade());
-            sender
-                .send(Action::DownloadImage(
-                    sl.cover_img_url.to_owned(),
-                    path.to_owned(),
-                    140,
-                    140,
-                    Some(Arc::new(move |_| {
-                        if let Some(s) = s.upgrade() {
-                            s.set_texture_from_file(&path);
-                        }
-                    })),
-                ))
-                .unwrap();
+            let nis = NcmImageSource::GridSongList(sl.cover_img_url.to_owned(), path, &s, sender);
+            nis.loading_images();
         } else {
             s.set_texture_from_file(&path);
         }
@@ -121,20 +111,9 @@ impl SongListGridItem {
             path.push(format!("{}-songlist.jpg", sl.id));
             // download cover
             if !path.exists() {
-                let image = glib::SendWeakRef::from(image.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        sl.cover_img_url.to_owned(),
-                        path.to_owned(),
-                        140,
-                        140,
-                        Some(Arc::new(move |_| {
-                            if let Some(image) = image.upgrade() {
-                                image.set_from_file(Some(&path));
-                            }
-                        })),
-                    ))
-                    .unwrap();
+                let nis =
+                    NcmImageSource::SongList(sl.cover_img_url.to_owned(), path, &image, sender);
+                nis.loading_images();
             } else {
                 image.set_from_file(Some(&path));
             }
@@ -235,8 +214,8 @@ impl SongListGridItem {
         grid.model()?.item(pos)?.downcast::<SongListGridItem>().ok()
     }
 
-    pub fn set_texture_from_file(&self, path: &std::path::PathBuf) {
-        if let Some(paintable) = gtk::Image::from_file(path).paintable() {
+    pub fn set_texture_from_file(&self, path: &PathBuf) {
+        if let Some(paintable) = Image::from_file(path).paintable() {
             self.set_property("texture", paintable);
         }
     }
@@ -259,6 +238,7 @@ mod imp {
         const NAME: &'static str = "SongListGridItem";
         type Type = super::SongListGridItem;
     }
+
     impl ObjectImpl for SongListGridItem {
         fn constructed(&self) {
             self.parent_constructed();

@@ -3,21 +3,16 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use adw::subclass::prelude::BinImpl;
-use adw::traits::ActionRowExt;
-use adw::ActionRow;
+use crate::{
+    application::Action, gui::songlist_view::SongListView, model::NcmImageSource, path::CACHE,
+};
+use adw::{subclass::prelude::BinImpl, traits::ActionRowExt, ActionRow};
 use gettextrs::gettext;
 use glib::Sender;
-use gtk::prelude::*;
-use gtk::subclass::prelude::*;
-use gtk::{glib, CompositeTemplate, *};
+use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::{SongInfo, TopList};
 use once_cell::sync::OnceCell;
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::Arc;
-
-use crate::{application::Action, gui::songlist_view::SongListView, path::CACHE};
+use std::{cell::RefCell, rc::Rc};
 
 glib::wrapper! {
     pub struct TopListView(ObjectSubclass<imp::TopListView>)
@@ -57,18 +52,8 @@ impl TopListView {
 
             // download cover
             if !path.exists() {
-                let image = glib::SendWeakRef::from(image.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        t.cover.to_owned(),
-                        path.to_owned(),
-                        140,
-                        140,
-                        Some(Arc::new(move |_| {
-                            image.upgrade().unwrap().set_from_file(Some(&path));
-                        })),
-                    ))
-                    .unwrap();
+                let nis = NcmImageSource::TopList(t.cover.to_owned(), path, &image, sender);
+                nis.loading_images();
             } else {
                 image.set_from_file(Some(&path));
             }

@@ -3,7 +3,10 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use crate::{application::Action, model::UserMenuChild};
+use crate::{
+    application::Action,
+    model::{NcmImageSource, UserMenuChild},
+};
 use adw::*;
 use gettextrs::gettext;
 use glib::{clone, Sender};
@@ -153,13 +156,9 @@ impl UserMenus {
         self.refresh_button.set_visible(true);
     }
 
-    pub fn set_user_avatar(&self, path: PathBuf) {
-        if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(path) {
-            let image = Image::from_pixbuf(Some(&pixbuf));
-            if let Some(paintable) = image.paintable() {
-                self.avatar.set_custom_image(Some(&paintable));
-            }
-        }
+    pub fn set_user_avatar(&self, url: String, path: PathBuf) {
+        let nis = NcmImageSource::UserAvatar(url, path, &self.avatar, self.sender.get().unwrap());
+        nis.loading_images();
     }
 
     pub fn set_user_name(&self, name: String) {

@@ -4,15 +4,15 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use gettextrs::gettext;
-use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Sender, Value};
+use glib::{ParamSpec, ParamSpecBoolean, Sender, Value};
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
-use ncm_api::{SongList};
+use ncm_api::SongList;
 use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{
     application::Action,
     gui::songlist_view::SongListView,
-    model::{DiscoverSubPage, SongListDetail},
+    model::{DiscoverSubPage, NcmImageSource, SongListDetail},
     path::CACHE,
 };
 use std::{
@@ -62,18 +62,13 @@ impl SonglistPage {
         path.push(format!("{}-songlist.jpg", songlist.id));
         if !path.exists() {
             cover_image.set_from_icon_name(Some("image-missing-symbolic"));
-            let cover_image = SendWeakRef::from(imp.cover_image.get().downgrade());
-            sender
-                .send(Action::DownloadImage(
-                    songlist.cover_img_url.to_owned(),
-                    path.to_owned(),
-                    140,
-                    140,
-                    Some(Arc::new(move |_| {
-                        cover_image.upgrade().unwrap().set_from_file(Some(&path));
-                    })),
-                ))
-                .unwrap();
+            let nis = NcmImageSource::SongList(
+                songlist.cover_img_url.to_owned(),
+                path,
+                &cover_image,
+                sender,
+            );
+            nis.loading_images();
         } else {
             cover_image.set_from_file(Some(&path));
         }

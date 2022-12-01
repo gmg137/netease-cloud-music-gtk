@@ -3,10 +3,11 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use gtk::glib;
-use gtk::prelude::*;
+use crate::{application::Action, gui::SongListGridItem};
+use glib::{SendWeakRef, Sender};
+use gtk::{gdk_pixbuf, glib, prelude::*, Image, Picture};
 use ncm_api::{SingerInfo, SongInfo, SongList};
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 
 #[derive(Default)]
 pub struct UserInfo {
@@ -189,6 +190,7 @@ pub enum SearchType {
     // 收藏的歌单
     LikeSongList,
 }
+
 #[derive(Debug, Clone)]
 pub enum SearchResult {
     Songs(Vec<SongInfo>, Vec<bool>),
@@ -205,5 +207,130 @@ impl Default for SearchType {
 impl Default for UserMenuChild {
     fn default() -> Self {
         UserMenuChild::Qr
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum NcmImageSource<'a> {
+    GridSongList(String, PathBuf, &'a SongListGridItem, &'a Sender<Action>), // id, url
+    SongList(String, PathBuf, &'a Image, &'a Sender<Action>),                // id, url
+    Banner(String, PathBuf, &'a Picture, &'a Sender<Action>),
+    TopList(String, PathBuf, &'a Image, &'a Sender<Action>),
+    Singer(String, PathBuf, &'a adw::Avatar, &'a Sender<Action>),
+    UserAvatar(String, PathBuf, &'a adw::Avatar, &'a Sender<Action>),
+}
+
+impl<'a> NcmImageSource<'a> {
+    pub fn loading_images(&self) {
+        match self {
+            NcmImageSource::GridSongList(url, path, item, sender) => {
+                let path = path.to_owned();
+                let item = glib::SendWeakRef::from(item.downgrade());
+                sender
+                    .send(Action::DownloadImage(
+                        url.to_owned(),
+                        path.to_owned(),
+                        140,
+                        140,
+                        Some(Arc::new(move |_| {
+                            if let Some(item) = item.upgrade() {
+                                item.set_texture_from_file(&path);
+                            }
+                        })),
+                    ))
+                    .unwrap();
+            }
+            NcmImageSource::SongList(url, path, image, sender) => {
+                let path = path.to_owned();
+                let image = glib::SendWeakRef::from(image.downgrade());
+                sender
+                    .send(Action::DownloadImage(
+                        url.to_owned(),
+                        path.to_owned(),
+                        140,
+                        140,
+                        Some(Arc::new(move |_| {
+                            if let Some(image) = image.upgrade() {
+                                image.set_from_file(Some(&path));
+                            }
+                        })),
+                    ))
+                    .unwrap();
+            }
+            NcmImageSource::Banner(url, path, picture, sender) => {
+                let path = path.to_owned();
+                let picture = glib::SendWeakRef::from(picture.downgrade());
+                sender
+                    .send(Action::DownloadImage(
+                        url.to_owned(),
+                        path.to_owned(),
+                        730,
+                        283,
+                        Some(Arc::new(move |_| {
+                            let image = gtk::gdk_pixbuf::Pixbuf::from_file(&path).unwrap();
+                            let image = image
+                                .scale_simple(730, 283, gtk::gdk_pixbuf::InterpType::Bilinear)
+                                .unwrap();
+                            picture.upgrade().unwrap().set_pixbuf(Some(&image));
+                        })),
+                    ))
+                    .unwrap();
+            }
+            NcmImageSource::TopList(url, path, image, sender) => {
+                let path = path.to_owned();
+                let image = glib::SendWeakRef::from(image.downgrade());
+                sender
+                    .send(Action::DownloadImage(
+                        url.to_owned(),
+                        path.to_owned(),
+                        140,
+                        140,
+                        Some(Arc::new(move |_| {
+                            image.upgrade().unwrap().set_from_file(Some(&path));
+                        })),
+                    ))
+                    .unwrap();
+            }
+            NcmImageSource::Singer(url, path, avatar, sender) => {
+                let path = path.to_owned();
+                let avatar = SendWeakRef::from(avatar.downgrade());
+                sender
+                    .send(Action::DownloadImage(
+                        url.to_owned(),
+                        path.to_owned(),
+                        140,
+                        140,
+                        Some(Arc::new(move |_| {
+                            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
+                                let image = Image::from_pixbuf(Some(&pixbuf));
+                                if let Some(paintable) = image.paintable() {
+                                    avatar.upgrade().unwrap().set_custom_image(Some(&paintable));
+                                }
+                            }
+                        })),
+                    ))
+                    .unwrap();
+            }
+            NcmImageSource::UserAvatar(url, path, avatar, sender) => {
+                let path = path.to_owned();
+                let avatar = SendWeakRef::from(avatar.downgrade());
+                sender
+                    .send(Action::DownloadImage(
+                        url.to_owned(),
+                        path.to_owned(),
+                        50,
+                        50,
+                        Some(Arc::new(move |_| {
+                            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
+                                let image = Image::from_pixbuf(Some(&pixbuf));
+                                if let Some(paintable) = image.paintable() {
+                                    avatar.upgrade().unwrap().set_custom_image(Some(&paintable));
+                                }
+                            }
+                        })),
+                    ))
+                    .unwrap();
+            }
+        }
     }
 }

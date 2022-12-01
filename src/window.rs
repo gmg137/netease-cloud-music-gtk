@@ -391,8 +391,12 @@ impl NeteaseCloudMusicGtk4Window {
         user_menus.set_user_name(login_info.nickname);
     }
 
-    pub fn set_avatar(&self, url: PathBuf) {
-        self.imp().user_menus.get().unwrap().set_user_avatar(url);
+    pub fn set_avatar(&self, url: String, path: PathBuf) {
+        self.imp()
+            .user_menus
+            .get()
+            .unwrap()
+            .set_user_avatar(url, path);
     }
 
     pub fn add_toast(&self, mes: String) {
@@ -404,7 +408,7 @@ impl NeteaseCloudMusicGtk4Window {
             .build();
         self.imp().toast_overlay.add_toast(&toast);
         self.set_property("toast", toast);
-        
+
         // seems that dismiss will clear something used by animation
         // cause adw_animation_skip emit 'done' segfault on closure(https://github.com/gmg137/netease-cloud-music-gtk/issues/202)
         // delay to wait for animation skipped/done

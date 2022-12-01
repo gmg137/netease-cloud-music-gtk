@@ -87,12 +87,22 @@ impl Discover {
         let mut path = CACHE.clone();
         path.push(format!("{}-banner.jpg", banner.id));
 
+        let sender = self.imp().sender.get().unwrap().clone();
+        let image = Picture::new();
+        let nis = crate::model::NcmImageSource::Banner(
+            banner.pic_url.to_owned(),
+            path.to_owned(),
+            &image,
+            &sender,
+        );
+        nis.loading_images();
+
         // 图片加载方式已验证，必须这样才能实现。
-        let image = gtk::gdk_pixbuf::Pixbuf::from_file(path).unwrap();
-        let image = image
-            .scale_simple(730, 283, gtk::gdk_pixbuf::InterpType::Bilinear)
-            .unwrap();
-        let image = gtk::Picture::for_pixbuf(&image);
+        // let image = gtk::gdk_pixbuf::Pixbuf::from_file(path).unwrap();
+        // let image = image
+        //     .scale_simple(730, 283, gtk::gdk_pixbuf::InterpType::Bilinear)
+        //     .unwrap();
+        // let image = gtk::Picture::for_pixbuf(&image);
         image.set_halign(gtk::Align::Center);
         image.set_valign(gtk::Align::Fill);
         image.set_width_request(730);

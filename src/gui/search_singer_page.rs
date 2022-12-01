@@ -11,7 +11,7 @@ use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{
     application::Action,
-    model::{SearchResult, SearchType},
+    model::{NcmImageSource, SearchResult, SearchType},
     path::CACHE,
 };
 use std::cell::{Cell, RefCell};
@@ -67,23 +67,9 @@ impl SearchSingerPage {
                     avatar.set_custom_image(Some(&paintable));
                 }
             } else {
-                let avatar = glib::SendWeakRef::from(avatar.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        si.pic_url.to_owned(),
-                        path.to_owned(),
-                        140,
-                        140,
-                        Some(Arc::new(move |_| {
-                            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
-                                let image = Image::from_pixbuf(Some(&pixbuf));
-                                if let Some(paintable) = image.paintable() {
-                                    avatar.upgrade().unwrap().set_custom_image(Some(&paintable));
-                                }
-                            }
-                        })),
-                    ))
-                    .unwrap();
+                // 加载图片
+                let nis = NcmImageSource::Singer(si.pic_url.to_owned(), path, &avatar, sender);
+                nis.loading_images();
             }
 
             let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);

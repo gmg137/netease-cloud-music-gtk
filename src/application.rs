@@ -5,8 +5,8 @@ use glib::{clone, timeout_future, timeout_future_seconds, MainContext, Receiver,
 use gtk::{gio, glib, prelude::*};
 use log::*;
 use ncm_api::{
-    AlbumDetailDynamic, BannersInfo, CookieJar, LoginInfo, PlayListDetailDynamic, SingerInfo,
-    SongInfo, SongList, TopList,
+    AlbumDetailDynamic, CookieJar, LoginInfo, PlayListDetailDynamic, SingerInfo, SongInfo,
+    SongList, TopList,
 };
 use once_cell::sync::OnceCell;
 use std::fs;
@@ -60,7 +60,6 @@ pub enum Action {
     CheckLogin(UserMenuChild, CookieJar),
     Logout,
     InitUserInfo(LoginInfo),
-    SetAvatar(PathBuf),
     SwitchUserMenuToPhone,
     SwitchUserMenuToQr,
     SwitchUserMenuToUser(LoginInfo, UserMenuChild),
@@ -76,8 +75,6 @@ pub enum Action {
 
     // discover
     InitCarousel,
-    AddCarousel(BannersInfo),
-    DownloadBanners(BannersInfo),
     InitTopPicks,
     SetupTopPicks(Vec<SongList>),
     InitNewAlbums,
@@ -403,15 +400,12 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::SetQrImageTimeout => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.set_user_qrimage_timeout();
             }
             Action::SwitchUserMenuToPhone => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.switch_user_menu_to_phone();
             }
             Action::SwitchUserMenuToQr => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.switch_user_menu_to_qr();
             }
             Action::GetCaptcha(ctcode, phone) => {
@@ -462,31 +456,14 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::SwitchUserMenuToUser(login_info, menu) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.switch_user_menu_to_user(login_info.clone(), menu);
-                let sender = imp.sender.clone();
                 let avatar_url = login_info.avatar_url;
                 let mut path = CACHE.clone();
                 path.push("avatar.jpg");
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
-                    if ncmapi
-                        .client
-                        .download_img(avatar_url, path.clone(), 50, 50)
-                        .await
-                        .is_ok()
-                    {
-                        sender.send(Action::SetAvatar(path)).unwrap();
-                    }
-                });
+                window.set_avatar(avatar_url, path);
             }
             Action::AddToast(mes) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.add_toast(mes);
-            }
-            Action::SetAvatar(path) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
-                window.set_avatar(path);
             }
             Action::InitCarousel => {
                 let sender = imp.sender.clone();
@@ -496,7 +473,7 @@ impl NeteaseCloudMusicGtk4Application {
                         Ok(banners) => {
                             debug!("获取轮播信息: {:?}", banners);
                             for banner in banners {
-                                sender.send(Action::DownloadBanners(banner)).unwrap();
+                                window.add_carousel(banner);
                             }
 
                             // auto check login after banners
@@ -514,26 +491,6 @@ impl NeteaseCloudMusicGtk4Application {
                         }
                     }
                 });
-            }
-            Action::DownloadBanners(banner) => {
-                let sender = imp.sender.clone();
-                let mut path = CACHE.clone();
-                path.push(format!("{}-banner.jpg", banner.id));
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
-                    if ncmapi
-                        .client
-                        .download_img(banner.pic.to_owned(), path, 730, 283)
-                        .await
-                        .is_ok()
-                    {
-                        sender.send(Action::AddCarousel(banner)).unwrap();
-                    }
-                });
-            }
-            Action::AddCarousel(banner) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
-                window.add_carousel(banner);
             }
             Action::InitTopPicks => {
                 let sender = imp.sender.clone();
@@ -553,7 +510,6 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::ToTopPicksPage => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 let page = window.init_picks_songlist();
                 window.page_new(&page, gettext("all top picks").as_str());
                 let page = page.downgrade();
@@ -586,7 +542,6 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::SetupTopPicks(song_list) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.setup_top_picks(song_list);
             }
             Action::InitNewAlbums => {
@@ -607,7 +562,6 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::ToAllAlbumsPage => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 let page = window.init_all_albums();
 
                 window.page_new(&page, gettext("all new albums").as_str());
@@ -626,17 +580,14 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::SetupNewAlbums(song_list) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.setup_new_albums(song_list);
             }
             Action::AddPlay(song_info) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.add_play(song_info.clone());
                 let sender = imp.sender.clone();
                 sender.send(Action::Play(song_info)).unwrap();
             }
             Action::PlayNextSong => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.play_next();
             }
             Action::Play(song_info) => {
@@ -689,7 +640,6 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::PlayStart(song_info) => {
                 debug!("播放歌曲: {:?}", song_info);
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.play(song_info);
             }
             Action::ToSongListPage(songlist) => {
@@ -755,11 +705,9 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::AddPlayList(sis) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.add_playlist(sis);
             }
             Action::PlayListStart => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.playlist_start();
             }
             Action::LikeSongList(id, is_like, callback) => {
@@ -885,11 +833,9 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::InitTopList(toplist) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.init_toplist(toplist);
             }
             Action::UpdateTopList(sis) => {
-                let window = imp.window.get().unwrap().upgrade().unwrap();
                 window.update_toplist(sis);
             }
             Action::Search(text, search_type, offset, limit, callback) => {
@@ -1120,7 +1066,7 @@ impl NeteaseCloudMusicGtk4Application {
                     let lrc = ncmapi
                         .get_lyrics(si.id)
                         .await
-                        .unwrap_or(gettext("No lyrics found!"));
+                        .unwrap_or_else(|_| gettext("No lyrics found!"));
                     debug!("获取歌词：{:?}", lrc);
                     window.update_lyrics(lrc);
                 });
