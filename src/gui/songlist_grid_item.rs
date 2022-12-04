@@ -1,19 +1,16 @@
 //
-// search_songlist_page.rs
+// search_grid_item.rs
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use glib::Sender;
 use glib::{ParamSpec, ParamSpecObject, ParamSpecString, ParamSpecUInt64, Value};
-pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, *};
+use gtk::{glib, prelude::*, subclass::prelude::*, *};
 use ncm_api::SongList;
 use once_cell::sync::Lazy;
 
 use crate::{application::Action, model::NcmImageSource};
-use std::{
-    cell::{Cell, RefCell},
-    path::PathBuf,
-};
+use std::cell::{Cell, RefCell};
 
 glib::wrapper! {
     pub struct SongListGridItem(ObjectSubclass<imp::SongListGridItem>);
@@ -31,13 +28,15 @@ impl From<SongListGridItem> for SongList {
 }
 
 impl SongListGridItem {
-    pub fn new(sl: &SongList, sender: &Sender<Action>, icon: &gtk::IconPaintable) -> Self {
+    pub fn new(sl: &SongList, sender: &Sender<Action>) -> Self {
+        let icon = Image::from_icon_name("image-missing");
+
         let s: Self = glib::Object::builder()
             .property("id", &sl.id)
             .property("name", &sl.name)
             .property("pic-url", &sl.cover_img_url)
             .property("author", &sl.author)
-            .property("texture", &icon)
+            .property("icon", &icon)
             .build();
 
         let mut path = crate::path::CACHE.clone();
@@ -45,45 +44,45 @@ impl SongListGridItem {
 
         // download cover
         if !path.exists() {
-            let nis = NcmImageSource::GridSongList(sl.cover_img_url.to_owned(), path, &s, sender);
+            let nis = NcmImageSource::SongList(sl.cover_img_url.to_owned(), path, &icon, sender);
             nis.loading_images();
         } else {
-            s.set_texture_from_file(&path);
+            icon.set_from_file(Some(&path));
         }
         s
     }
 
-    fn create(pic_size: i32) -> (gtk::Box, gtk::Image, gtk::Label, gtk::Label) {
-        let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    fn create(pic_size: i32) -> (Box, Image, Label, Label) {
+        let boxs = Box::new(Orientation::Vertical, 0);
 
-        let image = gtk::Image::builder()
+        let image = Image::builder()
             .pixel_size(pic_size)
             .icon_name("image-missing")
             .build();
 
-        let frame = gtk::Frame::builder()
-            .halign(gtk::Align::Center)
-            .valign(gtk::Align::Center)
+        let frame = Frame::builder()
+            .halign(Align::Center)
+            .valign(Align::Center)
             .child(&image)
             .build();
 
         boxs.append(&frame);
 
-        let label = gtk::Label::builder()
+        let label = Label::builder()
             .lines(2)
             .margin_start(20)
             .margin_end(20)
             .width_chars(1)
             .max_width_chars(1)
-            .ellipsize(gtk::pango::EllipsizeMode::End)
+            .ellipsize(pango::EllipsizeMode::End)
             .wrap(true)
             .margin_top(6)
             .build();
 
-        let label_author = gtk::Label::builder()
+        let label_author = Label::builder()
             .width_chars(1)
             .max_width_chars(1)
-            .ellipsize(gtk::pango::EllipsizeMode::Middle)
+            .ellipsize(pango::EllipsizeMode::Middle)
             .wrap(true)
             .margin_top(6)
             .css_classes(
@@ -99,7 +98,7 @@ impl SongListGridItem {
     }
 
     pub fn box_update_songlist(
-        grid_box: gtk::FlowBox,
+        grid_box: FlowBox,
         song_list: &Vec<SongList>,
         pic_size: i32,
         show_author: bool,
@@ -126,13 +125,13 @@ impl SongListGridItem {
         }
     }
 
-    pub fn box_clear(grid: gtk::FlowBox) {
+    pub fn box_clear(grid: FlowBox) {
         while let Some(child) = grid.last_child() {
             grid.remove(&child);
         }
     }
 
-    pub fn view_setup_factory(grid: gtk::GridView, pic_size: i32, show_author: bool) {
+    fn setup_factory(grid: &GridView, pic_size: i32, show_author: bool) {
         let factory = SignalListItemFactory::new();
 
         factory.connect_setup(move |_, list_item| {
@@ -161,35 +160,30 @@ impl SongListGridItem {
                 .sync_create()
                 .build();
             songlist_object
-                .bind_property("texture", &image, "paintable")
+                .property::<Image>("icon")
+                .bind_property("paintable", &image, "paintable")
                 .sync_create()
                 .build();
         });
         grid.set_factory(Some(&factory));
     }
 
-    pub fn view_clear(grid: gtk::GridView) {
+    pub fn view_clear(grid: GridView) {
         grid.set_model(None::<&NoSelection>);
     }
 
     pub fn view_update_songlist(
-        grid: gtk::GridView,
+        grid: GridView,
         song_list: &[SongList],
         pic_size: i32,
+        show_author: bool,
         sender: &Sender<Action>,
     ) {
-        let miss_icon = gtk::IconTheme::for_display(&grid.display()).lookup_icon(
-            "image-missing",
-            &[],
-            pic_size,
-            1,
-            TextDirection::Ltr,
-            IconLookupFlags::PRELOAD,
-        );
+        Self::setup_factory(&grid, pic_size, show_author);
 
         let objs: Vec<SongListGridItem> = song_list
             .iter()
-            .map(|sl| SongListGridItem::new(sl, sender, &miss_icon))
+            .map(|sl| SongListGridItem::new(sl, sender))
             .collect();
 
         if let Some(model) = grid.model() {
@@ -210,14 +204,8 @@ impl SongListGridItem {
         }
     }
 
-    pub fn view_item_at_pos(grid: gtk::GridView, pos: u32) -> Option<SongListGridItem> {
+    pub fn view_item_at_pos(grid: GridView, pos: u32) -> Option<SongListGridItem> {
         grid.model()?.item(pos)?.downcast::<SongListGridItem>().ok()
-    }
-
-    pub fn set_texture_from_file(&self, path: &PathBuf) {
-        if let Some(paintable) = Image::from_file(path).paintable() {
-            self.set_property("texture", paintable);
-        }
     }
 }
 
@@ -231,8 +219,9 @@ mod imp {
         name: RefCell<String>,
         pic_url: RefCell<String>,
         author: RefCell<String>,
-        pub texture: RefCell<Option<gdk::Paintable>>,
+        icon: RefCell<Option<Image>>,
     }
+
     #[glib::object_subclass]
     impl ObjectSubclass for SongListGridItem {
         const NAME: &'static str = "SongListGridItem";
@@ -252,7 +241,7 @@ mod imp {
                     ParamSpecString::builder("name").build(),
                     ParamSpecString::builder("pic-url").build(),
                     ParamSpecString::builder("author").build(),
-                    ParamSpecObject::builder::<gdk::Paintable>("texture").build(),
+                    ParamSpecObject::builder::<Image>("icon").build(),
                 ]
             });
             PROPERTIES.as_ref()
@@ -276,9 +265,9 @@ mod imp {
                     let val = value.get().unwrap();
                     self.author.replace(val);
                 }
-                "texture" => {
+                "icon" => {
                     let val = value.get().unwrap();
-                    self.texture.replace(val);
+                    self.icon.replace(val);
                 }
                 _ => unimplemented!(),
             }
@@ -290,7 +279,7 @@ mod imp {
                 "name" => self.name.borrow().to_value(),
                 "pic-url" => self.pic_url.borrow().to_value(),
                 "author" => self.author.borrow().to_value(),
-                "texture" => self.texture.borrow().to_value(),
+                "icon" => self.icon.borrow().to_value(),
                 _ => unimplemented!(),
             }
         }

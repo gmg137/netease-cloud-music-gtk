@@ -9,10 +9,7 @@ use ncm_api::{
     SongList, TopList,
 };
 use once_cell::sync::OnceCell;
-use std::fs;
-use std::path::PathBuf;
-use std::time::Duration;
-use std::{cell::RefCell, sync::Arc};
+use std::{cell::RefCell, fs, path::PathBuf, sync::Arc, time::Duration};
 
 use crate::{
     config::VERSION, gui::NeteaseCloudMusicGtk4Preferences, model::*, ncmapi::*, path::CACHE,

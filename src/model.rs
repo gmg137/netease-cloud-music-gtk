@@ -3,7 +3,7 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use crate::{application::Action, gui::SongListGridItem};
+use crate::application::Action;
 use glib::{SendWeakRef, Sender};
 use gtk::{gdk_pixbuf, glib, prelude::*, Image, Picture};
 use ncm_api::{SingerInfo, SongInfo, SongList};
@@ -212,8 +212,7 @@ impl Default for UserMenuChild {
 
 #[derive(Debug, Clone)]
 pub enum NcmImageSource<'a> {
-    GridSongList(String, PathBuf, &'a SongListGridItem, &'a Sender<Action>), // id, url
-    SongList(String, PathBuf, &'a Image, &'a Sender<Action>),                // id, url
+    SongList(String, PathBuf, &'a Image, &'a Sender<Action>), // id, url
     Banner(String, PathBuf, &'a Picture, &'a Sender<Action>),
     TopList(String, PathBuf, &'a Image, &'a Sender<Action>),
     Singer(String, PathBuf, &'a adw::Avatar, &'a Sender<Action>),
@@ -223,23 +222,6 @@ pub enum NcmImageSource<'a> {
 impl<'a> NcmImageSource<'a> {
     pub fn loading_images(&self) {
         match self {
-            NcmImageSource::GridSongList(url, path, item, sender) => {
-                let path = path.to_owned();
-                let item = glib::SendWeakRef::from(item.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        url.to_owned(),
-                        path.to_owned(),
-                        140,
-                        140,
-                        Some(Arc::new(move |_| {
-                            if let Some(item) = item.upgrade() {
-                                item.set_texture_from_file(&path);
-                            }
-                        })),
-                    ))
-                    .unwrap();
-            }
             NcmImageSource::SongList(url, path, image, sender) => {
                 let path = path.to_owned();
                 let image = glib::SendWeakRef::from(image.downgrade());

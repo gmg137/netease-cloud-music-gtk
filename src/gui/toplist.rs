@@ -64,6 +64,17 @@ impl TopListView {
             if !select {
                 sidebar.select_row(Some(&action));
                 select = true;
+
+                // 加载初始选中的榜单封面
+                let mut path = CACHE.clone();
+                path.push(format!("{}-toplist.jpg", t.id));
+                let nis = NcmImageSource::TopList(
+                    t.cover.to_owned(),
+                    path,
+                    &self.imp().cover_image,
+                    sender,
+                );
+                nis.loading_images();
             }
         }
         self.imp().data.set(list).unwrap();
