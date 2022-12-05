@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-11-11 07:26+0000\n"
+"POT-Creation-Date: 2022-12-05 07:16+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -63,55 +63,60 @@ msgstr ""
 msgid "Volume"
 msgstr ""
 
-#: data/gtk/window.ui:82 data/gtk/window.ui:296
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:53
+#: data/gtk/preferences.ui:44
+msgid "Always try to play grey song"
+msgstr ""
+
+#: data/gtk/window.ui:83 data/gtk/window.ui:297
 msgid "Songs"
 msgstr ""
 
-#: data/gtk/window.ui:107
+#: data/gtk/window.ui:108
 msgid "Discover"
 msgstr ""
 
-#: data/gtk/window.ui:126
+#: data/gtk/window.ui:127
 msgid "Toplist"
 msgstr ""
 
-#: data/gtk/window.ui:136
+#: data/gtk/window.ui:137
 msgid "My"
 msgstr ""
 
-#: data/gtk/window.ui:168
+#: data/gtk/window.ui:169
 msgid "Not yet logged"
 msgstr ""
 
-#: data/gtk/window.ui:180
+#: data/gtk/window.ui:181
 msgid "Login to view and manage your private music collection"
 msgstr ""
 
-#: data/gtk/window.ui:257
+#: data/gtk/window.ui:258
 msgid "_Preferences"
 msgstr ""
 
-#: data/gtk/window.ui:261
+#: data/gtk/window.ui:262
 msgid "_Keyboard Shortcuts"
 msgstr ""
 
-#: data/gtk/window.ui:265
+#: data/gtk/window.ui:266
 msgid "_About netease-cloud-music-gtk4"
 msgstr ""
 
-#: data/gtk/window.ui:303
+#: data/gtk/window.ui:304
 msgid "Singer"
 msgstr ""
 
-#: data/gtk/window.ui:310
+#: data/gtk/window.ui:311
 msgid "Album"
 msgstr ""
 
-#: data/gtk/window.ui:317
+#: data/gtk/window.ui:318
 msgid "Lyrics"
 msgstr ""
 
-#: data/gtk/window.ui:324
+#: data/gtk/window.ui:325
 msgid "Song List"
 msgstr ""
 
@@ -136,38 +141,42 @@ msgid "Set volume to 0 when startup"
 msgstr ""
 
 #: data/gtk/preferences.ui:43
-msgid "Network Proxy"
-msgstr ""
-
-#: data/gtk/preferences.ui:44
-msgid "http/https/socks4/socks4a/socks5/socks5h"
+msgid "Not ignore grey song"
 msgstr ""
 
 #: data/gtk/preferences.ui:57
+msgid "Network Proxy"
+msgstr ""
+
+#: data/gtk/preferences.ui:58
+msgid "http/https/socks4/socks4a/socks5/socks5h"
+msgstr ""
+
+#: data/gtk/preferences.ui:71
 msgid "Cache cleaning"
 msgstr ""
 
-#: data/gtk/preferences.ui:61
+#: data/gtk/preferences.ui:75
 msgid "Never"
 msgstr ""
 
-#: data/gtk/preferences.ui:62
+#: data/gtk/preferences.ui:76
 msgid "Daily"
 msgstr ""
 
-#: data/gtk/preferences.ui:63
+#: data/gtk/preferences.ui:77
 msgid "Weekly"
 msgstr ""
 
-#: data/gtk/preferences.ui:64
+#: data/gtk/preferences.ui:78
 msgid "Monthly"
 msgstr ""
 
-#: data/gtk/preferences.ui:74
+#: data/gtk/preferences.ui:88
 msgid "Music"
 msgstr ""
 
-#: data/gtk/preferences.ui:77
+#: data/gtk/preferences.ui:91
 msgid "Sound quality"
 msgstr ""
 
@@ -272,71 +281,71 @@ msgstr ""
 msgid "View Album"
 msgstr ""
 
-#: data/gtk/player-controls.ui:145
+#: data/gtk/player-controls.ui:150
 msgid "Like"
 msgstr ""
 
-#: data/gtk/player-controls.ui:194
+#: data/gtk/player-controls.ui:199
 msgid "Playlist/Lyrics"
 msgstr ""
 
-#: data/gtk/player-controls.ui:224
+#: data/gtk/player-controls.ui:229
 msgid "Shuffle/Repeat Off"
 msgstr ""
 
-#: data/gtk/player-controls.ui:231
+#: data/gtk/player-controls.ui:236
 msgid "Repeat Song"
 msgstr ""
 
-#: data/gtk/player-controls.ui:238
+#: data/gtk/player-controls.ui:243
 msgid "Repeat All"
 msgstr ""
 
-#: data/gtk/player-controls.ui:245
+#: data/gtk/player-controls.ui:250
 msgid "Shuffle"
 msgstr ""
 
-#: data/gtk/songlist-page.ui:61
+#: data/gtk/songlist-page.ui:70
 msgid "0 songs"
 msgstr ""
 
-#: data/gtk/songlist-page.ui:73 data/gtk/toplist.ui:91
+#: data/gtk/songlist-page.ui:82 data/gtk/toplist.ui:94
 msgid "Play songs list"
 msgstr ""
 
-#: data/gtk/songlist-page.ui:85
+#: data/gtk/songlist-page.ui:94
 msgid "Like songs list"
 msgstr ""
 
-#: data/gtk/songlist-row.ui:99
+#: data/gtk/songlist-row.ui:102
 msgid "Like song"
 msgstr ""
 
-#: data/gtk/songlist-row.ui:111
+#: data/gtk/songlist-row.ui:114
 msgid "View album"
 msgstr ""
 
-#: data/gtk/my-page.ui:40 src/application.rs:880
+#: data/gtk/my-page.ui:41 src/application.rs:877
 msgid "Daily Recommendation"
 msgstr ""
 
-#: data/gtk/my-page.ui:67 src/application.rs:903
+#: data/gtk/my-page.ui:68 src/application.rs:904
 msgid "Favorite Songs"
 msgstr ""
 
-#: data/gtk/my-page.ui:94 src/application.rs:960
+#: data/gtk/my-page.ui:95 src/application.rs:973
 msgid "Private FM"
 msgstr ""
 
-#: data/gtk/my-page.ui:121 src/application.rs:937
+#: data/gtk/my-page.ui:122 src/application.rs:946
 msgid "Cloud Music"
 msgstr ""
 
-#: data/gtk/my-page.ui:148 src/application.rs:980
+#: data/gtk/my-page.ui:149 src/application.rs:996
 msgid "Favorite Album"
 msgstr ""
 
-#: data/gtk/my-page.ui:175 src/application.rs:998
+#: data/gtk/my-page.ui:176 src/application.rs:1014
 msgid "Favorite Song List"
 msgstr ""
 
@@ -344,154 +353,168 @@ msgstr ""
 msgid "Recommended Song List"
 msgstr ""
 
-#: src/application.rs:265
+#: src/application.rs:272
 msgid "Login successful!"
 msgstr ""
 
-#: src/application.rs:270 src/application.rs:430
+#: src/application.rs:278 src/application.rs:450
 msgid "Login failed!"
 msgstr ""
 
-#: src/application.rs:287
+#: src/application.rs:301
 msgid "Logout!"
 msgstr ""
 
-#: src/application.rs:357
+#: src/application.rs:375
 msgid "Have scanned the QR code, waiting for confirmation!"
 msgstr ""
 
-#: src/application.rs:399
+#: src/application.rs:417
 msgid "Please pay attention to check the cell phone verification code!"
 msgstr ""
 
-#: src/application.rs:406
+#: src/application.rs:425
 msgid "Failed to get verification code!"
 msgstr ""
 
-#: src/application.rs:524
+#: src/application.rs:511
 msgid "all top picks"
 msgstr ""
 
-#: src/application.rs:576
+#: src/application.rs:564
 msgid "all new albums"
 msgstr ""
 
-#: src/application.rs:626 src/application.rs:635
+#: src/application.rs:612 src/application.rs:621
 msgid "Get [{}] Playback link failed!"
 msgstr ""
 
-#: src/application.rs:680 src/application.rs:922
+#: src/application.rs:667 src/application.rs:927
 msgid "Failed to get song list details!"
 msgstr ""
 
-#: src/application.rs:708
+#: src/application.rs:698
 msgid "Failed to get album details!"
 msgstr ""
 
-#: src/application.rs:732
+#: src/application.rs:721
 msgid "Song list have been collected!"
 msgstr ""
 
-#: src/application.rs:734
+#: src/application.rs:723
 msgid "Song list have been uncollected!"
 msgstr ""
 
-#: src/application.rs:741
+#: src/application.rs:730
 msgid "Failed to collect song list!"
 msgstr ""
 
-#: src/application.rs:743
+#: src/application.rs:732
 msgid "Failed to uncollect song list!"
 msgstr ""
 
-#: src/application.rs:760
+#: src/application.rs:749
 msgid "Album have been collected!"
 msgstr ""
 
-#: src/application.rs:762
+#: src/application.rs:751
 msgid "Album have been uncollected!"
 msgstr ""
 
-#: src/application.rs:769
+#: src/application.rs:758
 msgid "Failed to collect album!"
 msgstr ""
 
-#: src/application.rs:771
+#: src/application.rs:760
 msgid "Failed to uncollect album!"
 msgstr ""
 
-#: src/application.rs:786
+#: src/application.rs:775
 msgid "Songs have been collected!"
 msgstr ""
 
-#: src/application.rs:788
+#: src/application.rs:777
 msgid "Songs have been uncollected!"
 msgstr ""
 
-#: src/application.rs:798
+#: src/application.rs:787
 msgid "Failed to collect songs!"
 msgstr ""
 
-#: src/application.rs:800
+#: src/application.rs:789
 msgid "Failed to uncollect songs!"
 msgstr ""
 
-#: src/application.rs:831 src/application.rs:873 src/application.rs:896 src/application.rs:930 src/application.rs:953 src/window.rs:808
+#: src/application.rs:825 src/application.rs:869 src/application.rs:896 src/application.rs:938 src/application.rs:965 src/window.rs:807
 msgid "Request for interface failed, please try again!"
 msgstr ""
 
-#: src/application.rs:1049 src/ncmapi.rs:192
+#: src/application.rs:1066 src/ncmapi.rs:183
 msgid "No lyrics found!"
 msgstr ""
 
-#: src/application.rs:1140 src/application.rs:1149 src/application.rs:1163
+#: src/application.rs:1154 src/application.rs:1163 src/application.rs:1177
 msgid "Cache cleared."
 msgstr ""
 
-#: src/gui/player_controls.rs:115
+#: src/gui/player_controls.rs:114
 msgid "Start playback [{}] ..."
 msgstr ""
 
-#: src/gui/player_controls.rs:234
+#: src/gui/player_controls.rs:224
 msgid "Playback error:{}"
 msgstr ""
 
-#: src/gui/player_controls.rs:608 src/gui/player_controls.rs:647
+#: src/gui/player_controls.rs:511
+msgid "https://music.163.com/song?id={}\n"
+"song:{}\n"
+"singer:{}"
+msgstr ""
+
+#: src/gui/player_controls.rs:519
+msgid "Copied song information to the clipboard!"
+msgstr ""
+
+#: src/gui/player_controls.rs:619 src/gui/player_controls.rs:658
 msgid "No more songs！"
 msgstr ""
 
-#: src/gui/player_controls.rs:673
+#: src/gui/player_controls.rs:684
 msgid "Collection failure！"
 msgstr ""
 
-#: src/gui/playlist_lyrics.rs:43
+#: src/gui/playlist_lyrics.rs:54
 msgid "Loading lyrics..."
 msgstr ""
 
-#: src/gui/search_singer_page.rs:259 src/gui/search_song_page.rs:280 src/gui/search_songlist_page.rs:188
+#: src/gui/search_singer_page.rs:248 src/gui/search_song_page.rs:281 src/gui/search_songlist_page.rs:192
 msgid "Loading more content..."
 msgstr ""
 
-#: src/gui/search_song_page.rs:80 src/gui/songlist_page.rs:78 src/gui/toplist.rs:94
+#: src/gui/search_song_page.rs:80 src/gui/songlist_page.rs:74 src/gui/songlist_page.rs:106 src/gui/songlist_page.rs:116 src/gui/toplist.rs:85
 msgid "{} songs"
 msgstr ""
 
-#: src/gui/search_song_page.rs:294 src/gui/songlist_page.rs:179 src/gui/toplist.rs:160
+#: src/gui/search_song_page.rs:295 src/gui/songlist_page.rs:191 src/gui/toplist.rs:151
 msgid "This is an empty song list！"
 msgstr ""
 
-#: src/gui/songlist_page.rs:93 src/gui/songlist_page.rs:103
-msgid "{} songs, {} favs"
+#: src/gui/songlist_page.rs:101
+msgid "{} min"
 msgstr ""
 
-#: src/gui/user_menus.rs:120 src/gui/user_menus.rs:134
+#: src/gui/songlist_page.rs:107 src/gui/songlist_page.rs:117
+msgid "{} favs"
+msgstr ""
+
+#: src/gui/user_menus.rs:123 src/gui/user_menus.rs:137
 msgid "Input format error!"
 msgstr ""
 
-#: src/window.rs:452
+#: src/window.rs:458
 msgid "No playable songs found！"
 msgstr ""
 
-#: src/window.rs:658
+#: src/window.rs:668
 msgid "Play List&Lyrics"
 msgstr ""

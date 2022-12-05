@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: netease-cloud-music-gtk 4\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-11-11 07:26+0000\n"
+"POT-Creation-Date: 2022-12-05 07:16+0000\n"
 "PO-Revision-Date: 2022-06-27 10:48+0800\n"
 "Last-Translator: gmg <gmg137@live.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -21,10 +21,6 @@ msgstr ""
 #: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.desktop.in:6
 #, fuzzy
 msgid "NetEase Cloud Music Gtk4"
-msgstr "网易云音乐"
-
-#, fuzzy
-msgid "NetEase Cloud Music"
 msgstr "网易云音乐"
 
 #: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.appdata.xml.in:7
@@ -68,55 +64,60 @@ msgstr "清理缓存标记"
 msgid "Volume"
 msgstr "音量"
 
-#: data/gtk/window.ui:82 data/gtk/window.ui:296
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:53
+#: data/gtk/preferences.ui:44
+msgid "Always try to play grey song"
+msgstr "总是尝试播放灰色歌曲"
+
+#: data/gtk/window.ui:83 data/gtk/window.ui:297
 msgid "Songs"
 msgstr "歌曲"
 
-#: data/gtk/window.ui:107
+#: data/gtk/window.ui:108
 msgid "Discover"
 msgstr "发现"
 
-#: data/gtk/window.ui:126
+#: data/gtk/window.ui:127
 msgid "Toplist"
 msgstr "榜单"
 
-#: data/gtk/window.ui:136
+#: data/gtk/window.ui:137
 msgid "My"
 msgstr "我的"
 
-#: data/gtk/window.ui:168
+#: data/gtk/window.ui:169
 msgid "Not yet logged"
 msgstr "尚未登录"
 
-#: data/gtk/window.ui:180
+#: data/gtk/window.ui:181
 msgid "Login to view and manage your private music collection"
 msgstr "登录后可查看和管理您的私人音乐收藏"
 
-#: data/gtk/window.ui:257
+#: data/gtk/window.ui:258
 msgid "_Preferences"
 msgstr "首选项(_P)"
 
-#: data/gtk/window.ui:261
+#: data/gtk/window.ui:262
 msgid "_Keyboard Shortcuts"
 msgstr "快捷键(_K)"
 
-#: data/gtk/window.ui:265
+#: data/gtk/window.ui:266
 msgid "_About netease-cloud-music-gtk4"
 msgstr "关于(_A)"
 
-#: data/gtk/window.ui:303
+#: data/gtk/window.ui:304
 msgid "Singer"
 msgstr "歌手"
 
-#: data/gtk/window.ui:310
+#: data/gtk/window.ui:311
 msgid "Album"
 msgstr "专辑"
 
-#: data/gtk/window.ui:317
+#: data/gtk/window.ui:318
 msgid "Lyrics"
 msgstr "歌词"
 
-#: data/gtk/window.ui:324
+#: data/gtk/window.ui:325
 msgid "Song List"
 msgstr "歌单"
 
@@ -141,38 +142,42 @@ msgid "Set volume to 0 when startup"
 msgstr "启动时设置音量为 0"
 
 #: data/gtk/preferences.ui:43
+msgid "Not ignore grey song"
+msgstr "不忽略灰色歌曲"
+
+#: data/gtk/preferences.ui:57
 msgid "Network Proxy"
 msgstr "网络代理"
 
-#: data/gtk/preferences.ui:44
+#: data/gtk/preferences.ui:58
 msgid "http/https/socks4/socks4a/socks5/socks5h"
 msgstr ""
 
-#: data/gtk/preferences.ui:57
+#: data/gtk/preferences.ui:71
 msgid "Cache cleaning"
 msgstr "缓存清理"
 
-#: data/gtk/preferences.ui:61
+#: data/gtk/preferences.ui:75
 msgid "Never"
 msgstr "从不"
 
-#: data/gtk/preferences.ui:62
+#: data/gtk/preferences.ui:76
 msgid "Daily"
 msgstr "每天"
 
-#: data/gtk/preferences.ui:63
+#: data/gtk/preferences.ui:77
 msgid "Weekly"
 msgstr "每周"
 
-#: data/gtk/preferences.ui:64
+#: data/gtk/preferences.ui:78
 msgid "Monthly"
 msgstr "每月"
 
-#: data/gtk/preferences.ui:74
+#: data/gtk/preferences.ui:88
 msgid "Music"
 msgstr "音乐"
 
-#: data/gtk/preferences.ui:77
+#: data/gtk/preferences.ui:91
 msgid "Sound quality"
 msgstr "音质"
 
@@ -277,71 +282,71 @@ msgstr "上一曲"
 msgid "View Album"
 msgstr "查看专辑"
 
-#: data/gtk/player-controls.ui:145
+#: data/gtk/player-controls.ui:150
 msgid "Like"
 msgstr "收藏"
 
-#: data/gtk/player-controls.ui:194
+#: data/gtk/player-controls.ui:199
 msgid "Playlist/Lyrics"
 msgstr "播放列表/歌词"
 
-#: data/gtk/player-controls.ui:224
+#: data/gtk/player-controls.ui:229
 msgid "Shuffle/Repeat Off"
 msgstr "关闭循环"
 
-#: data/gtk/player-controls.ui:231
+#: data/gtk/player-controls.ui:236
 msgid "Repeat Song"
 msgstr "单曲循环"
 
-#: data/gtk/player-controls.ui:238
+#: data/gtk/player-controls.ui:243
 msgid "Repeat All"
 msgstr "全部循环"
 
-#: data/gtk/player-controls.ui:245
+#: data/gtk/player-controls.ui:250
 msgid "Shuffle"
 msgstr "随机播放"
 
-#: data/gtk/songlist-page.ui:61
+#: data/gtk/songlist-page.ui:70
 msgid "0 songs"
 msgstr "0 首歌曲"
 
-#: data/gtk/songlist-page.ui:73 data/gtk/toplist.ui:91
+#: data/gtk/songlist-page.ui:82 data/gtk/toplist.ui:94
 msgid "Play songs list"
 msgstr "播放歌单"
 
-#: data/gtk/songlist-page.ui:85
+#: data/gtk/songlist-page.ui:94
 msgid "Like songs list"
 msgstr "收藏歌单"
 
-#: data/gtk/songlist-row.ui:99
+#: data/gtk/songlist-row.ui:102
 msgid "Like song"
 msgstr "收藏歌曲"
 
-#: data/gtk/songlist-row.ui:111
+#: data/gtk/songlist-row.ui:114
 msgid "View album"
 msgstr "查看专辑"
 
-#: data/gtk/my-page.ui:40 src/application.rs:880
+#: data/gtk/my-page.ui:41 src/application.rs:877
 msgid "Daily Recommendation"
 msgstr "每日推荐"
 
-#: data/gtk/my-page.ui:67 src/application.rs:903
+#: data/gtk/my-page.ui:68 src/application.rs:904
 msgid "Favorite Songs"
 msgstr "收藏单曲"
 
-#: data/gtk/my-page.ui:94 src/application.rs:960
+#: data/gtk/my-page.ui:95 src/application.rs:973
 msgid "Private FM"
 msgstr "私人FM"
 
-#: data/gtk/my-page.ui:121 src/application.rs:937
+#: data/gtk/my-page.ui:122 src/application.rs:946
 msgid "Cloud Music"
 msgstr "云盘音乐"
 
-#: data/gtk/my-page.ui:148 src/application.rs:980
+#: data/gtk/my-page.ui:149 src/application.rs:996
 msgid "Favorite Album"
 msgstr "收藏专辑"
 
-#: data/gtk/my-page.ui:175 src/application.rs:998
+#: data/gtk/my-page.ui:176 src/application.rs:1014
 msgid "Favorite Song List"
 msgstr "收藏歌单"
 
@@ -349,158 +354,184 @@ msgstr "收藏歌单"
 msgid "Recommended Song List"
 msgstr "推荐歌单"
 
-#: src/application.rs:265
+#: src/application.rs:272
 msgid "Login successful!"
 msgstr "登录成功!"
 
-#: src/application.rs:270 src/application.rs:430
+#: src/application.rs:278 src/application.rs:450
 msgid "Login failed!"
 msgstr "登录失败！"
 
-#: src/application.rs:287
+#: src/application.rs:301
 msgid "Logout!"
 msgstr "已注销!"
 
-#: src/application.rs:357
+#: src/application.rs:375
 msgid "Have scanned the QR code, waiting for confirmation!"
 msgstr "已扫码，等待确认！"
 
-#: src/application.rs:399
+#: src/application.rs:417
 msgid "Please pay attention to check the cell phone verification code!"
 msgstr "请注意检查手机验证码!"
 
-#: src/application.rs:406
+#: src/application.rs:425
 msgid "Failed to get verification code!"
 msgstr "获取验证码失败!"
 
-#: src/application.rs:524
+#: src/application.rs:511
 msgid "all top picks"
 msgstr "全部热门推荐"
 
-#: src/application.rs:576
+#: src/application.rs:564
 msgid "all new albums"
 msgstr "全部专辑"
 
-#: src/application.rs:626 src/application.rs:635
+#: src/application.rs:612 src/application.rs:621
 msgid "Get [{}] Playback link failed!"
 msgstr "获取 [{}] 播放链接失败！"
 
-#: src/application.rs:680 src/application.rs:922
+#: src/application.rs:667 src/application.rs:927
 msgid "Failed to get song list details!"
 msgstr "获取歌单失败!"
 
-#: src/application.rs:708
+#: src/application.rs:698
 msgid "Failed to get album details!"
 msgstr "获取专辑失败!"
 
-#: src/application.rs:732
+#: src/application.rs:721
 msgid "Song list have been collected!"
 msgstr "已收藏歌单!"
 
-#: src/application.rs:734
+#: src/application.rs:723
 msgid "Song list have been uncollected!"
 msgstr "已取消收藏歌单!"
 
-#: src/application.rs:741
+#: src/application.rs:730
 msgid "Failed to collect song list!"
 msgstr "收藏歌单失败！"
 
-#: src/application.rs:743
+#: src/application.rs:732
 msgid "Failed to uncollect song list!"
 msgstr "取消收藏歌单失败！"
 
-#: src/application.rs:760
+#: src/application.rs:749
 msgid "Album have been collected!"
 msgstr "已收藏专辑!"
 
-#: src/application.rs:762
+#: src/application.rs:751
 msgid "Album have been uncollected!"
 msgstr "已取消收藏专辑!"
 
-#: src/application.rs:769
+#: src/application.rs:758
 msgid "Failed to collect album!"
 msgstr "收藏专辑失败!"
 
-#: src/application.rs:771
+#: src/application.rs:760
 msgid "Failed to uncollect album!"
 msgstr "取消收藏专辑失败!"
 
-#: src/application.rs:786
+#: src/application.rs:775
 msgid "Songs have been collected!"
 msgstr "已收藏歌曲!"
 
-#: src/application.rs:788
+#: src/application.rs:777
 msgid "Songs have been uncollected!"
 msgstr "已取消收藏歌曲!"
 
-#: src/application.rs:798
+#: src/application.rs:787
 msgid "Failed to collect songs!"
 msgstr "收藏歌曲失败!"
 
-#: src/application.rs:800
+#: src/application.rs:789
 msgid "Failed to uncollect songs!"
 msgstr "取消收藏歌曲失败!"
 
-#: src/application.rs:831 src/application.rs:873 src/application.rs:896
-#: src/application.rs:930 src/application.rs:953 src/window.rs:808
+#: src/application.rs:825 src/application.rs:869 src/application.rs:896
+#: src/application.rs:938 src/application.rs:965 src/window.rs:807
 msgid "Request for interface failed, please try again!"
 msgstr "请求接口失败，请重试!"
 
-#: src/application.rs:1049 src/ncmapi.rs:192
+#: src/application.rs:1066 src/ncmapi.rs:183
 msgid "No lyrics found!"
 msgstr "没有找到歌词!"
 
-#: src/application.rs:1140 src/application.rs:1149 src/application.rs:1163
+#: src/application.rs:1154 src/application.rs:1163 src/application.rs:1177
 msgid "Cache cleared."
 msgstr "缓存已清理完成。"
 
-#: src/gui/player_controls.rs:115
+#: src/gui/player_controls.rs:114
 msgid "Start playback [{}] ..."
 msgstr "开始播放 [{}] ..."
 
-#: src/gui/player_controls.rs:234
+#: src/gui/player_controls.rs:224
 msgid "Playback error:{}"
 msgstr "播放错误: {}"
 
-#: src/gui/player_controls.rs:608 src/gui/player_controls.rs:647
+#: src/gui/player_controls.rs:511
+msgid ""
+"https://music.163.com/song?id={}\n"
+"song:{}\n"
+"singer:{}"
+msgstr ""
+"https://music.163.com/song?id={}\n"
+"歌曲:{}\n"
+"歌手:{}"
+
+#: src/gui/player_controls.rs:519
+msgid "Copied song information to the clipboard!"
+msgstr "已复制歌曲信息到剪贴板!"
+
+#: src/gui/player_controls.rs:619 src/gui/player_controls.rs:658
 msgid "No more songs！"
 msgstr "没有歌曲了!"
 
-#: src/gui/player_controls.rs:673
+#: src/gui/player_controls.rs:684
 msgid "Collection failure！"
 msgstr "收藏失败!"
 
-#: src/gui/playlist_lyrics.rs:43
+#: src/gui/playlist_lyrics.rs:54
 msgid "Loading lyrics..."
 msgstr "正在加载歌词..."
 
-#: src/gui/search_singer_page.rs:259 src/gui/search_song_page.rs:280
-#: src/gui/search_songlist_page.rs:188
+#: src/gui/search_singer_page.rs:248 src/gui/search_song_page.rs:281
+#: src/gui/search_songlist_page.rs:192
 msgid "Loading more content..."
 msgstr "加载更多内容..."
 
-#: src/gui/search_song_page.rs:80 src/gui/songlist_page.rs:78
-#: src/gui/toplist.rs:94
+#: src/gui/search_song_page.rs:80 src/gui/songlist_page.rs:74
+#: src/gui/songlist_page.rs:106 src/gui/songlist_page.rs:116
+#: src/gui/toplist.rs:85
 msgid "{} songs"
 msgstr "{} 首歌曲"
 
-#: src/gui/search_song_page.rs:294 src/gui/songlist_page.rs:179
-#: src/gui/toplist.rs:160
+#: src/gui/search_song_page.rs:295 src/gui/songlist_page.rs:191
+#: src/gui/toplist.rs:151
 msgid "This is an empty song list！"
 msgstr "这是一个空歌单!"
 
-#: src/gui/songlist_page.rs:93 src/gui/songlist_page.rs:103
-msgid "{} songs, {} favs"
-msgstr "{} 首歌曲，{} 收藏"
+#: src/gui/songlist_page.rs:101
+msgid "{} min"
+msgstr "{} 分钟"
 
-#: src/gui/user_menus.rs:120 src/gui/user_menus.rs:134
+#: src/gui/songlist_page.rs:107 src/gui/songlist_page.rs:117
+msgid "{} favs"
+msgstr "{} 收藏"
+
+#: src/gui/user_menus.rs:123 src/gui/user_menus.rs:137
 msgid "Input format error!"
 msgstr "输入格式错误!"
 
-#: src/window.rs:452
+#: src/window.rs:458
 msgid "No playable songs found！"
 msgstr "没有可播放歌曲!"
 
-#: src/window.rs:658
+#: src/window.rs:668
 msgid "Play List&Lyrics"
 msgstr "播放列表&歌词"
+
+#, fuzzy
+#~ msgid "NetEase Cloud Music"
+#~ msgstr "网易云音乐"
+
+#~ msgid "{} songs, {} favs"
+#~ msgstr "{} 首歌曲，{} 收藏"
