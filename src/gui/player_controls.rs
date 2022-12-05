@@ -7,7 +7,7 @@ use gettextrs::gettext;
 use gio::Settings;
 use glib::{
     ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum, ParamSpecUInt, ParamSpecUInt64,
-    SendWeakRef, Sender, Value,
+    Sender, Value,
 };
 use gst::ClockTime;
 use gstreamer_play::{prelude::ElementExt, *};
@@ -16,13 +16,12 @@ use mpris_player::PlaybackStatus;
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::*;
 
-use crate::{application::Action, audio::*, path::CACHE};
+use crate::{application::Action, audio::*, model::ImageDownloadImpl, path::CACHE};
 use std::{
     cell::Cell,
     fs, path,
     sync::{Arc, Mutex},
     thread,
-    time::Duration,
 };
 
 glib::wrapper! {
@@ -139,27 +138,18 @@ impl PlayerControls {
         let imp = self.imp();
         let cover_image = imp.cover_image.get();
         let mut path_cover = CACHE.clone();
-        path_cover.push(format!("{}-cover.jpg", song_info.album_id));
+        path_cover.push(format!("{}-songlist.jpg", song_info.album_id));
         if path_cover.exists() {
             cover_image.set_from_file(Some(&path_cover));
         } else {
             cover_image.set_from_icon_name(Some("image-missing-symbolic"));
             let sender = imp.sender.get().unwrap().clone();
-            let cover_image = SendWeakRef::from(imp.cover_image.get().downgrade());
-            sender
-                .send(Action::DownloadImage(
-                    song_info.pic_url.to_owned(),
-                    path_cover.to_owned(),
-                    50,
-                    50,
-                    Some(Arc::new(move |_| {
-                        cover_image
-                            .upgrade()
-                            .unwrap()
-                            .set_from_file(Some(&path_cover));
-                    })),
-                ))
-                .unwrap();
+            cover_image.set_from_net(
+                song_info.pic_url.to_owned(),
+                path_cover.to_owned(),
+                (140, 140),
+                &sender,
+            );
         }
 
         let title_label = imp.title_label.get();
@@ -502,35 +492,13 @@ impl PlayerControls {
     fn cover_clicked_cb(&self) {
         let sender = self.imp().sender.get().unwrap().clone();
         if let Some(songinfo) = self.get_current_song() {
-            let mut path = CACHE.clone();
-            path.push(format!("{}-songlist.jpg", songinfo.album_id));
-            if sender
-                .send(Action::DownloadImage(
-                    songinfo.pic_url.to_owned(),
-                    path.to_owned(),
-                    140,
-                    140,
-                    None,
-                ))
-                .is_ok()
-            {
-                let songlist = SongList {
-                    id: songinfo.album_id,
-                    name: songinfo.album,
-                    cover_img_url: songinfo.pic_url,
-                    author: String::new(),
-                };
-                let path = path.to_owned();
-                glib::timeout_add_local(Duration::from_millis(100), move || {
-                    if path.exists() {
-                        sender
-                            .send(Action::ToAlbumPage(songlist.to_owned()))
-                            .unwrap();
-                        return Continue(false);
-                    }
-                    Continue(true)
-                });
-            }
+            let songlist = SongList {
+                id: songinfo.album_id,
+                name: songinfo.album,
+                cover_img_url: songinfo.pic_url,
+                author: String::new(),
+            };
+            sender.send(Action::ToAlbumPage(songlist)).unwrap();
         }
     }
 }

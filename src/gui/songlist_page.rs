@@ -12,7 +12,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use crate::{
     application::Action,
     gui::songlist_view::SongListView,
-    model::{DiscoverSubPage, NcmImageSource, SongListDetail},
+    model::{DiscoverSubPage, ImageDownloadImpl, SongListDetail},
     path::CACHE,
 };
 use std::{
@@ -62,13 +62,7 @@ impl SonglistPage {
         path.push(format!("{}-songlist.jpg", songlist.id));
         if !path.exists() {
             cover_image.set_from_icon_name(Some("image-missing-symbolic"));
-            let nis = NcmImageSource::SongList(
-                songlist.cover_img_url.to_owned(),
-                path,
-                &cover_image,
-                sender,
-            );
-            nis.loading_images();
+            cover_image.set_from_net(songlist.cover_img_url.to_owned(), path, (140, 140), sender);
         } else {
             cover_image.set_from_file(Some(&path));
         }

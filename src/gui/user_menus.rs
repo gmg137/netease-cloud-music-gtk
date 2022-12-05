@@ -5,7 +5,7 @@
 //
 use crate::{
     application::Action,
-    model::{NcmImageSource, UserMenuChild},
+    model::{ImageDownloadImpl, UserMenuChild},
 };
 use adw::*;
 use gettextrs::gettext;
@@ -157,8 +157,8 @@ impl UserMenus {
     }
 
     pub fn set_user_avatar(&self, url: String, path: PathBuf) {
-        let nis = NcmImageSource::UserAvatar(url, path, &self.avatar, self.sender.get().unwrap());
-        nis.loading_images();
+        self.avatar
+            .set_from_net(url, path, (50, 50), self.sender.get().unwrap());
     }
 
     pub fn set_user_name(&self, name: String) {

@@ -9,7 +9,7 @@ use gtk::{glib, prelude::*, subclass::prelude::*, *};
 use ncm_api::SongList;
 use once_cell::sync::Lazy;
 
-use crate::{application::Action, model::NcmImageSource};
+use crate::{application::Action, model::ImageDownloadImpl};
 use std::cell::{Cell, RefCell};
 
 glib::wrapper! {
@@ -29,7 +29,7 @@ impl From<SongListGridItem> for SongList {
 
 impl SongListGridItem {
     pub fn new(sl: &SongList, sender: &Sender<Action>) -> Self {
-        let icon = Image::from_icon_name("image-missing");
+        let icon = Image::from_icon_name("image-missing-symbolic");
 
         let s: Self = glib::Object::builder()
             .property("id", &sl.id)
@@ -44,8 +44,7 @@ impl SongListGridItem {
 
         // download cover
         if !path.exists() {
-            let nis = NcmImageSource::SongList(sl.cover_img_url.to_owned(), path, &icon, sender);
-            nis.loading_images();
+            icon.set_from_net(sl.cover_img_url.to_owned(), path, (140, 140), sender);
         } else {
             icon.set_from_file(Some(&path));
         }
@@ -110,9 +109,7 @@ impl SongListGridItem {
             path.push(format!("{}-songlist.jpg", sl.id));
             // download cover
             if !path.exists() {
-                let nis =
-                    NcmImageSource::SongList(sl.cover_img_url.to_owned(), path, &image, sender);
-                nis.loading_images();
+                image.set_from_net(sl.cover_img_url.to_owned(), path, (140, 140), sender);
             } else {
                 image.set_from_file(Some(&path));
             }

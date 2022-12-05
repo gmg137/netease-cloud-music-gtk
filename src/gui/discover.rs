@@ -3,13 +3,12 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
+use crate::{application::Action, gui::SongListGridItem, model::ImageDownloadImpl, path::CACHE};
 use glib::{clone, Continue, MainContext, Sender, PRIORITY_DEFAULT};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::{BannersInfo, SongInfo, SongList};
 use once_cell::sync::OnceCell;
 use std::sync::{Arc, RwLock};
-
-use crate::{application::Action, gui::SongListGridItem, path::CACHE};
 
 glib::wrapper! {
     pub struct Discover(ObjectSubclass<imp::Discover>)
@@ -89,13 +88,7 @@ impl Discover {
 
         let sender = self.imp().sender.get().unwrap().clone();
         let image = Picture::new();
-        let nis = crate::model::NcmImageSource::Banner(
-            banner.pic_url.to_owned(),
-            path.to_owned(),
-            &image,
-            &sender,
-        );
-        nis.loading_images();
+        image.set_from_net(banner.pic_url.to_owned(), path, (730, 283), &sender);
 
         // 图片加载方式已验证，必须这样才能实现。
         // let image = gtk::gdk_pixbuf::Pixbuf::from_file(path).unwrap();

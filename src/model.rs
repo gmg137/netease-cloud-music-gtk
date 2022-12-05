@@ -210,109 +210,74 @@ impl Default for UserMenuChild {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum NcmImageSource<'a> {
-    SongList(String, PathBuf, &'a Image, &'a Sender<Action>), // id, url
-    Banner(String, PathBuf, &'a Picture, &'a Sender<Action>),
-    TopList(String, PathBuf, &'a Image, &'a Sender<Action>),
-    Singer(String, PathBuf, &'a adw::Avatar, &'a Sender<Action>),
-    UserAvatar(String, PathBuf, &'a adw::Avatar, &'a Sender<Action>),
+pub trait ImageDownloadImpl {
+    // 参数
+    // url: 图片链接
+    // path: 要保存的图片本地路径
+    // size: 图片宽高象素
+    fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>);
 }
 
-impl<'a> NcmImageSource<'a> {
-    pub fn loading_images(&self) {
-        match self {
-            NcmImageSource::SongList(url, path, image, sender) => {
-                let path = path.to_owned();
-                let image = glib::SendWeakRef::from(image.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        url.to_owned(),
-                        path.to_owned(),
-                        140,
-                        140,
-                        Some(Arc::new(move |_| {
-                            if let Some(image) = image.upgrade() {
-                                image.set_from_file(Some(&path));
-                            }
-                        })),
-                    ))
-                    .unwrap();
-            }
-            NcmImageSource::Banner(url, path, picture, sender) => {
-                let path = path.to_owned();
-                let picture = glib::SendWeakRef::from(picture.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        url.to_owned(),
-                        path.to_owned(),
-                        730,
-                        283,
-                        Some(Arc::new(move |_| {
-                            let image = gtk::gdk_pixbuf::Pixbuf::from_file(&path).unwrap();
-                            let image = image
-                                .scale_simple(730, 283, gtk::gdk_pixbuf::InterpType::Bilinear)
-                                .unwrap();
-                            picture.upgrade().unwrap().set_pixbuf(Some(&image));
-                        })),
-                    ))
-                    .unwrap();
-            }
-            NcmImageSource::TopList(url, path, image, sender) => {
-                let path = path.to_owned();
-                let image = glib::SendWeakRef::from(image.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        url.to_owned(),
-                        path.to_owned(),
-                        140,
-                        140,
-                        Some(Arc::new(move |_| {
-                            image.upgrade().unwrap().set_from_file(Some(&path));
-                        })),
-                    ))
-                    .unwrap();
-            }
-            NcmImageSource::Singer(url, path, avatar, sender) => {
-                let path = path.to_owned();
-                let avatar = SendWeakRef::from(avatar.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        url.to_owned(),
-                        path.to_owned(),
-                        140,
-                        140,
-                        Some(Arc::new(move |_| {
-                            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
-                                let image = Image::from_pixbuf(Some(&pixbuf));
-                                if let Some(paintable) = image.paintable() {
-                                    avatar.upgrade().unwrap().set_custom_image(Some(&paintable));
-                                }
-                            }
-                        })),
-                    ))
-                    .unwrap();
-            }
-            NcmImageSource::UserAvatar(url, path, avatar, sender) => {
-                let path = path.to_owned();
-                let avatar = SendWeakRef::from(avatar.downgrade());
-                sender
-                    .send(Action::DownloadImage(
-                        url.to_owned(),
-                        path.to_owned(),
-                        50,
-                        50,
-                        Some(Arc::new(move |_| {
-                            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
-                                let image = Image::from_pixbuf(Some(&pixbuf));
-                                if let Some(paintable) = image.paintable() {
-                                    avatar.upgrade().unwrap().set_custom_image(Some(&paintable));
-                                }
-                            }
-                        })),
-                    ))
-                    .unwrap();
-            }
-        }
+impl ImageDownloadImpl for Image {
+    fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>) {
+        let image = glib::SendWeakRef::from(self.downgrade());
+        sender
+            .send(Action::DownloadImage(
+                url,
+                path.to_owned(),
+                size.0,
+                size.1,
+                Some(Arc::new(move |_| {
+                    image.upgrade().unwrap().set_from_file(Some(&path));
+                })),
+            ))
+            .unwrap();
+    }
+}
+
+impl ImageDownloadImpl for Picture {
+    fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>) {
+        let picture = glib::SendWeakRef::from(self.downgrade());
+        sender
+            .send(Action::DownloadImage(
+                url,
+                path.to_owned(),
+                size.0,
+                size.1,
+                Some(Arc::new(move |_| {
+                    let image = gtk::gdk_pixbuf::Pixbuf::from_file(&path).unwrap();
+                    let image = image
+                        .scale_simple(
+                            size.0 as i32,
+                            size.1 as i32,
+                            gtk::gdk_pixbuf::InterpType::Bilinear,
+                        )
+                        .unwrap();
+                    picture.upgrade().unwrap().set_pixbuf(Some(&image));
+                })),
+            ))
+            .unwrap();
+    }
+}
+
+impl ImageDownloadImpl for adw::Avatar {
+    fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>) {
+        let avatar = SendWeakRef::from(self.downgrade());
+        sender
+            .send(Action::DownloadImage(
+                url,
+                path.to_owned(),
+                size.0,
+                size.1,
+                Some(Arc::new(move |_| {
+                    if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
+                        let image = Image::from_pixbuf(Some(&pixbuf));
+                        if let Some(paintable) = image.paintable() {
+                            avatar.upgrade().unwrap().set_custom_image(Some(&paintable));
+                        }
+                    }
+                })),
+            ))
+            .unwrap();
     }
 }

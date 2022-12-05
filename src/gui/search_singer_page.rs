@@ -11,7 +11,7 @@ use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{
     application::Action,
-    model::{NcmImageSource, SearchResult, SearchType},
+    model::{ImageDownloadImpl, SearchResult, SearchType},
     path::CACHE,
 };
 use std::cell::{Cell, RefCell};
@@ -68,8 +68,7 @@ impl SearchSingerPage {
                 }
             } else {
                 // 加载图片
-                let nis = NcmImageSource::Singer(si.pic_url.to_owned(), path, &avatar, sender);
-                nis.loading_images();
+                avatar.set_from_net(si.pic_url.to_owned(), path, (140, 140), sender);
             }
 
             let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);

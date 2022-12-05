@@ -4,7 +4,7 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use crate::{
-    application::Action, gui::songlist_view::SongListView, model::NcmImageSource, path::CACHE,
+    application::Action, gui::songlist_view::SongListView, model::ImageDownloadImpl, path::CACHE,
 };
 use adw::{subclass::prelude::BinImpl, traits::ActionRowExt, ActionRow};
 use gettextrs::gettext;
@@ -52,8 +52,7 @@ impl TopListView {
 
             // download cover
             if !path.exists() {
-                let nis = NcmImageSource::TopList(t.cover.to_owned(), path, &image, sender);
-                nis.loading_images();
+                image.set_from_net(t.cover.to_owned(), path, (140, 140), sender);
             } else {
                 image.set_from_file(Some(&path));
             }
@@ -68,13 +67,9 @@ impl TopListView {
                 // 加载初始选中的榜单封面
                 let mut path = CACHE.clone();
                 path.push(format!("{}-toplist.jpg", t.id));
-                let nis = NcmImageSource::TopList(
-                    t.cover.to_owned(),
-                    path,
-                    &self.imp().cover_image,
-                    sender,
-                );
-                nis.loading_images();
+                self.imp()
+                    .cover_image
+                    .set_from_net(t.cover.to_owned(), path, (140, 140), sender);
             }
         }
         self.imp().data.set(list).unwrap();
