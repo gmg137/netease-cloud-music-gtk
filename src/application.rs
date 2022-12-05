@@ -454,10 +454,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::SwitchUserMenuToUser(login_info, menu) => {
                 window.switch_user_menu_to_user(login_info.clone(), menu);
-                let avatar_url = login_info.avatar_url;
-                let mut path = CACHE.clone();
-                path.push("avatar.jpg");
-                window.set_avatar(avatar_url, path);
+                window.set_avatar(&login_info);
             }
             Action::AddToast(mes) => {
                 window.add_toast(mes);

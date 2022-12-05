@@ -4,7 +4,9 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use crate::{
-    application::Action, gui::songlist_view::SongListView, model::ImageDownloadImpl, path::CACHE,
+    application::Action,
+    gui::songlist_view::SongListView,
+    model::{NcmImageSource, SenderHelper},
 };
 use adw::{subclass::prelude::BinImpl, traits::ActionRowExt, ActionRow};
 use gettextrs::gettext;
@@ -46,16 +48,9 @@ impl TopListView {
                 .title(&t.name)
                 .subtitle(&t.update)
                 .build();
-            let mut path = CACHE.clone();
-            path.push(format!("{}-toplist.jpg", t.id));
             let image = gtk::Image::from_icon_name("image-missing-symbolic");
 
-            // download cover
-            if !path.exists() {
-                image.set_from_net(t.cover.to_owned(), path, (140, 140), sender);
-            } else {
-                image.set_from_file(Some(&path));
-            }
+            sender.set_image_widget_source(&image, NcmImageSource::TopList(t.id, t.cover.clone()));
 
             image.set_pixel_size(40);
             action.add_prefix(&image);
@@ -64,12 +59,10 @@ impl TopListView {
                 sidebar.select_row(Some(&action));
                 select = true;
 
-                // 加载初始选中的榜单封面
-                let mut path = CACHE.clone();
-                path.push(format!("{}-toplist.jpg", t.id));
-                self.imp()
-                    .cover_image
-                    .set_from_net(t.cover.to_owned(), path, (140, 140), sender);
+                sender.set_image_widget_source(
+                    &self.imp().cover_image.get(),
+                    NcmImageSource::TopList(t.id, t.cover.clone()),
+                );
             }
         }
         self.imp().data.set(list).unwrap();
@@ -154,6 +147,7 @@ mod imp {
         }
 
         pub fn update_toplist_info(&self, index: i32) {
+            let sender = self.sender.get().unwrap();
             let songs_list = self.songs_list.get();
             songs_list.clear_list();
 
@@ -164,10 +158,11 @@ mod imp {
                     .unwrap()
                     .send(Action::GetToplistSongsList(info.id))
                     .unwrap();
-                let mut path = CACHE.clone();
 
-                path.push(format!("{}-toplist.jpg", info.id));
-                self.cover_image.set_from_file(Some(path));
+                sender.set_image_widget_source(
+                    &self.cover_image.get(),
+                    NcmImageSource::TopList(info.id, info.cover.clone()),
+                );
 
                 let title = self.title_label.get();
                 title.set_label(&info.name);

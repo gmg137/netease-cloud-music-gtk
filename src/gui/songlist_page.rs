@@ -12,8 +12,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use crate::{
     application::Action,
     gui::songlist_view::SongListView,
-    model::{DiscoverSubPage, ImageDownloadImpl, SongListDetail},
-    path::CACHE,
+    model::{DiscoverSubPage, NcmImageSource, SenderHelper, SongListDetail},
 };
 use std::{
     cell::{Cell, RefCell},
@@ -58,14 +57,12 @@ impl SonglistPage {
 
         // 设置专辑图
         let cover_image = imp.cover_image.get();
-        let mut path = CACHE.clone();
-        path.push(format!("{}-songlist.jpg", songlist.id));
-        if !path.exists() {
-            cover_image.set_from_icon_name(Some("image-missing-symbolic"));
-            cover_image.set_from_net(songlist.cover_img_url.to_owned(), path, (140, 140), sender);
-        } else {
-            cover_image.set_from_file(Some(&path));
-        }
+
+        cover_image.set_from_icon_name(Some("image-missing-symbolic"));
+        sender.set_image_widget_source(
+            &cover_image,
+            NcmImageSource::SongList(songlist.id, songlist.cover_img_url.clone()),
+        );
 
         // 设置标题
         let title = imp.title_label.get();

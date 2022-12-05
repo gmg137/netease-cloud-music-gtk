@@ -3,7 +3,11 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use crate::{application::Action, gui::SongListGridItem, model::ImageDownloadImpl, path::CACHE};
+use crate::{
+    application::Action,
+    gui::SongListGridItem,
+    model::{NcmImageSource, SenderHelper},
+};
 use glib::{clone, Continue, MainContext, Sender, PRIORITY_DEFAULT};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::{BannersInfo, SongInfo, SongList};
@@ -83,19 +87,13 @@ impl Discover {
             carousel.scroll_to(&widget, false);
         }
 
-        let mut path = CACHE.clone();
-        path.push(format!("{}-banner.jpg", banner.id));
-
         let sender = self.imp().sender.get().unwrap().clone();
         let image = Picture::new();
-        image.set_from_net(banner.pic_url.to_owned(), path, (730, 283), &sender);
+        sender.set_image_widget_source(
+            &image,
+            NcmImageSource::Banner(banner.id, banner.pic.clone()),
+        );
 
-        // 图片加载方式已验证，必须这样才能实现。
-        // let image = gtk::gdk_pixbuf::Pixbuf::from_file(path).unwrap();
-        // let image = image
-        //     .scale_simple(730, 283, gtk::gdk_pixbuf::InterpType::Bilinear)
-        //     .unwrap();
-        // let image = gtk::Picture::for_pixbuf(&image);
         image.set_halign(gtk::Align::Center);
         image.set_valign(gtk::Align::Fill);
         image.set_width_request(730);
