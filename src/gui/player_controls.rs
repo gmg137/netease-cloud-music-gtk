@@ -501,6 +501,26 @@ impl PlayerControls {
             sender.send(Action::ToAlbumPage(songlist)).unwrap();
         }
     }
+
+    #[template_callback]
+    fn title_clicked_cb(&self) {
+        if let Some(songinfo) = self.get_current_song() {
+            let sender = self.imp().sender.get().unwrap().clone();
+            let clipboard = self.clipboard();
+            let share = gettext!(
+                "https://music.163.com/song?id={}\nsong:{}\nsinger:{}",
+                songinfo.id,
+                songinfo.name,
+                songinfo.singer
+            );
+            clipboard.set_text(&share);
+            sender
+                .send(Action::AddToast(gettext(
+                    "Copied song information to the clipboard!",
+                )))
+                .unwrap();
+        }
+    }
 }
 
 mod imp {

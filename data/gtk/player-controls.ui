@@ -79,6 +79,11 @@
                         <property name="label">歌曲名</property>
                         <property name="max-width-chars">12</property>
                         <property name="ellipsize">middle</property>
+                        <child>
+                            <object class="GtkGestureClick">
+                                <signal name="pressed" handler="title_clicked_cb" swapped="true" />
+                            </object>
+                        </child>
                         <style>
                             <class name="heading" />
                         </style>
