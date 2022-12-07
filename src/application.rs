@@ -910,7 +910,7 @@ impl NeteaseCloudMusicGtk4Application {
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
                     let uid = window.get_uid();
-                    match ncmapi.client.user_song_list(uid, 0, 30).await {
+                    match ncmapi.client.user_song_list(uid, 0, 1).await {
                         Ok(sls) => {
                             debug!("获取心动歌单：{:?}", sls);
                             if !sls.is_empty() {
@@ -1019,7 +1019,7 @@ impl NeteaseCloudMusicGtk4Application {
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
                     let res = window
-                        .action_search(ncmapi, String::new(), SearchType::LikeSongList, 1, 50)
+                        .action_search(ncmapi, String::new(), SearchType::LikeSongList, 0, 1001)
                         .await;
                     if let Some(page) = page.upgrade() {
                         if let Some(SearchResult::SongLists(sls)) = res {
