@@ -5,7 +5,7 @@
 //
 use crate::{
     application::Action,
-    model::{ImageDownloadImpl, UserMenuChild},
+    model::{NcmImageSource, SenderHelper, UserMenuChild},
 };
 use adw::*;
 use gettextrs::gettext;
@@ -15,6 +15,7 @@ use gtk::{
     traits::{ButtonExt, WidgetExt},
     *,
 };
+use ncm_api::LoginInfo;
 use once_cell::sync::OnceCell;
 use std::cell::Cell;
 use std::path::PathBuf;
@@ -156,9 +157,12 @@ impl UserMenus {
         self.refresh_button.set_visible(true);
     }
 
-    pub fn set_user_avatar(&self, url: String, path: PathBuf) {
-        self.avatar
-            .set_from_net(url, path, (50, 50), self.sender.get().unwrap());
+    pub fn set_user_avatar(&self, li: &LoginInfo) {
+        let sender = self.sender.get().unwrap().clone();
+        sender.set_image_widget_source(
+            &self.avatar,
+            NcmImageSource::UserAvatar(li.uid, li.avatar_url.clone()),
+        );
     }
 
     pub fn set_user_name(&self, name: String) {

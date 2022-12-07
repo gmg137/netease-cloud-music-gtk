@@ -391,12 +391,12 @@ impl NeteaseCloudMusicGtk4Window {
         user_menus.set_user_name(login_info.nickname);
     }
 
-    pub fn set_avatar(&self, url: String, path: PathBuf) {
+    pub fn set_avatar(&self, li: &LoginInfo) {
         self.imp()
             .user_menus
             .get()
             .unwrap()
-            .set_user_avatar(url, path);
+            .set_user_avatar(li);
     }
 
     pub fn add_toast(&self, mes: String) {

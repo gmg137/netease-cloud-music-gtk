@@ -9,7 +9,10 @@ use gtk::{glib, prelude::*, subclass::prelude::*, *};
 use ncm_api::SongList;
 use once_cell::sync::Lazy;
 
-use crate::{application::Action, model::ImageDownloadImpl};
+use crate::{
+    application::Action,
+    model::{ImageWidgetImpl, NcmImageSource, SenderHelper},
+};
 use std::cell::{Cell, RefCell};
 
 glib::wrapper! {
@@ -27,6 +30,13 @@ impl From<SongListGridItem> for SongList {
     }
 }
 
+impl ImageWidgetImpl for SongListGridItem {
+    fn set_texture(&self, tex: &gdk::Texture) {
+        self.property::<Image>("icon")
+            .set_property("paintable", tex);
+    }
+}
+
 impl SongListGridItem {
     pub fn new(sl: &SongList, sender: &Sender<Action>) -> Self {
         let icon = Image::from_icon_name("image-missing-symbolic");
@@ -39,15 +49,11 @@ impl SongListGridItem {
             .property("icon", &icon)
             .build();
 
-        let mut path = crate::path::CACHE.clone();
-        path.push(format!("{}-songlist.jpg", sl.id));
+        sender.set_image_widget_source(
+            &s,
+            NcmImageSource::SongList(sl.id, sl.cover_img_url.clone()),
+        );
 
-        // download cover
-        if !path.exists() {
-            icon.set_from_net(sl.cover_img_url.to_owned(), path, (140, 140), sender);
-        } else {
-            icon.set_from_file(Some(&path));
-        }
         s
     }
 
@@ -105,14 +111,10 @@ impl SongListGridItem {
     ) {
         for sl in song_list {
             let (boxs, image, label, label_author) = Self::create(pic_size);
-            let mut path = crate::path::CACHE.clone();
-            path.push(format!("{}-songlist.jpg", sl.id));
-            // download cover
-            if !path.exists() {
-                image.set_from_net(sl.cover_img_url.to_owned(), path, (140, 140), sender);
-            } else {
-                image.set_from_file(Some(&path));
-            }
+            sender.set_image_widget_source(
+                &image,
+                NcmImageSource::SongList(sl.id, sl.cover_img_url.clone()),
+            );
 
             label.set_label(&sl.name);
             label_author.set_label(&sl.author);
@@ -159,6 +161,9 @@ impl SongListGridItem {
             songlist_object
                 .property::<Image>("icon")
                 .bind_property("paintable", &image, "paintable")
+                .transform_to(|_, s: Option<gdk::Paintable>| {
+                    s
+                })
                 .sync_create()
                 .build();
         });

@@ -11,8 +11,7 @@ use once_cell::sync::{Lazy, OnceCell};
 
 use crate::{
     application::Action,
-    model::{ImageDownloadImpl, SearchResult, SearchType},
-    path::CACHE,
+    model::{NcmImageSource, SearchResult, SearchType, SenderHelper},
 };
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;
@@ -57,19 +56,11 @@ impl SearchSingerPage {
         let mut row = (offset / 5) + 1;
         let mut col = 1;
         for si in singer {
-            let mut path = CACHE.clone();
-            path.push(format!("{}-singer.jpg", si.id));
             let avatar = adw::Avatar::new(140, Some(&si.name), true);
-
-            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
-                let image = Image::from_pixbuf(Some(&pixbuf));
-                if let Some(paintable) = image.paintable() {
-                    avatar.set_custom_image(Some(&paintable));
-                }
-            } else {
-                // 加载图片
-                avatar.set_from_net(si.pic_url.to_owned(), path, (140, 140), sender);
-            }
+            sender.set_image_widget_source(
+                &avatar,
+                NcmImageSource::Singer(si.id, si.pic_url.clone()),
+            );
 
             let boxs = gtk::Box::new(gtk::Orientation::Vertical, 0);
             boxs.append(&avatar);

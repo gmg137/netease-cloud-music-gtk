@@ -3,9 +3,9 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use crate::application::Action;
-use glib::{SendWeakRef, Sender};
-use gtk::{gdk_pixbuf, glib, prelude::*, Image, Picture};
+use crate::{application::Action, path::CACHE};
+use glib::Sender;
+use gtk::{gdk, glib, prelude::*, Image, Picture};
 use ncm_api::{SingerInfo, SongInfo, SongList};
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 
@@ -210,74 +210,107 @@ impl Default for UserMenuChild {
     }
 }
 
-pub trait ImageDownloadImpl {
-    // 参数
-    // url: 图片链接
-    // path: 要保存的图片本地路径
-    // size: 图片宽高象素
-    fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NcmImageSource {
+    SongList(u64, String), // id, url
+    Banner(u64, String),
+    TopList(u64, String),
+    Singer(u64, String),
+    UserAvatar(u64, String),
 }
 
-impl ImageDownloadImpl for Image {
-    fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>) {
-        let image = glib::SendWeakRef::from(self.downgrade());
-        sender
-            .send(Action::DownloadImage(
-                url,
-                path.to_owned(),
-                size.0,
-                size.1,
-                Some(Arc::new(move |_| {
-                    image.upgrade().unwrap().set_from_file(Some(&path));
-                })),
-            ))
-            .unwrap();
+impl NcmImageSource {
+    pub fn to_path(&self) -> PathBuf {
+        CACHE.join(format!("{}", self.id()))
+    }
+
+    pub fn id(&self) -> String {
+        match self {
+            Self::SongList(id, ..) => format!("songlist-{}", id),
+            Self::Banner(id, ..) => format!("banner-{}", id),
+            Self::TopList(id, ..) => format!("toplist-{}", id),
+            Self::Singer(id, ..) => format!("singer-{}", id),
+            Self::UserAvatar(id, ..) => format!("user-{}", id),
+        }
+    }
+
+    pub fn size(&self) -> (u16, u16) {
+        match self {
+            Self::SongList(..) | Self::TopList(..) | Self::Singer(..) => (140, 140),
+            Self::Banner(..) => (730, 283),
+            Self::UserAvatar(..) => (100, 100),
+        }
     }
 }
 
-impl ImageDownloadImpl for Picture {
-    fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>) {
-        let picture = glib::SendWeakRef::from(self.downgrade());
-        sender
-            .send(Action::DownloadImage(
-                url,
-                path.to_owned(),
-                size.0,
-                size.1,
-                Some(Arc::new(move |_| {
-                    let image = gtk::gdk_pixbuf::Pixbuf::from_file(&path).unwrap();
-                    let image = image
-                        .scale_simple(
-                            size.0 as i32,
-                            size.1 as i32,
-                            gtk::gdk_pixbuf::InterpType::Bilinear,
-                        )
-                        .unwrap();
-                    picture.upgrade().unwrap().set_pixbuf(Some(&image));
-                })),
-            ))
-            .unwrap();
+pub trait ImageWidgetImpl {
+    fn set_texture(&self, tex: &gdk::Texture);
+}
+
+impl ImageWidgetImpl for Image {
+    fn set_texture(&self, tex: &gdk::Texture) {
+        self.set_from_paintable(Some(tex));
     }
 }
 
-impl ImageDownloadImpl for adw::Avatar {
-    fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>) {
-        let avatar = SendWeakRef::from(self.downgrade());
-        sender
-            .send(Action::DownloadImage(
-                url,
-                path.to_owned(),
-                size.0,
-                size.1,
-                Some(Arc::new(move |_| {
-                    if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
-                        let image = Image::from_pixbuf(Some(&pixbuf));
-                        if let Some(paintable) = image.paintable() {
-                            avatar.upgrade().unwrap().set_custom_image(Some(&paintable));
-                        }
-                    }
-                })),
-            ))
-            .unwrap();
+impl ImageWidgetImpl for Picture {
+    fn set_texture(&self, tex: &gdk::Texture) {
+        self.set_paintable(Some(tex));
+    }
+}
+
+impl ImageWidgetImpl for adw::Avatar {
+    fn set_texture(&self, tex: &gdk::Texture) {
+        self.set_custom_image(Some(tex));
+    }
+}
+
+pub trait SenderHelper {
+    fn set_image_widget_source<W>(&self, widget: &W, source: NcmImageSource)
+    where
+        W: ImageWidgetImpl + glib::IsA<glib::Object>;
+}
+
+impl SenderHelper for Sender<Action> {
+    fn set_image_widget_source<W>(&self, widget: &W, source: NcmImageSource)
+    where
+        W: ImageWidgetImpl + glib::IsA<glib::Object>,
+    {
+        let load_from_file = |widget: &W, path: &PathBuf| {
+            let file = gtk::gio::File::for_path(&path);
+            match gtk::gdk::Texture::from_file(&file) {
+                Ok(tex) => {
+                    widget.set_texture(&tex);
+                }
+                Err(err) => log::error!("{:?}", err),
+            };
+        };
+        let path = source.to_path();
+        if path.exists() {
+            load_from_file(widget, &path);
+        } else {
+            let size = source.size();
+            match source {
+                NcmImageSource::SongList(_, url)
+                | NcmImageSource::TopList(_, url)
+                | NcmImageSource::Banner(_, url)
+                | NcmImageSource::Singer(_, url)
+                | NcmImageSource::UserAvatar(_, url) => {
+                    let weak_ref = glib::SendWeakRef::from(widget.downgrade());
+                    self.send(Action::DownloadImage(
+                        url,
+                        path.to_owned(),
+                        size.0,
+                        size.1,
+                        Some(Arc::new(move |_| {
+                            if let Some(widget) = weak_ref.upgrade() {
+                                load_from_file(&widget, &path);
+                            }
+                        })),
+                    ))
+                    .unwrap();
+                }
+            };
+        }
     }
 }

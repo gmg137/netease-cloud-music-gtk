@@ -16,7 +16,11 @@ use mpris_player::PlaybackStatus;
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::*;
 
-use crate::{application::Action, audio::*, model::ImageDownloadImpl, path::CACHE};
+use crate::{
+    application::Action,
+    audio::*,
+    model::{NcmImageSource, SenderHelper},
+};
 use std::{
     cell::Cell,
     fs, path,
@@ -137,20 +141,12 @@ impl PlayerControls {
     pub fn init_play_info(&self, song_info: SongInfo) {
         let imp = self.imp();
         let cover_image = imp.cover_image.get();
-        let mut path_cover = CACHE.clone();
-        path_cover.push(format!("{}-songlist.jpg", song_info.album_id));
-        if path_cover.exists() {
-            cover_image.set_from_file(Some(&path_cover));
-        } else {
-            cover_image.set_from_icon_name(Some("image-missing-symbolic"));
-            let sender = imp.sender.get().unwrap().clone();
-            cover_image.set_from_net(
-                song_info.pic_url.to_owned(),
-                path_cover.to_owned(),
-                (140, 140),
-                &sender,
-            );
-        }
+        cover_image.set_from_icon_name(Some("image-missing-symbolic"));
+        let sender = imp.sender.get().unwrap().clone();
+        sender.set_image_widget_source(
+            &cover_image,
+            NcmImageSource::SongList(song_info.album_id, song_info.pic_url.clone()),
+        );
 
         let title_label = imp.title_label.get();
         title_label.set_label(&song_info.name);
