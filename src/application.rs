@@ -607,12 +607,15 @@ impl NeteaseCloudMusicGtk4Application {
                                     };
                                     sender.send(Action::PlayStart(song_info)).unwrap();
                                 } else {
+                                    error!("获取歌曲播放链接失败: {:?}", &[song_info.id]);
                                     sender
                                         .send(Action::AddToast(gettext!(
                                             "Get [{}] Playback link failed!",
                                             song_info.name
                                         )))
                                         .unwrap();
+                                    timeout_future_seconds(2).await;
+                                    sender.send(Action::PlayNextSong).unwrap();
                                 }
                             } else {
                                 error!("获取歌曲播放链接失败: {:?}", &[song_info.id]);
@@ -622,6 +625,8 @@ impl NeteaseCloudMusicGtk4Application {
                                         song_info.name
                                     )))
                                     .unwrap();
+                                timeout_future_seconds(2).await;
+                                sender.send(Action::PlayNextSong).unwrap();
                             }
                         } else {
                             sender.send(Action::PlayStart(song_info)).unwrap();
