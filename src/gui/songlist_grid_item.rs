@@ -69,8 +69,8 @@ impl SongListGridItem {
 
         let label = Label::builder()
             .lines(2)
-            .margin_start(20)
-            .margin_end(20)
+            .margin_start(10)
+            .margin_end(10)
             .width_chars(1)
             .max_width_chars(1)
             .ellipsize(pango::EllipsizeMode::End)
@@ -113,11 +113,14 @@ impl SongListGridItem {
             } else {
                 image.set_from_file(Some(&path));
             }
+            image.set_tooltip_text(Some(&sl.name));
 
             label.set_label(&sl.name);
+            if show_author {
+                label.set_lines(1);
+            }
             label_author.set_label(&sl.author);
             label_author.set_visible(show_author);
-
             grid_box.insert(&boxs, -1);
         }
     }
@@ -132,7 +135,10 @@ impl SongListGridItem {
         let factory = SignalListItemFactory::new();
 
         factory.connect_setup(move |_, list_item| {
-            let (boxs, _, _, label_author) = Self::create(pic_size);
+            let (boxs, _, label, label_author) = Self::create(pic_size);
+            if show_author {
+                label.set_lines(1);
+            }
             label_author.set_visible(show_author);
             list_item.set_child(Some(&boxs));
         });
@@ -148,6 +154,14 @@ impl SongListGridItem {
             let label = frame.next_sibling().unwrap();
             let label_author = label.next_sibling().unwrap();
 
+            songlist_object
+                .bind_property("name", &label, "label")
+                .sync_create()
+                .build();
+            songlist_object
+                .bind_property("name", &image, "tooltip-text")
+                .sync_create()
+                .build();
             songlist_object
                 .bind_property("name", &label, "label")
                 .sync_create()

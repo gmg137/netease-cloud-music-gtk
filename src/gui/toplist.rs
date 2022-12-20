@@ -44,6 +44,7 @@ impl TopListView {
             let action = ActionRow::builder()
                 .activatable(true)
                 .title(&t.name)
+                .title_lines(1)
                 .subtitle(&t.update)
                 .build();
             let mut path = CACHE.clone();

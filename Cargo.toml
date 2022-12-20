@@ -19,6 +19,7 @@ regex = "~1.7"
 log = "~0.4"
 env_logger = "~0.9"
 cookie_store = "~0.19"
+chrono = "~0.4.23"
 
 [dependencies.adw]
 package = "libadwaita"

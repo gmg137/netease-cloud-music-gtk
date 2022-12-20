@@ -35,28 +35,43 @@
                         </child>
                         <child>
                             <object class="GtkBox">
-                                <property name="orientation">vertical</property>
+                                <property name="orientation">horizontal</property>
                                 <property name="halign">fill</property>
                                 <property name="valign">end</property>
                                 <property name="spacing">2</property>
                                 <child>
-                                    <object class="GtkLabel" id="title_label">
-                                        <property name="label">Title</property>
-                                        <property name="halign">start</property>
-                                        <property name="valign">end</property>
-                                        <property name="max-width-chars">27</property>
-                                        <property name="ellipsize">end</property>
-                                        <style>
-                                            <class name="title-1" />
-                                        </style>
-                                    </object>
-                                </child>
-                                <child>
-                                    <object class="GtkLabel" id="time_label">
-                                        <property name="label"></property>
-                                        <property name="halign">start</property>
-                                        <property name="valign">end</property>
-                                        <property name="visible">False</property>
+                                    <object class="GtkBox">
+                                        <property name="orientation">vertical</property>
+                                        <property name="halign">fill</property>
+                                        <property name="valign">start</property>
+                                        <property name="spacing">3</property>
+                                        <child>
+                                            <object class="GtkLabel" id="title_label">
+                                                <property name="label">Title</property>
+                                                <property name="halign">start</property>
+                                                <property name="valign">end</property>
+                                                <property name="max-width-chars">27</property>
+                                                <property name="ellipsize">end</property>
+                                                <style>
+                                                    <class name="title-1" />
+                                                </style>
+                                            </object>
+                                        </child>
+                                        <child>
+                                            <object class="GtkLabel" id="time_label">
+                                                <property name="label"></property>
+                                                <property name="halign">start</property>
+                                                <property name="valign">end</property>
+                                                <property name="visible">False</property>
+                                            </object>
+                                        </child>
+                                        <child>
+                                            <object class="GtkLabel" id="num_label">
+                                                <property name="label" translatable="yes">0 songs</property>
+                                                <property name="halign">start</property>
+                                                <property name="valign">end</property>
+                                            </object>
+                                        </child>
                                     </object>
                                 </child>
                                 <child>
@@ -65,13 +80,6 @@
                                         <property name="valign">end</property>
                                         <property name="spacing">7</property>
                                         <property name="orientation">horizontal</property>
-                                        <child>
-                                            <object class="GtkLabel" id="num_label">
-                                                <property name="label" translatable="yes">0 songs</property>
-                                                <property name="halign">start</property>
-                                                <property name="valign">end</property>
-                                            </object>
-                                        </child>
                                         <child>
                                             <object class="GtkButton" id="play_button">
                                                 <property name="halign">end</property>
@@ -106,8 +114,7 @@
             </object>
         </child>
         <child>
-            <object class="SongListView" id="songs_list">
-            </object>
+            <object class="SongListView" id="songs_list"></object>
         </child>
     </template>
 </interface>

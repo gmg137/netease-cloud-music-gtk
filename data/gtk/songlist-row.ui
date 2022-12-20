@@ -70,7 +70,7 @@
                         <property name="focusable">False</property>
                         <property name="hexpand">True</property>
                         <property name="spacing">6</property>
-                        <property name="margin-end">20</property>
+                        <property name="margin-end">18</property>
                         <child>
                             <object class="GtkLabel" id="album_label">
                                 <property name="focusable">False</property>

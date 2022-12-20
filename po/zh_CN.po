@@ -515,7 +515,7 @@ msgstr "{} 分钟"
 
 #: src/gui/songlist_page.rs:107 src/gui/songlist_page.rs:117
 msgid "{} favs"
-msgstr "{} 收藏"
+msgstr "{} 人收藏"
 
 #: src/gui/user_menus.rs:123 src/gui/user_menus.rs:137
 msgid "Input format error!"

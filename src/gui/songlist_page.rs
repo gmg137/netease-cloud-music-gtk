@@ -3,6 +3,7 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
+use chrono::{TimeZone, Utc};
 use gettextrs::gettext;
 use glib::{ParamSpec, ParamSpecBoolean, Sender, Value};
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
@@ -88,19 +89,12 @@ impl SonglistPage {
                 self.set_property("like", dy.is_sub);
                 imp.songs_list.set_property("no-act-album", true);
                 imp.page_type.replace(Some(DiscoverSubPage::Album));
-                {
-                    let year = detail.publish_time as f64 / (1000.0 * 60.0 * 60.0 * 24.0 * 365.25)
-                        + 1970.0;
-                    let duration_min = sis
-                        .iter()
-                        .fold(0u64, |v, next| v + next.duration / (1000 * 60));
+                let dt = Utc
+                    .timestamp_millis_opt(detail.publish_time as i64)
+                    .unwrap();
+                let dt = dt.format("%Y-%m-%d");
+                imp.time_label.set_label(&format!("{}", dt,));
 
-                    imp.time_label.set_label(&format!(
-                        "{}, {}",
-                        year as u64,
-                        gettext!("{} min", duration_min),
-                    ));
-                }
                 imp.num_label.set_label(&format!(
                     "{}, {}",
                     gettext!("{} songs", sis.len()),
