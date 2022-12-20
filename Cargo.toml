@@ -1,6 +1,6 @@
 [package]
 name = "netease-cloud-music-gtk4"
-version = "2.1.0"
+version = "2.2.0"
 edition = "2021"
 
 [dependencies]
@@ -9,7 +9,7 @@ gtk = { version = "~0.5", package = "gtk4" }
 once_cell = "~1.16"
 qrcode-generator = "~4.1"
 # ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", branch = "dev", package = "netease-cloud-music-api" }
-ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", tag = "1.1.1", package = "netease-cloud-music-api" }
+ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", tag = "1.2.0", package = "netease-cloud-music-api" }
 anyhow = "~1.0"
 gstreamer = "~0.19"
 gstreamer-play = "~0.19"
