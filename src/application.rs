@@ -518,7 +518,7 @@ impl NeteaseCloudMusicGtk4Application {
                         .await
                     {
                         if let Some(page) = page.upgrade() {
-                            page.update_songlist(sls);
+                            page.update_songlist(&sls);
                         }
                     }
                 });
@@ -571,7 +571,7 @@ impl NeteaseCloudMusicGtk4Application {
                         .await
                     {
                         if let Some(page) = page.upgrade() {
-                            page.update_songlist(sls);
+                            page.update_songlist(&sls);
                         }
                     }
                 });
@@ -1010,7 +1010,7 @@ impl NeteaseCloudMusicGtk4Application {
                         .await;
                     if let Some(page) = page.upgrade() {
                         if let Some(SearchResult::SongLists(sls)) = res {
-                            page.update_songlist(sls);
+                            page.update_songlist(&sls);
                         }
                     }
                 });
@@ -1028,7 +1028,7 @@ impl NeteaseCloudMusicGtk4Application {
                         .await;
                     if let Some(page) = page.upgrade() {
                         if let Some(SearchResult::SongLists(sls)) = res {
-                            page.update_songlist(sls);
+                            page.update_songlist(&sls[1..]);
                         }
                     }
                 });

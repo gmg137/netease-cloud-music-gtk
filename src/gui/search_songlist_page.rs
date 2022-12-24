@@ -42,7 +42,7 @@ impl SearchSongListPage {
         self.set_property("search-type", search_type);
     }
 
-    pub fn update_songlist(&self, song_list: Vec<SongList>) {
+    pub fn update_songlist(&self, song_list: &[SongList]) {
         let sender = self.imp().sender.get().unwrap();
         let grid = self.imp().songlist_grid.get();
         self.set_property("update", true);
@@ -54,7 +54,7 @@ impl SearchSongListPage {
             SearchType::Album | SearchType::AllAlbums | SearchType::LikeAlbums
         );
 
-        SongListGridItem::view_update_songlist(grid, &song_list[1..], 140, show_author, sender);
+        SongListGridItem::view_update_songlist(grid, song_list, 140, show_author, sender);
 
         self.set_property("offset", offset + song_list_len as i32);
     }
@@ -181,7 +181,7 @@ impl SearchSongListPage {
                         Arc::new(move |sls| {
                             if let Some(s) = s.upgrade() {
                                 if let SearchResult::SongLists(sls) = sls {
-                                    s.update_songlist(sls);
+                                    s.update_songlist(&sls);
                                 }
                             }
                         }),

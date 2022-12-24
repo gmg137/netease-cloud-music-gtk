@@ -942,7 +942,7 @@ impl NeteaseCloudMusicGtk4Window {
                                 SearchResult::SongLists(sls) => {
                                     page.downcast::<SearchSongListPage>()
                                         .unwrap()
-                                        .update_songlist(sls);
+                                        .update_songlist(&sls);
                                 }
                             };
                         }
