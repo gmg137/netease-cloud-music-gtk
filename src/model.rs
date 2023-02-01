@@ -228,7 +228,9 @@ impl ImageDownloadImpl for Image {
                 size.0,
                 size.1,
                 Some(Arc::new(move |_| {
-                    image.upgrade().unwrap().set_from_file(Some(&path));
+                    if let Some(image) = image.upgrade() {
+                        image.set_from_file(Some(&path));
+                    }
                 })),
             ))
             .unwrap();
@@ -253,7 +255,9 @@ impl ImageDownloadImpl for Picture {
                             gtk::gdk_pixbuf::InterpType::Bilinear,
                         )
                         .unwrap();
-                    picture.upgrade().unwrap().set_pixbuf(Some(&image));
+                    if let Some(picture) = picture.upgrade() {
+                        picture.set_pixbuf(Some(&image));
+                    }
                 })),
             ))
             .unwrap();
@@ -273,7 +277,9 @@ impl ImageDownloadImpl for adw::Avatar {
                     if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
                         let image = Image::from_pixbuf(Some(&pixbuf));
                         if let Some(paintable) = image.paintable() {
-                            avatar.upgrade().unwrap().set_custom_image(Some(&paintable));
+                            if let Some(avatar) = avatar.upgrade() {
+                                avatar.set_custom_image(Some(&paintable));
+                            }
                         }
                     }
                 })),
