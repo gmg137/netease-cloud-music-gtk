@@ -28,7 +28,7 @@ impl Default for TopListView {
 
 impl TopListView {
     pub fn new() -> Self {
-        glib::Object::new(&[])
+        glib::Object::new()
     }
 
     pub fn set_sender(&self, sender: Sender<Action>) {

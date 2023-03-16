@@ -141,7 +141,7 @@ mod imp {
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![
-                    ParamSpecEnum::builder("search-type", SearchType::default())
+                    ParamSpecEnum::builder::<SearchType>("search-type")
                         .explicit_notify()
                         .build(),
                     ParamSpecObject::builder::<Toast>("toast").build(),
@@ -193,8 +193,9 @@ glib::wrapper! {
 
 impl NeteaseCloudMusicGtk4Window {
     pub fn new<P: glib::IsA<gtk::Application>>(application: &P, sender: Sender<Action>) -> Self {
-        let window: NeteaseCloudMusicGtk4Window =
-            glib::Object::new(&[("application", application)]);
+        let window: NeteaseCloudMusicGtk4Window = glib::Object::builder()
+            .property("application", application)
+            .build();
 
         window.imp().sender.set(sender).unwrap();
         window.setup_widget();
@@ -403,11 +404,11 @@ impl NeteaseCloudMusicGtk4Window {
         let pre = self.property::<Toast>("toast");
 
         let toast = Toast::builder()
-            .title(&mes)
+            .title(mes)
             .priority(adw::ToastPriority::High)
             .build();
-        self.imp().toast_overlay.add_toast(&toast);
-        self.set_property("toast", toast);
+        self.set_property("toast", &toast);
+        self.imp().toast_overlay.add_toast(toast);
 
         // seems that dismiss will clear something used by animation
         // cause adw_animation_skip emit 'done' segfault on closure(https://github.com/gmg137/netease-cloud-music-gtk/issues/202)

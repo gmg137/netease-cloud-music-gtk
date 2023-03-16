@@ -5,22 +5,22 @@ edition = "2021"
 
 [dependencies]
 gettext-rs = { version = "~0.7", features = ["gettext-system"] }
-gtk = { version = "~0.5", package = "gtk4" }
-once_cell = "~1.16"
+gtk = { version = "~0.6", package = "gtk4" }
+once_cell = "~1.17"
 qrcode-generator = "~4.1"
 # ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", branch = "dev", package = "netease-cloud-music-api" }
 ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", tag = "1.2.0", package = "netease-cloud-music-api" }
 anyhow = "~1.0"
-gstreamer = "~0.19"
-gstreamer-play = "~0.19"
-fastrand = "~1.8"
+gstreamer = "~0.20"
+gstreamer-play = "~0.20"
+fastrand = "~1.9"
 mpris-player = "~0.6.2"
 regex = "~1.7"
 log = "~0.4"
-env_logger = "~0.9"
+env_logger = "~0.10"
 cookie_store = "~0.19"
-chrono = "~0.4.23"
+chrono = "~0.4"
 
 [dependencies.adw]
 package = "libadwaita"
-version = "~0.2"
+version = "~0.3"

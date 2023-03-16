@@ -144,7 +144,7 @@ impl NcmClient {
     }
 
     pub fn clean_cookie_file() {
-        if let Err(err) = fs::remove_file(&crate::path::DATA.clone().join(COOKIE_FILE)) {
+        if let Err(err) = fs::remove_file(crate::path::DATA.clone().join(COOKIE_FILE)) {
             match err.kind() {
                 io::ErrorKind::NotFound => (),
                 other => error!("{:?}", other),

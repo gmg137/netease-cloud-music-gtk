@@ -24,7 +24,7 @@ glib::wrapper! {
 
 impl PlayListLyricsPage {
     pub fn new() -> Self {
-        glib::Object::new(&[])
+        glib::Object::new()
     }
 
     pub fn set_sender(&self, sender_: Sender<Action>) {

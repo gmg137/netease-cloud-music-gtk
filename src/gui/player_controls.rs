@@ -32,7 +32,7 @@ glib::wrapper! {
 
 impl PlayerControls {
     pub fn new() -> Self {
-        let player_controls: PlayerControls = glib::Object::new(&[]);
+        let player_controls: PlayerControls = glib::Object::new();
         player_controls
     }
 
@@ -78,7 +78,7 @@ impl PlayerControls {
 
     pub fn setup_player(&self) {
         let imp = self.imp();
-        let player = Play::new(PlayVideoRenderer::NONE);
+        let player = Play::new(None::<PlayVideoRenderer>);
         let player_signal = PlaySignalAdapter::new(&player);
         let mut config = player.config();
         config.set_user_agent(
@@ -179,9 +179,10 @@ impl PlayerControls {
             use gst::MessageView;
             if let MessageView::Element(ele) = msg.view() {
                 if let Some(stu) = ele.structure() {
-                    if let "GstCacheDownloadComplete" = stu.name() {
-                        let loc = stu.get::<String>("location").unwrap();
-                        sender.send(Action::GstCacheDownloadComplete(loc)).unwrap();
+                    if "GstCacheDownloadComplete" == stu.name() {
+                        if let Ok(loc) = stu.get::<String>("location") {
+                            sender.send(Action::GstCacheDownloadComplete(loc)).unwrap();
+                        }
                     }
                 }
             }
@@ -309,30 +310,30 @@ impl PlayerControls {
         let controller = ShortcutController::new();
         let trigger = ShortcutTrigger::parse_string("<primary>space").unwrap();
         let action = ActivateAction::get();
-        let shortcut = Shortcut::new(Some(&trigger), Some(&action));
-        controller.add_shortcut(&shortcut);
+        let shortcut = Shortcut::new(Some(trigger), Some(action));
+        controller.add_shortcut(shortcut);
         controller.set_scope(ShortcutScope::Global);
-        play_button.add_controller(&controller);
+        play_button.add_controller(controller);
 
         // 上一曲按钮
         let prev_button = self.imp().prev_button.get();
         let controller = ShortcutController::new();
         let trigger = ShortcutTrigger::parse_string("<primary>b").unwrap();
         let action = ActivateAction::get();
-        let shortcut = Shortcut::new(Some(&trigger), Some(&action));
-        controller.add_shortcut(&shortcut);
+        let shortcut = Shortcut::new(Some(trigger), Some(action));
+        controller.add_shortcut(shortcut);
         controller.set_scope(ShortcutScope::Global);
-        prev_button.add_controller(&controller);
+        prev_button.add_controller(controller);
 
         // 下一曲按钮
         let next_button = self.imp().next_button.get();
         let controller = ShortcutController::new();
         let trigger = ShortcutTrigger::parse_string("<primary>n").unwrap();
         let action = ActivateAction::get();
-        let shortcut = Shortcut::new(Some(&trigger), Some(&action));
-        controller.add_shortcut(&shortcut);
+        let shortcut = Shortcut::new(Some(trigger), Some(action));
+        controller.add_shortcut(shortcut);
         controller.set_scope(ShortcutScope::Global);
-        next_button.add_controller(&controller);
+        next_button.add_controller(controller);
     }
 
     pub fn add_song(&self, song: SongInfo) {
@@ -778,7 +779,7 @@ mod imp {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![
                     ParamSpecDouble::builder("volume").build(),
-                    ParamSpecEnum::builder("loops", LoopsState::default()).build(),
+                    ParamSpecEnum::builder::<LoopsState>("loops").build(),
                     ParamSpecUInt::builder("music-rate").build(),
                     ParamSpecUInt64::builder("duration").build(),
                     ParamSpecBoolean::builder("like").readwrite().build(),

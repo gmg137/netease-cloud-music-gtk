@@ -21,7 +21,7 @@ impl Default for ThemeSelector {
 
 impl ThemeSelector {
     pub fn new() -> Self {
-        glib::Object::new(&[])
+        glib::Object::new()
     }
 }
 

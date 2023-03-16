@@ -56,5 +56,5 @@ fn main() {
     // exits. Upon return, we have our exit code to return to the shell. (This
     // is the code you see when you do `echo $?` after running a command in a
     // terminal.
-    std::process::exit(app.run());
+    std::process::exit(app.run().into());
 }

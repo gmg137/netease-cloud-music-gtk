@@ -25,7 +25,7 @@ glib::wrapper! {
 
 impl SearchSongListPage {
     pub fn new() -> Self {
-        glib::Object::new(&[])
+        glib::Object::new()
     }
 
     pub fn set_sender(&self, sender: Sender<Action>) {
@@ -116,7 +116,7 @@ mod imp {
                     ParamSpecString::builder("keyword")
                         .default_value(None)
                         .build(),
-                    ParamSpecEnum::builder("search-type", SearchType::default())
+                    ParamSpecEnum::builder::<SearchType>("search-type")
                         .explicit_notify()
                         .build(),
                 ]

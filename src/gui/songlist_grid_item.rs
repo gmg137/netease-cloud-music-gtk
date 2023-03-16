@@ -210,7 +210,7 @@ impl SongListGridItem {
         } else {
             let model = gio::ListStore::new(SongListGridItem::static_type());
             model.extend_from_slice(&objs);
-            let select = NoSelection::new(Some(&model));
+            let select = NoSelection::new(Some(model));
             grid.set_model(Some(&select));
         }
     }

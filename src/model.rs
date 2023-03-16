@@ -29,7 +29,6 @@ impl PageStack {
         let pages: Vec<gtk::StackPage> = gtk_stack
             .pages()
             .iter::<gtk::StackPage>()
-            .unwrap()
             .map(|p| p.unwrap())
             .collect();
         PageStack {
@@ -129,8 +128,9 @@ impl PageStack {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
 pub enum UserMenuChild {
+    #[default]
     Qr,
     Phone,
     User,
@@ -157,10 +157,11 @@ impl SongListDetail {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, glib::Enum)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, glib::Enum)]
 #[repr(i32)]
 #[enum_type(name = "SearchType")]
 pub enum SearchType {
+    #[default]
     // 搜索歌曲
     Song,
     // 搜索歌手
@@ -196,18 +197,6 @@ pub enum SearchResult {
     Songs(Vec<SongInfo>, Vec<bool>),
     Singers(Vec<SingerInfo>),
     SongLists(Vec<SongList>),
-}
-
-impl Default for SearchType {
-    fn default() -> Self {
-        SearchType::Song
-    }
-}
-
-impl Default for UserMenuChild {
-    fn default() -> Self {
-        UserMenuChild::Qr
-    }
 }
 
 pub trait ImageDownloadImpl {

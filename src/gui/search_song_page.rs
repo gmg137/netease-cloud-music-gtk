@@ -5,8 +5,7 @@
 //
 use glib::Sender;
 use glib::{
-    clone, ParamFlags, ParamSpec, ParamSpecBoolean, ParamSpecEnum, ParamSpecInt, ParamSpecString,
-    Value,
+    clone, ParamSpec, ParamSpecBoolean, ParamSpecEnum, ParamSpecInt, ParamSpecString, Value,
 };
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::SongInfo;
@@ -30,7 +29,7 @@ glib::wrapper! {
 
 impl SearchSongPage {
     pub fn new() -> Self {
-        glib::Object::new(&[])
+        glib::Object::new()
     }
 
     pub fn set_sender(&self, sender: Sender<Action>) {
@@ -149,60 +148,12 @@ mod imp {
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![
-                    ParamSpecBoolean::new(
-                        // Name
-                        "update",
-                        // Nickname
-                        "update",
-                        // Short description
-                        "Used to determine if the page is updated when scrolling to the bottom.",
-                        // Default value
-                        false,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE,
-                    ),
-                    ParamSpecInt::new(
-                        // Name
-                        "offset",
-                        // Nickname
-                        "offset",
-                        // Short description
-                        "offset",
-                        // Minimum value
-                        i32::MIN,
-                        // Maximum value
-                        i32::MAX,
-                        // Default value
-                        0,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE,
-                    ),
-                    ParamSpecString::new(
-                        // Name
-                        "keyword",
-                        // Nickname
-                        "keyword",
-                        // Short description
-                        "Search keyword",
-                        // Default value
-                        None,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE,
-                    ),
-                    ParamSpecEnum::new(
-                        // Name
-                        "search-type",
-                        // Nickname
-                        "search-type",
-                        // Short description
-                        "search type",
-                        // Enum type
-                        SearchType::static_type(),
-                        // Default value
-                        SearchType::default() as i32,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE | glib::ParamFlags::EXPLICIT_NOTIFY,
-                    ),
+                    ParamSpecBoolean::builder("update").build(),
+                    ParamSpecInt::builder("offset").build(),
+                    ParamSpecString::builder("keyword").build(),
+                    ParamSpecEnum::builder::<SearchType>("search-type")
+                        .explicit_notify()
+                        .build(),
                 ]
             });
             PROPERTIES.as_ref()

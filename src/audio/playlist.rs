@@ -215,7 +215,7 @@ impl PlayList {
 }
 
 #[allow(clippy::upper_case_acronyms)]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, glib::Enum)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy, glib::Enum)]
 #[enum_type(name = "LoopsState")]
 pub enum LoopsState {
     // 随机
@@ -225,6 +225,7 @@ pub enum LoopsState {
     // 单曲循环
     ONE,
     // 不循环
+    #[default]
     NONE,
 }
 
@@ -237,12 +238,6 @@ impl LoopsState {
             "shuffle" => LoopsState::SHUFFLE,
             _ => LoopsState::NONE,
         }
-    }
-}
-
-impl Default for LoopsState {
-    fn default() -> LoopsState {
-        LoopsState::NONE
     }
 }
 

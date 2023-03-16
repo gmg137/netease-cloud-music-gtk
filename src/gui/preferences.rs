@@ -18,7 +18,7 @@ glib::wrapper! {
 
 impl NeteaseCloudMusicGtk4Preferences {
     pub fn new() -> Self {
-        glib::Object::new(&[])
+        glib::Object::new()
     }
 
     fn setup_settings(&self) {

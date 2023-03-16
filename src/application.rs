@@ -205,7 +205,10 @@ glib::wrapper! {
 
 impl NeteaseCloudMusicGtk4Application {
     pub fn new(application_id: &str, flags: &gio::ApplicationFlags) -> Self {
-        glib::Object::new(&[("application-id", &application_id), ("flags", flags)])
+        glib::Object::builder()
+            .property("application-id", &application_id)
+            .property("flags", flags)
+            .build()
     }
 
     fn create_window(&self) -> NeteaseCloudMusicGtk4Window {
@@ -1133,10 +1136,10 @@ impl NeteaseCloudMusicGtk4Application {
         let dialog = gtk::AboutDialog::builder()
             .transient_for(&window)
             .modal(true)
-            .program_name(&gettext(crate::APP_NAME))
+            .program_name(gettext(crate::APP_NAME))
             .logo_icon_name("logo")
             .version(VERSION)
-            .authors(vec!["gmg137".into(), "catsout".into()])
+            .authors(vec!["gmg137", "catsout"])
             .website("https://github.com/gmg137/netease-cloud-music-gtk")
             .license_type(gtk::License::Gpl30)
             .build();

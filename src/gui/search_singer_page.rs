@@ -4,7 +4,7 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use glib::Sender;
-use glib::{ParamFlags, ParamSpec, ParamSpecBoolean, ParamSpecInt, ParamSpecString, Value};
+use glib::{ParamSpec, ParamSpecBoolean, ParamSpecInt, ParamSpecString, Value};
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::SingerInfo;
 use once_cell::sync::{Lazy, OnceCell};
@@ -25,7 +25,7 @@ glib::wrapper! {
 
 impl SearchSingerPage {
     pub fn new() -> Self {
-        glib::Object::new(&[])
+        glib::Object::new()
     }
 
     pub fn set_sender(&self, sender: Sender<Action>) {
@@ -89,11 +89,11 @@ impl SearchSingerPage {
                 row += 1;
             }
             let gesture_click = GestureClick::new();
-            avatar.add_controller(&gesture_click);
             let sender = sender.clone();
             gesture_click.connect_pressed(move |_, _, _, _| {
                 sender.send(Action::ToSingerSongsPage(si.clone())).unwrap();
             });
+            avatar.add_controller(gesture_click);
         }
         self.set_property("offset", offset + singer_len as i32);
     }
@@ -142,46 +142,9 @@ mod imp {
         fn properties() -> &'static [ParamSpec] {
             static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
                 vec![
-                    ParamSpecBoolean::new(
-                        // Name
-                        "update",
-                        // Nickname
-                        "update",
-                        // Short description
-                        "Used to determine if the page is updated when scrolling to the bottom.",
-                        // Default value
-                        false,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE,
-                    ),
-                    ParamSpecInt::new(
-                        // Name
-                        "offset",
-                        // Nickname
-                        "offset",
-                        // Short description
-                        "offset",
-                        // Minimum value
-                        i32::MIN,
-                        // Maximum value
-                        i32::MAX,
-                        // Default value
-                        0,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE,
-                    ),
-                    ParamSpecString::new(
-                        // Name
-                        "keyword",
-                        // Nickname
-                        "keyword",
-                        // Short description
-                        "Search keyword",
-                        // Default value
-                        None,
-                        // The property can be read and written to
-                        ParamFlags::READWRITE,
-                    ),
+                    ParamSpecBoolean::builder("update").build(),
+                    ParamSpecInt::builder("offset").build(),
+                    ParamSpecString::builder("keyword").build(),
                 ]
             });
             PROPERTIES.as_ref()

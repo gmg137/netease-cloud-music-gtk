@@ -24,7 +24,7 @@ glib::wrapper! {
 
 impl SonglistRow {
     pub fn new(sender: Sender<Action>, si: &SongInfo) -> Self {
-        let obj: Self = glib::Object::new(&[]);
+        let obj: Self = glib::Object::new();
         let imp = obj.imp();
         if imp.sender.get().is_none() {
             imp.sender.set(sender).unwrap();

@@ -19,7 +19,7 @@ glib::wrapper! {
 
 impl MyPage {
     pub fn new() -> Self {
-        glib::Object::new(&[])
+        glib::Object::new()
     }
 
     pub fn set_sender(&self, sender: Sender<Action>) {

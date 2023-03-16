@@ -18,7 +18,7 @@ glib::wrapper! {
 
 impl Discover {
     pub fn new() -> Self {
-        let discover: Discover = glib::Object::new(&[]);
+        let discover: Discover = glib::Object::new();
         discover
     }
 
@@ -178,7 +178,7 @@ mod imp {
         #[template_callback]
         fn carousel_pressed_cb(&self) {
             let position = self.carousel.position();
-            if let Some(banner) = self.banners.borrow().get((position as f64) as usize) {
+            if let Some(banner) = self.banners.borrow().get(position as usize) {
                 let song_info = SongInfo {
                     id: banner.id.to_owned(),
                     name: banner.name.to_owned(),

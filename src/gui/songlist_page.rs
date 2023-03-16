@@ -30,7 +30,7 @@ glib::wrapper! {
 
 impl SonglistPage {
     pub fn new() -> Self {
-        let songlist_page: SonglistPage = glib::Object::new(&[]);
+        let songlist_page: SonglistPage = glib::Object::new();
         songlist_page
     }
 
