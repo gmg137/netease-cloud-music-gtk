@@ -19,6 +19,7 @@ use gtk::prelude::*;
 use env_logger::Env;
 
 const APP_ID: &str = "com.gitee.gmg137.NeteaseCloudMusicGtk4";
+const MPRIS_NAME: &str = "NeteaseCloudMusicGtk";
 const APP_NAME: &str = "NetEase Cloud Music Gtk4";
 
 fn main() {
