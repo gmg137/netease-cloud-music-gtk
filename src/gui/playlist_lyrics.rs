@@ -63,16 +63,11 @@ impl PlayListLyricsPage {
         songs_list.set_sender(sender.clone());
         songs_list.init_new_list(sis, likes);
 
-        let i: i32 = {
-            let mut i: i32 = 0;
-            match sis.iter().find(|si| {
-                i += 1;
-                si.id == current_song.id
-            }) {
-                Some(_) => i - 1,
-                _ => -1,
-            }
-        };
+        let i: i32 = sis.iter()
+            .enumerate()
+            .find(|(_, si)| si.id == current_song.id)
+            .map(|(idx, _)| idx as _)
+            .unwrap_or(-1);
         self.switch_row(i);
     }
 
