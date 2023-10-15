@@ -5,7 +5,7 @@
 //
 
 use gtk::glib;
-use mpris_player::LoopStatus;
+use mpris_player2::LoopStatus;
 use ncm_api::SongInfo;
 
 #[derive(Debug)]

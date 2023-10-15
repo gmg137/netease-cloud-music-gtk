@@ -3,9 +3,9 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use gtk::{prelude::*, style_context_add_provider_for_display};
 use gtk::subclass::prelude::*;
 use gtk::{gdk, glib, CompositeTemplate, CssProvider};
+use gtk::{prelude::*, style_context_add_provider_for_display};
 
 glib::wrapper! {
     pub struct ThemeSelector(ObjectSubclass<imp::ThemeSelector>)

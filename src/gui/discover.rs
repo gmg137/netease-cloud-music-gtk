@@ -4,7 +4,7 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use crate::{application::Action, gui::SongListGridItem, model::ImageDownloadImpl, path::CACHE};
-use glib::{clone, Continue, MainContext, Sender, PRIORITY_DEFAULT};
+use glib::{clone, ControlFlow, MainContext, Sender, Priority};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::{BannersInfo, SongInfo, SongList};
 use once_cell::sync::OnceCell;
@@ -232,7 +232,7 @@ mod imp {
                         let mut rotation_timer_id = rotation_timer_id.write().unwrap();
                         *rotation_timer_id = false;
                         sender.send(()).unwrap();
-                        Continue(false)
+                        ControlFlow::Break
                     });
                 }
             }
@@ -254,17 +254,17 @@ mod imp {
             self.banners.replace(Vec::new());
 
             // 自动轮播
-            let (sender, receiver) = MainContext::channel(PRIORITY_DEFAULT);
+            let (sender, receiver) = MainContext::channel(Priority::DEFAULT);
             self.timeout_sender.set(sender).unwrap();
             let carousel = self.carousel.get();
             receiver.attach(
                 None,
-                clone!(@weak carousel => @default-return Continue(false), move |_| {
+                clone!(@weak carousel => @default-return ControlFlow::Break, move |_| {
                     let current_page = carousel.position();
                     let n_pages = carousel.n_pages();
                     let mut animate = true;
                     if n_pages == 0 {
-                        return Continue(false);
+                        return ControlFlow::Break;
                     }
                     let new_page = (current_page + 1. + n_pages as f64) % n_pages as f64;
                     let widget = carousel.nth_page(new_page as u32);
@@ -272,7 +272,7 @@ mod imp {
                         animate = false;
                     }
                     carousel.scroll_to(&widget, animate);
-                    Continue(true)
+                    ControlFlow::Continue
                 }),
             );
             Self::show_relative_page(self.carousel.get(), 0.);
