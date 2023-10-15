@@ -263,12 +263,9 @@ impl PlayerControls {
 
         self.set_property("duration", sec);
 
-        /*
-         * not update_metadata length
-         */
-        // if let Some(si) = self.get_current_song() {
-        //     imp.mpris.get().unwrap().update_metadata(&si, msec as i64);
-        // }
+        if let Some(si) = self.get_current_song() {
+            imp.mpris.get().unwrap().update_metadata(&si, msec as i64);
+        }
     }
 
     pub fn gst_state_changed(&self, state: PlayState) {
