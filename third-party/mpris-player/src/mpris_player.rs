@@ -1,5 +1,3 @@
-extern crate glib;
-extern crate dbus;
 use dbus::arg::{Variant, RefArg};
 use dbus::{Connection, BusType, tree, Path, SignalArgs};
 use dbus::tree::{Interface, MTFn, Factory};
@@ -10,15 +8,15 @@ use std::cell::Cell;
 use std::cell::RefCell;
 use std::sync::Arc;
 
-use generated::mediaplayer2::org_mpris_media_player2_server;
-use generated::mediaplayer2_player::{org_mpris_media_player2_player_server, OrgFreedesktopDBusPropertiesPropertiesChanged};
+use crate::generated::mediaplayer2::org_mpris_media_player2_server;
+use crate::generated::mediaplayer2_player::{org_mpris_media_player2_player_server, OrgFreedesktopDBusPropertiesPropertiesChanged};
 
-use OrgMprisMediaPlayer2Player;
-use OrgMprisMediaPlayer2;
+use crate::OrgMprisMediaPlayer2Player;
+use crate::OrgMprisMediaPlayer2;
 
-use Metadata;
-use PlaybackStatus;
-use LoopStatus;
+use crate::Metadata;
+use crate::PlaybackStatus;
+use crate::LoopStatus;
 
 pub struct MprisPlayer{
     connection: Arc<Connection>,
@@ -53,21 +51,21 @@ pub struct MprisPlayer{
     can_control: Cell<bool>,        // R
 
     // Callbacks
-    raise_cb: RefCell<Vec<Rc<RefCell<FnMut()>>>>,
-    quit_cb: RefCell<Vec<Rc<RefCell<FnMut()>>>>,
-    next_cb: RefCell<Vec<Rc<RefCell<FnMut()>>>>,
-    previous_cb: RefCell<Vec<Rc<RefCell<FnMut()>>>>,
-    pause_cb: RefCell<Vec<Rc<RefCell<FnMut()>>>>,
-    play_pause_cb: RefCell<Vec<Rc<RefCell<FnMut()>>>>,
-    stop_cb: RefCell<Vec<Rc<RefCell<FnMut()>>>>,
-    play_cb: RefCell<Vec<Rc<RefCell<FnMut()>>>>,
-    seek_cb: RefCell<Vec<Rc<RefCell<FnMut(i64)>>>>,
-    open_uri_cb: RefCell<Vec<Rc<RefCell<FnMut(&str)>>>>,
-    fullscreen_cb: RefCell<Vec<Rc<RefCell<FnMut(bool)>>>>,
-    loop_status_cb: RefCell<Vec<Rc<RefCell<FnMut(LoopStatus)>>>>,
-    rate_cb: RefCell<Vec<Rc<RefCell<FnMut(f64)>>>>,
-    shuffle_cb: RefCell<Vec<Rc<RefCell<FnMut(bool)>>>>,
-    volume_cb: RefCell<Vec<Rc<RefCell<FnMut(f64)>>>>,
+    raise_cb: RefCell<Vec<Rc<RefCell<dyn FnMut()>>>>,
+    quit_cb: RefCell<Vec<Rc<RefCell<dyn FnMut()>>>>,
+    next_cb: RefCell<Vec<Rc<RefCell<dyn FnMut()>>>>,
+    previous_cb: RefCell<Vec<Rc<RefCell<dyn FnMut()>>>>,
+    pause_cb: RefCell<Vec<Rc<RefCell<dyn FnMut()>>>>,
+    play_pause_cb: RefCell<Vec<Rc<RefCell<dyn FnMut()>>>>,
+    stop_cb: RefCell<Vec<Rc<RefCell<dyn FnMut()>>>>,
+    play_cb: RefCell<Vec<Rc<RefCell<dyn FnMut()>>>>,
+    seek_cb: RefCell<Vec<Rc<RefCell<dyn FnMut(i64)>>>>,
+    open_uri_cb: RefCell<Vec<Rc<RefCell<dyn FnMut(&str)>>>>,
+    fullscreen_cb: RefCell<Vec<Rc<RefCell<dyn FnMut(bool)>>>>,
+    loop_status_cb: RefCell<Vec<Rc<RefCell<dyn FnMut(LoopStatus)>>>>,
+    rate_cb: RefCell<Vec<Rc<RefCell<dyn FnMut(f64)>>>>,
+    shuffle_cb: RefCell<Vec<Rc<RefCell<dyn FnMut(bool)>>>>,
+    volume_cb: RefCell<Vec<Rc<RefCell<dyn FnMut(f64)>>>>,
 }
 
 impl MprisPlayer{
@@ -160,7 +158,7 @@ impl MprisPlayer{
 
     pub fn property_changed<T: 'static>(&self, name: String, value: T) where T: dbus::arg::RefArg {
         let mut changed_properties = HashMap::new();
-        let x = Box::new(value) as Box<RefArg>;
+        let x = Box::new(value) as Box<dyn RefArg>;
         changed_properties.insert(name, Variant(x));
 
         let signal = OrgFreedesktopDBusPropertiesPropertiesChanged {
@@ -538,7 +536,7 @@ impl OrgMprisMediaPlayer2Player for MprisPlayer {
         Ok(())
     }
 
-    fn get_metadata(&self) -> Result<HashMap<String, Variant<Box<RefArg + 'static>>>, Self::Err> {
+    fn get_metadata(&self) -> Result<HashMap<String, Variant<Box<dyn RefArg + 'static>>>, Self::Err> {
         let metadata = self.metadata.borrow().to_hashmap();
         Ok(metadata)
     }
