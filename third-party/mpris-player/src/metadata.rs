@@ -1,8 +1,12 @@
-use dbus::arg::{Variant, RefArg};
+use dbus::{
+    arg::{RefArg, Variant},
+    Path,
+};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-pub struct Metadata{
+pub struct Metadata {
+    pub trackid: Option<String>,
     pub length: Option<i64>,
     pub art_url: Option<String>,
     pub album: Option<String>,
@@ -16,9 +20,10 @@ pub struct Metadata{
     pub url: Option<String>,
 }
 
-impl Metadata{
-    pub fn new() -> Self{
-        Metadata{
+impl Metadata {
+    pub fn new() -> Self {
+        Metadata {
+            trackid: None,
             length: None,
             art_url: None,
             album: None,
@@ -33,8 +38,14 @@ impl Metadata{
         }
     }
 
-    pub fn to_hashmap(&self) -> HashMap<String, Variant<Box<dyn RefArg + 'static>>> {
+    pub fn to_hashmap(&self) -> Option<HashMap<String, Variant<Box<dyn RefArg + 'static>>>> {
         let mut metadata = HashMap::new();
+
+        if let Some(trackid) = self.trackid.as_ref() {
+            Path::new(trackid.as_bytes()).ok()?;
+            let x = Box::new(trackid.to_string()) as Box<dyn RefArg>;
+            metadata.insert("mpris:trackid".into(), Variant(x));
+        }
 
         if self.length.is_some() {
             let x = Box::new(self.length.unwrap().to_string()) as Box<dyn RefArg>;
@@ -91,6 +102,6 @@ impl Metadata{
             metadata.insert("xesam:url".to_string(), Variant(x));
         }
 
-        metadata
+        Some(metadata)
     }
 }

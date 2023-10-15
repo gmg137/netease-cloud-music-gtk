@@ -45,6 +45,7 @@ impl MprisController {
 
     pub fn update_metadata(&self, si: &SongInfo, microseconds: i64) {
         let mut metadata = Metadata::new();
+        metadata.trackid = Some(format!("/netease/{}", si.id));
         metadata.artist = Some(vec![si.singer.clone()]);
         metadata.title = Some(si.name.clone());
         metadata.length = Some(microseconds);

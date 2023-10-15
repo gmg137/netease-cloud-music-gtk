@@ -537,7 +537,7 @@ impl OrgMprisMediaPlayer2Player for MprisPlayer {
     }
 
     fn get_metadata(&self) -> Result<HashMap<String, Variant<Box<dyn RefArg + 'static>>>, Self::Err> {
-        let metadata = self.metadata.borrow().to_hashmap();
+        let metadata = self.metadata.borrow().to_hashmap().unwrap();
         Ok(metadata)
     }
 
