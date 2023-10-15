@@ -133,7 +133,7 @@ mod imp {
         type Type = super::NeteaseCloudMusicGtk4Application;
         type ParentType = adw::Application;
         fn new() -> Self {
-            let (sender, r) = MainContext::channel(glib::PRIORITY_DEFAULT);
+            let (sender, r) = MainContext::channel(glib::Priority::DEFAULT);
             let receiver = RefCell::new(Some(r));
             let window = OnceCell::new();
             let unikey = Arc::new(RwLock::new(String::new()));
@@ -229,10 +229,10 @@ impl NeteaseCloudMusicGtk4Application {
         ncmapi
     }
 
-    fn process_action(&self, action: Action) -> glib::Continue {
+    fn process_action(&self, action: Action) -> glib::ControlFlow {
         let imp = self.imp();
         if self.active_window().is_none() {
-            return glib::Continue(true);
+            return glib::ControlFlow::Continue;
         }
 
         let window = imp.window.get().unwrap().upgrade().unwrap();
@@ -1096,7 +1096,7 @@ impl NeteaseCloudMusicGtk4Application {
                 window.page_back();
             }
         }
-        glib::Continue(true)
+        glib::ControlFlow::Continue
     }
 
     fn setup_gactions(&self) {
