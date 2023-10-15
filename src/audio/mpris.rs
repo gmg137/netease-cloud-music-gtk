@@ -30,7 +30,7 @@ impl MprisController {
     pub fn new() -> Self {
         let mpris = MprisPlayer::new(
             crate::MPRIS_NAME.to_string(),
-            gettextrs::gettext(crate::APP_NAME),
+            crate::MPRIS_NAME.to_string(),
             crate::APP_ID.to_string(),
         );
         mpris.set_can_raise(true);
