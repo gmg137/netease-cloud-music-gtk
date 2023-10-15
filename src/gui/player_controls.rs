@@ -246,12 +246,7 @@ impl PlayerControls {
         let duration = format!("{:0>2}:{:0>2}", sec / 60, sec % 60);
         let seek_scale = imp.seek_scale.get();
 
-        /*
-         *  the api of mpris is broken on set_position
-         *  set_position should not emitted PropertiesChanged, but it does
-         *  so, disable the set_position and don't update metadata's length
-         */
-        // imp.mpris.get().unwrap().set_position(msec as i64);
+        imp.mpris.get().unwrap().set_position(msec as i64);
 
         seek_scale.set_value(msec as f64);
         imp.progress_time_label.get().set_label(&duration);

@@ -288,7 +288,7 @@ fn load_css() {
     provider.load_from_resource("/com/gitee/gmg137/NeteaseCloudMusicGtk4/themes/discover.css");
 
     // Add the provider to the default screen
-    StyleContext::add_provider_for_display(
+    style_context_add_provider_for_display(
         &gdk::Display::default().expect("Could not connect to a display."),
         &provider,
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,

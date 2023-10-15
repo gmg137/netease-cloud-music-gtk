@@ -14,7 +14,7 @@ anyhow = "~1.0"
 gstreamer = "~0.20"
 gstreamer-play = "~0.20"
 fastrand = "~1.9"
-mpris-player = "~0.6.2"
+mpris-player = { path = "third-party/mpris-player" }
 regex = "~1.7"
 log = "~0.4"
 env_logger = "~0.10"
