@@ -3,9 +3,9 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{gdk, glib, CompositeTemplate, CssProvider, StyleContext};
+use gtk::{gdk, glib, CompositeTemplate, CssProvider};
+use gtk::{prelude::*, style_context_add_provider_for_display};
 
 glib::wrapper! {
     pub struct ThemeSelector(ObjectSubclass<imp::ThemeSelector>)
@@ -75,7 +75,7 @@ fn load_css() {
         .load_from_resource("/com/gitee/gmg137/NeteaseCloudMusicGtk4/themes/themesselector.css");
 
     // Add the provider to the default screen
-    StyleContext::add_provider_for_display(
+    style_context_add_provider_for_display(
         &gdk::Display::default().expect("Could not connect to a display."),
         &provider,
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,

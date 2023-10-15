@@ -208,7 +208,7 @@ impl SongListGridItem {
 
             model.extend_from_slice(&objs);
         } else {
-            let model = gio::ListStore::new(SongListGridItem::static_type());
+            let model = gio::ListStore::new::<SongListGridItem>();
             model.extend_from_slice(&objs);
             let select = NoSelection::new(Some(model));
             grid.set_model(Some(&select));
