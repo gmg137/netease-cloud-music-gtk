@@ -9,7 +9,7 @@ use glib::{
     ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum, ParamSpecUInt, ParamSpecUInt64,
     Sender, Value,
 };
-use gst::ClockTime;
+use gst::{prelude::ObjectExt, ClockTime};
 use gstreamer_play::{prelude::ElementExt, *};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use mpris_player::PlaybackStatus;
@@ -92,7 +92,7 @@ impl PlayerControls {
         let pipeline = player.pipeline();
 
         let flags = pipeline.property_value("flags");
-        let flags_class = glib::FlagsClass::new(flags.type_()).unwrap();
+        let flags_class = glib::FlagsClass::new::<>();
         let flags = flags_class
             .builder_with_value(flags)
             .unwrap()
@@ -518,6 +518,8 @@ impl PlayerControls {
 
 mod imp {
 
+    use gst::glib::Propagation;
+
     use super::*;
 
     #[derive(Debug, Default, CompositeTemplate)]
@@ -653,13 +655,13 @@ mod imp {
         }
 
         #[template_callback]
-        fn seek_scale_cb(&self, _: ScrollType, value: f64) -> Inhibit {
+        fn seek_scale_cb(&self, _: ScrollType, value: f64) -> Propagation {
             let player = self.player.get().unwrap();
             player.seek(ClockTime::from_useconds(value as u64));
 
             let mpris = self.mpris.get().unwrap();
             mpris.set_position(value as i64);
-            Inhibit(false)
+            Propagation::Proceed
         }
 
         #[template_callback]
