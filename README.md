@@ -76,7 +76,7 @@ sudo emerge --ask media-sound/netease-cloud-music-gtk
 ```
 
 ### 从源码安装(不推荐)
-> 编译依赖: opensssl、dbus、gtk4、gdk-pixbuf、libadwaita-1、gstreamer、gstreamer-base
+> 编译依赖: openssl、dbus、gtk4、gdk-pixbuf、libadwaita-1、gstreamer、gstreamer-base
 ```
 // 安装依赖（Debian）
 sudo apt-get install -y libssl-dev meson rustc libgtk-4-dev libadwaita-1-dev libgstreamer-plugins-bad1.0-dev
