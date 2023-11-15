@@ -7,7 +7,7 @@
 use adw::prelude::GtkWindowExt;
 use glib::clone;
 use gtk::glib;
-use mpris_player::*;
+use mpris_player2::*;
 
 use ncm_api::SongInfo;
 use std::sync::Arc;
@@ -30,7 +30,7 @@ impl MprisController {
     pub fn new() -> Self {
         let mpris = MprisPlayer::new(
             crate::MPRIS_NAME.to_string(),
-            gettextrs::gettext(crate::APP_NAME),
+            crate::MPRIS_NAME.to_string(),
             crate::APP_ID.to_string(),
         );
         mpris.set_can_raise(true);
@@ -47,6 +47,7 @@ impl MprisController {
         let mut metadata = Metadata::new();
         metadata.artist = Some(vec![si.singer.clone()]);
         metadata.title = Some(si.name.clone());
+        metadata.track_id = Some(format!("/netease/{}", si.id));
         metadata.length = Some(microseconds);
         let mut path_cover = CACHE.clone();
         path_cover.push(format!("{}-songlist.jpg", si.album_id));
