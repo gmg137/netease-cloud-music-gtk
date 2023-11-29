@@ -685,9 +685,6 @@ impl NeteaseCloudMusicGtk4Window {
         }
     }
 
-    pub fn gst_position_update(&self, sec: u64) {
-        self.imp().player_controls.get().gst_position_update(sec);
-    }
     pub fn gst_duration_changed(&self, sec: u64) {
         self.imp().player_controls.get().gst_duration_changed(sec);
     }
@@ -700,6 +697,12 @@ impl NeteaseCloudMusicGtk4Window {
             .player_controls
             .get()
             .gst_cache_download_complete(loc);
+    }
+    pub fn scale_seek_update(&self, sec: u64) {
+        self.imp().player_controls.get().scale_seek_update(sec);
+    }
+    pub fn scale_value_update(&self) {
+        self.imp().player_controls.get().scale_value_update();
     }
 
     pub async fn action_search(

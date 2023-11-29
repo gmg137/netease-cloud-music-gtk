@@ -19,7 +19,7 @@
                                 <child>
                                     <object class="GtkSwitch" id="exit_switch">
                                         <property name="valign">center</property>
-                                        <property name="state">True</property>
+                                        <property name="active">False</property>
                                     </object>
                                 </child>
                             </object>
@@ -33,7 +33,7 @@
                                 <child>
                                     <object class="GtkSwitch" id="mute_start_switch">
                                         <property name="valign">center</property>
-                                        <property name="state">False</property>
+                                        <property name="active">False</property>
                                     </object>
                                 </child>
                             </object>
@@ -47,7 +47,7 @@
                                 <child>
                                     <object class="GtkSwitch" id="not_ignore_grey_switch">
                                         <property name="valign">center</property>
-                                        <property name="state">False</property>
+                                        <property name="active">False</property>
                                     </object>
                                 </child>
                             </object>
@@ -100,6 +100,20 @@
                                         </items>
                                     </object>
                                 </property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="AdwActionRow">
+                                <property name="title" translatable="yes">Desktop Lyrics</property>
+                                <property name="subtitle" translatable="yes">Requires desktop-lyrics or osdlyrics</property>
+                                <property name="use_underline">True</property>
+                                <property name="activatable-widget">desktop_lyrics</property>
+                                <child>
+                                    <object class="GtkSwitch" id="desktop_lyrics">
+                                        <property name="valign">center</property>
+                                        <property name="active">False</property>
+                                    </object>
+                                </child>
                             </object>
                         </child>
                     </object>

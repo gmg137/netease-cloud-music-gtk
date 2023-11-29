@@ -25,7 +25,7 @@
 - [x] Mpris2 绑定
 - [x] 播放列表
 - [x] 歌词
-- [ ] 桌面歌词
+- [X] 桌面歌词(依赖于 [desktop-lyrics](https://github.com/tuberry/desktop-lyric) 或 osdlyrics)
 
 ## 运行依赖
 > openssl, gstreamer, gstreamer-plugins-base, gstreamer-plugins-good, gstreamer-plugins-bad, gstreamer-plugins-ugly
@@ -98,7 +98,7 @@ sudo ninja install
 1. 为什么后台运行时没有托盘图标?
 > 由于 GTK3 开始取消了托盘接口，所以目前不打算实现托盘功能。<br>
 > **替代方案:**
-> - Mpris 插件: GNOME 推荐 [Mpris Indicator Button](https://extensions.gnome.org/extension/1379/mpris-indicator-button/)，其它桌面可查找相应 Mpris 插件。
+> - Mpris 插件: GNOME 推荐 [Media Controls](https://extensions.gnome.org/extension/4470/media-controls/)，其它桌面可查找相应 Mpris 插件。
 > - 直接点击启动图标，亦可唤醒程序。
 2. 为什么点击歌曲后播放会有延迟?
 > 对于未缓存歌曲会先缓存到本地后再进行播放，取决于音乐文件大小与网速，会有不同的播放延迟。

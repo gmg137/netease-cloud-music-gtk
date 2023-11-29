@@ -107,10 +107,11 @@ pub enum Action {
     PageBack,
 
     // gst
-    GstPositionUpdate(u64),
     GstDurationChanged(u64),
     GstStateChanged(gstreamer_play::PlayState),
     GstCacheDownloadComplete(String),
+    ScaleSeekUpdate(u64),
+    ScaleValueUpdate,
 }
 
 mod imp {
@@ -206,7 +207,7 @@ glib::wrapper! {
 impl NeteaseCloudMusicGtk4Application {
     pub fn new(application_id: &str, flags: &gio::ApplicationFlags) -> Self {
         glib::Object::builder()
-            .property("application-id", &application_id)
+            .property("application-id", application_id)
             .property("flags", flags)
             .build()
     }
@@ -594,6 +595,13 @@ impl NeteaseCloudMusicGtk4Application {
                 let sender = imp.sender.clone();
                 let music_rate = window.settings().uint("music-rate");
                 let path = crate::path::get_music_cache_path(song_info.id, music_rate);
+
+                // 启用桌面歌词
+                if window.settings().boolean("desktop-lyrics") {
+                    sender
+                        .send(Action::UpdateLyrics(song_info.to_owned()))
+                        .unwrap();
+                }
 
                 if !path.exists() {
                     let ctx = glib::MainContext::default();
@@ -1069,7 +1077,7 @@ impl NeteaseCloudMusicGtk4Application {
                 let ctx = glib::MainContext::default();
                 ctx.spawn_local(async move {
                     let lrc = ncmapi
-                        .get_lyrics(si.id)
+                        .get_lyrics(si)
                         .await
                         .unwrap_or_else(|_| gettext("No lyrics found!"));
                     debug!("获取歌词：{:?}", lrc);
@@ -1079,9 +1087,6 @@ impl NeteaseCloudMusicGtk4Application {
             Action::UpdatePlayListStatus(index) => {
                 window.updat_playlist_status(index);
             }
-            Action::GstPositionUpdate(sec) => {
-                window.gst_position_update(sec);
-            }
             Action::GstDurationChanged(sec) => {
                 window.gst_duration_changed(sec);
             }
@@ -1090,6 +1095,12 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::GstCacheDownloadComplete(loc) => {
                 window.gst_cache_download_complete(loc);
+            }
+            Action::ScaleSeekUpdate(sec) => {
+                window.scale_seek_update(sec);
+            }
+            Action::ScaleValueUpdate => {
+                window.scale_value_update();
             }
 
             Action::PageBack => {

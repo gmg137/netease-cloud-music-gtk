@@ -52,5 +52,9 @@
             <default>false</default>
             <summary>Always try to play grey song</summary>
         </key>
+        <key name="desktop-lyrics" type="b">
+            <default>false</default>
+            <summary>Desktop Lyrics</summary>
+        </key>
     </schema>
 </schemalist>

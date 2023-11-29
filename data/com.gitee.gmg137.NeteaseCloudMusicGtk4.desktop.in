@@ -10,5 +10,5 @@ Icon=com.gitee.gmg137.NeteaseCloudMusicGtk4
 StartupWMClass=netease-cloud-music-gtk4
 Terminal=false
 Type=Application
-Categories=GTK;Audio;AudioVideo
+Categories=GNOME;GTK;AudioVideo;Player;Audio;
 StartupNotify=true

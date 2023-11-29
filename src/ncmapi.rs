@@ -5,9 +5,9 @@
 //
 use anyhow::Result;
 use cookie_store::CookieStore;
-use ncm_api::{CookieBuilder, CookieJar, MusicApi, SongUrl};
+use ncm_api::{CookieBuilder, CookieJar, MusicApi, SongInfo, SongUrl};
 
-use crate::path::CACHE;
+use crate::path::{CACHE, LYRICS};
 use log::error;
 use std::{fs, io, path::PathBuf};
 
@@ -166,24 +166,22 @@ impl NcmClient {
             .await
     }
 
-    pub async fn get_lyrics(&self, id: u64) -> Result<String> {
-        let mut path = CACHE.clone();
-        path.push(format!("{}.lrc", id));
+    pub async fn get_lyrics(&self, si: SongInfo) -> Result<String> {
+        let mut path = LYRICS.clone();
+        path.push(format!("{}-{}-{}.lrc", si.name, si.singer, si.album));
+        let re = regex::Regex::new(r"\[\d+:\d+.\d+\]").unwrap();
         if !path.exists() {
-            if let Ok(lyr) = self.client.song_lyric(id).await {
-                let re = regex::Regex::new(r"\[\d+:\d+.\d+\]").unwrap();
-                let lrc = lyr
-                    .into_iter()
-                    .map(|v| re.replace_all(&v, "").to_string())
-                    .collect::<Vec<String>>()
-                    .join("\n");
+            if let Ok(lyr) = self.client.song_lyric(si.id).await {
+                let lrc = lyr.into_iter().collect::<Vec<String>>().join("\n");
                 fs::write(&path, &lrc)?;
+                let lrc = re.replace_all(&lrc, "").to_string();
                 Ok(lrc)
             } else {
                 Ok(gettextrs::gettext("No lyrics found!".to_owned()))
             }
         } else {
             let lrc = fs::read_to_string(&path)?;
+            let lrc = re.replace_all(&lrc, "").to_string();
             Ok(lrc)
         }
     }

@@ -36,10 +36,18 @@ pub static CACHE: Lazy<PathBuf> = Lazy::new(|| {
     path
 });
 
+pub static LYRICS: Lazy<PathBuf> = Lazy::new(|| {
+    let mut path = glib::home_dir();
+    path.push(".lyrics");
+    debug!("初始化歌词目录: {:?}", path);
+    path
+});
+
 pub fn init() -> std::io::Result<()> {
     fs::create_dir_all(DATA.to_owned())?;
     fs::create_dir_all(CONFIG.to_owned())?;
     fs::create_dir_all(CACHE.to_owned())?;
+    fs::create_dir_all(LYRICS.to_owned())?;
     Ok(())
 }
 

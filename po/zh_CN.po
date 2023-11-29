@@ -69,6 +69,11 @@ msgstr "音量"
 msgid "Always try to play grey song"
 msgstr "总是尝试播放灰色歌曲"
 
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:57
+#: data/gtk/preferences.ui:107
+msgid "Desktop Lyrics"
+msgstr "桌面歌词"
+
 #: data/gtk/window.ui:83 data/gtk/window.ui:297
 msgid "Songs"
 msgstr "歌曲"
@@ -180,6 +185,10 @@ msgstr "音乐"
 #: data/gtk/preferences.ui:91
 msgid "Sound quality"
 msgstr "音质"
+
+#: data/gtk/preferences.ui:108
+msgid "Requires desktop-lyrics or osdlyrics"
+msgstr "依赖于 desktop-lyrics 或 osdlyrics"
 
 #: data/gtk/theme-selector.ui:22
 msgid "Use system style"

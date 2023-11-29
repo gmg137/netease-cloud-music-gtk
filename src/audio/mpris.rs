@@ -38,15 +38,14 @@ impl MprisController {
         mpris.set_can_quit(true);
         mpris.set_can_seek(false);
 
-        Self {
-            mpris,
-        }
+        Self { mpris }
     }
 
     pub fn update_metadata(&self, si: &SongInfo, microseconds: i64) {
         let mut metadata = Metadata::new();
         metadata.artist = Some(vec![si.singer.clone()]);
         metadata.title = Some(si.name.clone());
+        metadata.album = Some(si.album.clone());
         metadata.length = Some(microseconds);
         let mut path_cover = CACHE.clone();
         path_cover.push(format!("{}-songlist.jpg", si.album_id));

@@ -36,19 +36,19 @@ impl NeteaseCloudMusicGtk4Preferences {
     fn bind_settings(&self) {
         let switch = self.imp().exit_switch.get();
         self.settings()
-            .bind("exit-switch", &switch, "state")
+            .bind("exit-switch", &switch, "active")
             .flags(SettingsBindFlags::DEFAULT)
             .build();
 
         let mute_start_switch = self.imp().mute_start_switch.get();
         self.settings()
-            .bind("mute-start", &mute_start_switch, "state")
+            .bind("mute-start", &mute_start_switch, "active")
             .flags(SettingsBindFlags::DEFAULT)
             .build();
 
         let not_ignore_grey_switch = self.imp().not_ignore_grey_switch.get();
         self.settings()
-            .bind("not-ignore-grey", &not_ignore_grey_switch, "state")
+            .bind("not-ignore-grey", &not_ignore_grey_switch, "active")
             .flags(SettingsBindFlags::DEFAULT)
             .build();
 
@@ -67,6 +67,12 @@ impl NeteaseCloudMusicGtk4Preferences {
         let cache_clear = self.imp().cache_clear.get();
         self.settings()
             .bind("cache-clear", &cache_clear, "selected")
+            .flags(SettingsBindFlags::DEFAULT)
+            .build();
+
+        let desktop_lyrics = self.imp().desktop_lyrics.get();
+        self.settings()
+            .bind("desktop-lyrics", &desktop_lyrics, "active")
             .flags(SettingsBindFlags::DEFAULT)
             .build();
     }
@@ -107,6 +113,8 @@ mod imp {
         pub switch_rate: TemplateChild<adw::ComboRow>,
         #[template_child]
         pub cache_clear: TemplateChild<adw::ComboRow>,
+        #[template_child]
+        pub desktop_lyrics: TemplateChild<Switch>,
     }
 
     #[glib::object_subclass]

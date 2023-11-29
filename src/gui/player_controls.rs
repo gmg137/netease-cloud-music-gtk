@@ -11,7 +11,7 @@ use glib::{
 };
 use gst::{prelude::ObjectExt, ClockTime};
 use gstreamer_play::{prelude::ElementExt, *};
-use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
+use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, GestureClick, *};
 use mpris_player::PlaybackStatus;
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::*;
@@ -39,6 +39,7 @@ impl PlayerControls {
     pub fn set_sender(&self, sender: Sender<Action>) {
         self.imp().sender.set(sender).unwrap();
         self.connect_gst_signals();
+        self.bind_click();
     }
 
     fn setup_settings(&self) {
@@ -117,6 +118,7 @@ impl PlayerControls {
             .unwrap();
 
         let player = imp.player.get().unwrap();
+        player.stop();
         player.set_uri(Some(&song_info.song_url));
         player.set_volume(self.property("volume"));
         player.play();
@@ -159,6 +161,7 @@ impl PlayerControls {
         let artist_label = imp.artist_label.get();
         artist_label.set_label(&song_info.singer);
 
+        // 快速切换歌曲时会导致系统短暂卡死，原因待查
         let mpris = imp.mpris.get().unwrap();
         mpris.update_metadata(&song_info, 0);
         mpris.set_playback_status(PlaybackStatus::Playing).unwrap();
@@ -197,7 +200,7 @@ impl PlayerControls {
                 let msec = clock.mseconds();
                 if old_msec.get() / 500 != msec / 500 {
                     sender
-                        .send(Action::GstPositionUpdate(clock.useconds()))
+                        .send(Action::ScaleSeekUpdate(clock.useconds()))
                         .unwrap();
                     old_msec.replace(msec);
                 }
@@ -239,22 +242,30 @@ impl PlayerControls {
     }
 
     // msec -> microseconds
+    pub fn scale_seek_update(&self, msec: u64) {
+        let imp = self.imp();
+
+        let seek_scale = imp.seek_scale.get();
+        seek_scale.set_value(msec as f64);
+
+        let sec = msec / 10u64.pow(6);
+        let duration = format!("{:0>2}:{:0>2}", sec / 60, sec % 60);
+        imp.progress_time_label.get().set_label(&duration);
+    }
+
+    pub fn scale_value_update(&self) {
+        let value: f64 = self.property("scale-value");
+        self.gst_position_update(value as u64);
+
+        //let mpris = self.imp().mpris.get().unwrap();
+        //mpris.set_position(value as i64);
+    }
+
+    // msec -> microseconds
     pub fn gst_position_update(&self, msec: u64) {
         let imp = self.imp();
-        let sec = msec / 10u64.pow(6);
-
-        let duration = format!("{:0>2}:{:0>2}", sec / 60, sec % 60);
-        let seek_scale = imp.seek_scale.get();
-
-        /*
-         *  the api of mpris is broken on set_position
-         *  set_position should not emitted PropertiesChanged, but it does
-         *  so, disable the set_position and don't update metadata's length
-         */
-        // imp.mpris.get().unwrap().set_position(msec as i64);
-
-        seek_scale.set_value(msec as f64);
-        imp.progress_time_label.get().set_label(&duration);
+        let player = imp.player.get().unwrap();
+        player.seek(ClockTime::from_useconds(msec));
     }
 
     pub fn gst_duration_changed(&self, msec: u64) {
@@ -334,6 +345,26 @@ impl PlayerControls {
         controller.add_shortcut(shortcut);
         controller.set_scope(ShortcutScope::Global);
         next_button.add_controller(controller);
+    }
+
+    // 绑定拖动播放进度条结束时的事件
+    pub fn bind_click(&self) {
+        let mut gesture = GestureClick::new();
+        let seek_scale = self.imp().seek_scale.get();
+        seek_scale
+            .observe_controllers()
+            .into_iter()
+            .for_each(|collection| {
+                if let Ok(event) = collection {
+                    if event.type_() == GestureClick::static_type() {
+                        gesture = event.downcast::<GestureClick>().unwrap();
+                    }
+                }
+            });
+        let sender = self.imp().sender.get().unwrap().clone();
+        gesture.connect_released(move |_, _, _, _| {
+            sender.send(Action::ScaleValueUpdate).unwrap();
+        });
     }
 
     pub fn add_song(&self, song: SongInfo) {
@@ -582,6 +613,9 @@ mod imp {
         duration: Cell<u64>,
 
         like: Cell<bool>,
+
+        // 播放条拖动结束时的值
+        scale_value: Cell<f64>,
     }
 
     #[glib::object_subclass]
@@ -664,11 +698,12 @@ mod imp {
 
         #[template_callback]
         fn seek_scale_cb(&self, _: ScrollType, value: f64) -> Propagation {
-            let player = self.player.get().unwrap();
-            player.seek(ClockTime::from_useconds(value as u64));
+            let sec = value as u64 / 10u64.pow(6);
+            let duration = format!("{:0>2}:{:0>2}", sec / 60, sec % 60);
+            self.progress_time_label.get().set_label(&duration);
 
-            let mpris = self.mpris.get().unwrap();
-            mpris.set_position(value as i64);
+            self.scale_value.set(value);
+
             Propagation::Proceed
         }
 
@@ -785,6 +820,7 @@ mod imp {
                     ParamSpecUInt::builder("music-rate").build(),
                     ParamSpecUInt64::builder("duration").build(),
                     ParamSpecBoolean::builder("like").readwrite().build(),
+                    ParamSpecDouble::builder("scale-value").readwrite().build(),
                 ]
             });
             PROPERTIES.as_ref()
@@ -812,6 +848,10 @@ mod imp {
                     let like = value.get().expect("The value needs to be of type `bool`.");
                     self.like.replace(like);
                 }
+                "scale-value" => {
+                    let scale_value = value.get().expect("The value needs to be of type `bool`.");
+                    self.scale_value.replace(scale_value);
+                }
                 n => unimplemented!("{}", n),
             }
         }
@@ -823,6 +863,7 @@ mod imp {
                 "music-rate" => self.music_rate.get().to_value(),
                 "duration" => self.duration.get().to_value(),
                 "like" => self.like.get().to_value(),
+                "scale-value" => self.scale_value.get().to_value(),
                 n => unimplemented!("{}", n),
             }
         }

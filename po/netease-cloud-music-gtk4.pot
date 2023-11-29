@@ -68,6 +68,11 @@ msgstr ""
 msgid "Always try to play grey song"
 msgstr ""
 
+#: data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml:57
+#: data/gtk/preferences.ui:107
+msgid "Desktop Lyrics"
+msgstr ""
+
 #: data/gtk/window.ui:83 data/gtk/window.ui:297
 msgid "Songs"
 msgstr ""
@@ -178,6 +183,10 @@ msgstr ""
 
 #: data/gtk/preferences.ui:91
 msgid "Sound quality"
+msgstr ""
+
+#: data/gtk/preferences.ui:108
+msgid "Requires desktop-lyrics or osdlyrics"
 msgstr ""
 
 #: data/gtk/theme-selector.ui:22
