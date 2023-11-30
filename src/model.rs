@@ -4,7 +4,7 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use crate::application::Action;
-use glib::{SendWeakRef, Sender};
+use glib::{source::Priority, SendWeakRef, Sender};
 use gtk::{gdk_pixbuf, glib, prelude::*, Image, Picture};
 use ncm_api::{SingerInfo, SongInfo, SongList};
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
@@ -45,9 +45,8 @@ impl PageStack {
         // delay remove for animation
         let gtk_stack = self.gtk_stack.clone();
         let stack = self.stack.clone();
-        let ctx = glib::MainContext::default();
         let page = stack_page.child();
-        ctx.spawn_local(async move {
+        crate::MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
             glib::timeout_future(std::time::Duration::from_millis(500)).await;
             if page.parent().is_some() && !stack.borrow().iter().any(|p| p.child() == page) {
                 gtk_stack.remove(&page);

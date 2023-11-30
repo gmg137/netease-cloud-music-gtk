@@ -7,7 +7,10 @@ use crate::{
 use adw::{ColorScheme, StyleManager, Toast};
 use gettextrs::gettext;
 use gio::{Settings, SimpleAction};
-use glib::{clone, ParamSpec, ParamSpecEnum, ParamSpecObject, ParamSpecUInt64, Sender, Value};
+use glib::{
+    clone, source::Priority, ParamSpec, ParamSpecEnum, ParamSpecObject, ParamSpecUInt64, Sender,
+    Value,
+};
 use gtk::{
     gio::{self, SettingsBindFlags},
     glib, CompositeTemplate,
@@ -413,8 +416,7 @@ impl NeteaseCloudMusicGtk4Window {
         // seems that dismiss will clear something used by animation
         // cause adw_animation_skip emit 'done' segfault on closure(https://github.com/gmg137/netease-cloud-music-gtk/issues/202)
         // delay to wait for animation skipped/done
-        let ctx = glib::MainContext::default();
-        ctx.spawn_local(async move {
+        crate::MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
             glib::timeout_future(std::time::Duration::from_millis(500)).await;
             // removed from overlay toast queue by signal
             pre.dismiss();

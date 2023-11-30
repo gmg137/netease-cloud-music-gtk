@@ -17,10 +17,13 @@ use gtk::glib;
 use gtk::prelude::*;
 
 use env_logger::Env;
+use once_cell::sync::Lazy;
 
 const APP_ID: &str = "com.gitee.gmg137.NeteaseCloudMusicGtk4";
 const MPRIS_NAME: &str = "NeteaseCloudMusicGtk";
 const APP_NAME: &str = "NetEase Cloud Music Gtk4";
+
+pub static MAINCONTEXT: Lazy<glib::MainContext> = Lazy::new(glib::MainContext::default);
 
 fn main() {
     // Initialize log
@@ -50,8 +53,7 @@ fn main() {
     // desktop features such as file opening and single-instance applications.
     let app = NeteaseCloudMusicGtk4Application::new(APP_ID, &gio::ApplicationFlags::empty());
 
-    let ctx = glib::MainContext::default();
-    let _guard = ctx.acquire().unwrap();
+    let _guard = MAINCONTEXT.acquire().unwrap();
 
     // Run the application. This function will block until the application
     // exits. Upon return, we have our exit code to return to the shell. (This

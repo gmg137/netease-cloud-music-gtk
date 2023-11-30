@@ -1,7 +1,10 @@
 use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gio::Settings;
-use glib::{clone, timeout_future, timeout_future_seconds, MainContext, Receiver, Sender, WeakRef};
+use glib::{
+    clone, source::Priority, timeout_future, timeout_future_seconds, MainContext, Receiver, Sender,
+    WeakRef,
+};
 use gtk::{gio, glib, prelude::*};
 use log::*;
 use ncm_api::{
@@ -13,7 +16,7 @@ use std::{cell::RefCell, fs, path::PathBuf, sync::Arc, time::Duration};
 
 use crate::{
     config::VERSION, gui::NeteaseCloudMusicGtk4Preferences, model::*, ncmapi::*, path::CACHE,
-    NeteaseCloudMusicGtk4Window,
+    NeteaseCloudMusicGtk4Window, MAINCONTEXT,
 };
 
 // implements Debug for Fn(Targ) using "blanket implementations"
@@ -251,11 +254,10 @@ impl NeteaseCloudMusicGtk4Application {
         match action {
             Action::CheckLogin(user_menu, logined_cookie_jar) => {
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
                 let ncmapi = self.init_ncmapi(NcmClient::from_cookie_jar(logined_cookie_jar));
                 let s = self.clone();
 
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::HIGH_IDLE, async move {
                     if !window.is_logined() {
                         match ncmapi.client.login_status().await {
                             Ok(login_info) => {
@@ -292,8 +294,7 @@ impl NeteaseCloudMusicGtk4Application {
             Action::Logout => {
                 let sender = imp.sender.clone();
                 let s = self.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     ncmapi.client.logout().await;
 
                     s.imp().ncmapi.replace(None);
@@ -306,8 +307,7 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::InitUserInfo(login_info) => {
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     match ncmapi.client.user_song_id_list(login_info.uid).await {
                         Ok(song_ids) => {
                             window.set_user_like_songs(&song_ids);
@@ -319,8 +319,7 @@ impl NeteaseCloudMusicGtk4Application {
             Action::TryUpdateQrCode => {
                 if !window.is_logined() && window.is_user_menu_active(UserMenuChild::Qr) {
                     let sender = imp.sender.clone();
-                    let ctx = glib::MainContext::default();
-                    ctx.spawn_local(async move {
+                    MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                         if let Ok(res) = ncmapi.create_qrcode().await {
                             sender.send(Action::SetQrImage(res.0)).unwrap();
                             sender.send(Action::CheckQrTimeout(res.1)).unwrap();
@@ -347,8 +346,7 @@ impl NeteaseCloudMusicGtk4Application {
                 }
                 let sender = imp.sender.clone();
                 let key = imp.unikey.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     let mut send_toast = true;
                     loop {
                         {
@@ -411,8 +409,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::GetCaptcha(ctcode, phone) => {
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     match ncmapi.client.captcha(ctcode, phone).await {
                         Ok(..) => {
                             debug!("发送获取验证码请求...");
@@ -435,8 +432,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::CaptchaLogin(ctcode, phone, captcha) => {
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     debug!("使用验证码登录：{}", captcha);
                     if let Ok(_login_info) =
                         ncmapi.client.login_cellphone(ctcode, phone, captcha).await
@@ -468,8 +464,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::InitCarousel => {
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     match ncmapi.client.banners().await {
                         Ok(banners) => {
                             debug!("获取轮播信息: {:?}", banners);
@@ -495,8 +490,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::InitTopPicks => {
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     match ncmapi.client.top_song_list("全部", "hot", 0, 8).await {
                         Ok(song_list) => {
                             debug!("获取热门推荐信息：{:?}", song_list);
@@ -515,8 +509,7 @@ impl NeteaseCloudMusicGtk4Application {
                 window.page_new(&page, gettext("all top picks").as_str());
                 let page = page.downgrade();
 
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     if let Some(SearchResult::SongLists(sls)) = window
                         .action_search(ncmapi, String::new(), SearchType::TopPicks, 0, 50)
                         .await
@@ -528,8 +521,7 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
             Action::DownloadImage(url, path, width, height, callback) => {
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     if ncmapi
                         .client
                         .download_img(url, path, width, height)
@@ -547,8 +539,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::InitNewAlbums => {
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     match ncmapi.client.new_albums("ALL", 0, 8).await {
                         Ok(song_list) => {
                             debug!("获取新碟上架信息：{:?}", song_list);
@@ -568,8 +559,7 @@ impl NeteaseCloudMusicGtk4Application {
                 window.page_new(&page, gettext("all new albums").as_str());
                 let page = page.downgrade();
 
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     if let Some(SearchResult::SongLists(sls)) = window
                         .action_search(ncmapi, String::new(), SearchType::AllAlbums, 0, 50)
                         .await
@@ -604,8 +594,7 @@ impl NeteaseCloudMusicGtk4Application {
                 }
 
                 if !path.exists() {
-                    let ctx = glib::MainContext::default();
-                    ctx.spawn_local(async move {
+                    MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                         if song_info.song_url.is_empty() {
                             if let Ok(song_url) =
                                 ncmapi.songs_url(&[song_info.id], music_rate).await
@@ -661,8 +650,7 @@ impl NeteaseCloudMusicGtk4Application {
                 let page = page.downgrade();
 
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     let detal_dynamic_as = ncmapi.client.songlist_detail_dynamic(songlist.id);
                     match ncmapi.client.song_list_detail(songlist.id).await {
                         Ok(detail) => {
@@ -693,8 +681,7 @@ impl NeteaseCloudMusicGtk4Application {
                 let page = page.downgrade();
 
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     let detal_dynamic_as = ncmapi.client.album_detail_dynamic(songlist.id);
                     match ncmapi.client.album(songlist.id).await {
                         Ok(detail) => {
@@ -725,8 +712,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::LikeSongList(id, is_like, callback) => {
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     if ncmapi.client.song_list_like(is_like, id).await {
                         debug!("收藏/取消收藏歌单: {:?}", id);
                         if let Some(callback) = callback {
@@ -753,8 +739,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::LikeAlbum(id, is_like, callback) => {
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     if ncmapi.client.album_like(is_like, id).await {
                         debug!("收藏/取消收藏专辑: {:?}", id);
                         if let Some(callback) = callback {
@@ -781,8 +766,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::LikeSong(id, is_like, callback) => {
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     if ncmapi.client.like(is_like, id).await {
                         debug!("收藏/取消收藏歌曲: {:?}", id);
                         window.set_like_song(id, is_like);
@@ -810,8 +794,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::GetToplist => {
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     match ncmapi.client.toplist().await {
                         Ok(toplist) => {
                             debug!("获取排行榜: {:?}", toplist);
@@ -827,8 +810,7 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::GetToplistSongsList(id) => {
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     match ncmapi.client.song_list_detail(id).await {
                         Ok(detail) => {
                             debug!("获取榜单 {} 详情：{:?}", id, detail);
@@ -852,8 +834,7 @@ impl NeteaseCloudMusicGtk4Application {
                 window.update_toplist(sis);
             }
             Action::Search(text, search_type, offset, limit, callback) => {
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     let res = window
                         .action_search(ncmapi, text, search_type, offset, limit)
                         .await;
@@ -869,8 +850,7 @@ impl NeteaseCloudMusicGtk4Application {
                 let page = page.downgrade();
 
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     match ncmapi.client.singer_songs(singer.id).await {
                         Ok(sis) => {
                             debug!("获取歌手单曲：{:?}", sis);
@@ -896,8 +876,7 @@ impl NeteaseCloudMusicGtk4Application {
                 let page = page.downgrade();
 
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     match ncmapi.client.recommend_songs().await {
                         Ok(sis) => {
                             debug!("获取每日推荐：{:?}", sis);
@@ -923,8 +902,7 @@ impl NeteaseCloudMusicGtk4Application {
                 let page = page.downgrade();
 
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     let uid = window.get_uid();
                     match ncmapi.client.user_song_list(uid, 0, 1).await {
                         Ok(sls) => {
@@ -965,8 +943,7 @@ impl NeteaseCloudMusicGtk4Application {
                 let page = page.downgrade();
 
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     match ncmapi.client.user_cloud_disk().await {
                         Ok(sis) => {
                             debug!("获取云盘音乐：{:?}", sis);
@@ -991,8 +968,7 @@ impl NeteaseCloudMusicGtk4Application {
                 window.page_new(&page, &title);
                 let page = page.downgrade();
 
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     let mut vec = Vec::new();
                     for _ in 0..7 {
                         match ncmapi.client.personal_fm().await {
@@ -1014,8 +990,7 @@ impl NeteaseCloudMusicGtk4Application {
                 window.page_new(&page, &title);
                 let page = page.downgrade();
 
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     let res = window
                         .action_search(ncmapi, String::new(), SearchType::LikeAlbums, 0, 50)
                         .await;
@@ -1032,8 +1007,7 @@ impl NeteaseCloudMusicGtk4Application {
                 window.page_new(&page, &title);
                 let page = page.downgrade();
 
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     let res = window
                         .action_search(ncmapi, String::new(), SearchType::LikeSongList, 0, 1001)
                         .await;
@@ -1047,8 +1021,7 @@ impl NeteaseCloudMusicGtk4Application {
             Action::InitMyPage => {
                 window.switch_my_page_to_login();
                 let sender = imp.sender.clone();
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     match ncmapi.client.recommend_resource().await {
                         Ok(sls) => {
                             debug!("获取推荐歌单：{:?}", sls);
@@ -1074,8 +1047,7 @@ impl NeteaseCloudMusicGtk4Application {
                 }
             }
             Action::UpdateLyrics(si) => {
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(async move {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     let lrc = ncmapi
                         .get_lyrics(si)
                         .await
@@ -1164,8 +1136,7 @@ impl NeteaseCloudMusicGtk4Application {
         let cache_clear = settings.uint("cache-clear");
         let flag = settings.boolean("cache-clear-flag");
         let cache_path = CACHE.clone();
-        let ctx = glib::MainContext::default();
-        ctx.spawn_local(async move {
+        MAINCONTEXT.spawn_local_with_priority(Priority::LOW, async move {
             match cache_clear {
                 1 => {
                     if remove_all_file(cache_path).is_ok() {
