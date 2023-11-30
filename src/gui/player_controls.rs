@@ -6,13 +6,14 @@
 use gettextrs::gettext;
 use gio::Settings;
 use glib::{
-    ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum, ParamSpecUInt, ParamSpecUInt64,
-    Sender, Value,
+    clone, source::Priority, ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum,
+    ParamSpecUInt, ParamSpecUInt64, Sender, Value,
 };
 use gst::{prelude::ObjectExt, ClockTime};
 use gstreamer_play::{prelude::ElementExt, *};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, GestureClick, *};
-use mpris_player::PlaybackStatus;
+use log::*;
+use mpris_server::PlaybackStatus;
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::*;
 
@@ -20,6 +21,7 @@ use crate::{application::Action, audio::*, model::ImageDownloadImpl, path::CACHE
 use std::{
     cell::Cell,
     fs, path,
+    rc::Rc,
     sync::{Arc, Mutex},
     thread,
 };
@@ -40,6 +42,7 @@ impl PlayerControls {
         self.imp().sender.set(sender).unwrap();
         self.connect_gst_signals();
         self.bind_click();
+        self.setup_mpris();
     }
 
     fn setup_settings(&self) {
@@ -72,9 +75,21 @@ impl PlayerControls {
 
     pub fn setup_mpris(&self) {
         let imp = self.imp();
-        imp.mpris.set(MprisController::new()).unwrap();
-        let mpris = imp.mpris.get().unwrap();
-        mpris.setup_signals(self);
+        let sender = imp.sender.get().unwrap().clone();
+        crate::MAINCONTEXT.spawn_local_with_priority(Priority::LOW, async move {
+            if let Ok(mc) = MprisController::new().await {
+                sender.send(Action::InitMpris(mc)).unwrap();
+            }
+        });
+    }
+
+    pub fn init_mpris(&self, mpris: MprisController) {
+        let imp = self.imp();
+        imp.mpris.set(Rc::new(mpris)).unwrap();
+
+        if let Some(mpris) = self.imp().mpris.get() {
+            mpris.setup_signals(self);
+        }
     }
 
     pub fn setup_player(&self) {
@@ -161,12 +176,25 @@ impl PlayerControls {
         let artist_label = imp.artist_label.get();
         artist_label.set_label(&song_info.singer);
 
-        // 快速切换歌曲时会导致系统短暂卡死，原因待查
-        let mpris = imp.mpris.get().unwrap();
-        mpris.update_metadata(&song_info, 0);
-        mpris.set_playback_status(PlaybackStatus::Playing).unwrap();
-        mpris.set_volume(self.property("volume")).unwrap();
-        mpris.set_position(0);
+        let volume = self.property("volume");
+        if let Some(mpris) = imp.mpris.get() {
+            crate::MAINCONTEXT.spawn_local_with_priority(
+                Priority::LOW,
+                clone!(@weak mpris => async move {
+                    if let Err(err) = mpris.update_metadata(&song_info).await {
+                        warn!("设置 MPRIS metadata 失败: {err:?}");
+                    }
+                    if let Err(err) = mpris.set_playback_status(PlaybackStatus::Playing).await {
+                        warn!("设置 MPRIS 播放状态失败: {err:?}");
+                    }
+                    if let Err(err) = mpris.set_volume(volume).await {
+                        warn!("设置 MPRIS 音量失败: {err:?}");
+                    }
+                    mpris.set_position(0);
+                    mpris.seeked(0).await.ok();
+                }),
+            );
+        }
     }
 
     pub fn connect_gst_signals(&self) {
@@ -251,14 +279,31 @@ impl PlayerControls {
         let sec = msec / 10u64.pow(6);
         let duration = format!("{:0>2}:{:0>2}", sec / 60, sec % 60);
         imp.progress_time_label.get().set_label(&duration);
+
+        if let Some(mpris) = self.imp().mpris.get() {
+            mpris.set_position(msec as i64);
+            crate::MAINCONTEXT.spawn_local_with_priority(
+                Priority::LOW,
+                clone!(@weak mpris => async move {
+                    mpris.seeked(msec as i64).await.ok();
+                }),
+            );
+        }
     }
 
     pub fn scale_value_update(&self) {
         let value: f64 = self.property("scale-value");
         self.gst_position_update(value as u64);
 
-        //let mpris = self.imp().mpris.get().unwrap();
-        //mpris.set_position(value as i64);
+        if let Some(mpris) = self.imp().mpris.get() {
+            mpris.set_position(value as i64);
+            crate::MAINCONTEXT.spawn_local_with_priority(
+                Priority::LOW,
+                clone!(@weak mpris => async move {
+                    mpris.seeked(value as i64).await.ok();
+                }),
+            );
+        }
     }
 
     // msec -> microseconds
@@ -279,12 +324,17 @@ impl PlayerControls {
 
         self.set_property("duration", sec);
 
-        /*
-         * not update_metadata length
-         */
-        // if let Some(si) = self.get_current_song() {
-        //     imp.mpris.get().unwrap().update_metadata(&si, msec as i64);
-        // }
+        if let Some(mpris) = imp.mpris.get() {
+            if let Some(mut si) = self.get_current_song() {
+                si.duration = msec / 1000;
+                crate::MAINCONTEXT.spawn_local_with_priority(
+                    Priority::LOW,
+                    clone!(@weak mpris => async move {
+                        mpris.update_metadata(&si).await.ok();
+                    }),
+                );
+            }
+        }
     }
 
     pub fn gst_state_changed(&self, state: PlayState) {
@@ -413,28 +463,52 @@ impl PlayerControls {
     pub fn switch_play(&self) {
         let imp = self.imp();
         let player = imp.player.get().unwrap();
-        let mpris = imp.mpris.get().unwrap();
-
-        mpris.set_playback_status(PlaybackStatus::Playing).unwrap();
         player.play();
+
+        if let Some(mpris) = imp.mpris.get() {
+            crate::MAINCONTEXT.spawn_local_with_priority(
+                Priority::LOW,
+                clone!(@weak mpris => async move {
+                    if let Err(err) = mpris.set_playback_status(PlaybackStatus::Playing).await {
+                        warn!("设置 MPRIS 播放状态失败: {err:?}");
+                    }
+                }),
+            );
+        }
     }
 
     pub fn switch_pause(&self) {
         let imp = self.imp();
         let player = imp.player.get().unwrap();
-        let mpris = imp.mpris.get().unwrap();
-
-        mpris.set_playback_status(PlaybackStatus::Paused).unwrap();
         player.pause();
+
+        if let Some(mpris) = imp.mpris.get() {
+            crate::MAINCONTEXT.spawn_local_with_priority(
+                Priority::LOW,
+                clone!(@weak mpris => async move {
+                    if let Err(err) = mpris.set_playback_status(PlaybackStatus::Paused).await {
+                        warn!("设置 MPRIS 播放状态失败: {err:?}");
+                    }
+                }),
+            );
+        }
     }
 
     pub fn switch_stop(&self) {
         let imp = self.imp();
         let player = imp.player.get().unwrap();
-        let mpris = imp.mpris.get().unwrap();
-
-        mpris.set_playback_status(PlaybackStatus::Stopped).unwrap();
         player.stop();
+
+        if let Some(mpris) = imp.mpris.get() {
+            crate::MAINCONTEXT.spawn_local_with_priority(
+                Priority::LOW,
+                clone!(@weak mpris => async move {
+                    if let Err(err) = mpris.set_playback_status(PlaybackStatus::Stopped).await {
+                        warn!("设置 MPRIS 播放状态失败: {err:?}");
+                    }
+                }),
+            );
+        }
     }
 
     // these set funcs will be called from mpris
@@ -447,7 +521,7 @@ impl PlayerControls {
     pub fn set_shuffle(&self, shuffle: bool) {
         let imp = self.imp();
         match shuffle {
-            true => self.set_loops(LoopsState::SHUFFLE),
+            true => self.set_loops(LoopsState::Shuffle),
             false => {
                 if let Ok(status) = imp.mpris.get().unwrap().get_loop_status() {
                     self.set_loops(status);
@@ -472,27 +546,44 @@ impl PlayerControls {
     fn property_changed(&self, name: &str, _: &ParamSpec) {
         let imp = self.imp();
         let player = imp.player.get().unwrap();
-        let mpris = imp.mpris.get().unwrap();
         match name {
             "volume" => {
                 let value = self.property::<f64>("volume");
                 player.set_volume(value);
                 self.imp().volume_button.get().set_value(value);
-                mpris.set_volume(value).unwrap();
+                if let Some(mpris) = imp.mpris.get() {
+                    crate::MAINCONTEXT.spawn_local_with_priority(
+                        Priority::LOW,
+                        clone!(@weak mpris => async move {
+                            if let Err(err) = mpris.set_volume(value).await {
+                                warn!("设置 MPRIS 音量失败: {err:?}");
+                            }
+                        }),
+                    );
+                }
             }
             "loops" => {
                 let value = self.property::<LoopsState>("loops");
                 let switch: gtk::CheckButton = match value {
-                    LoopsState::SHUFFLE => imp.shuffle_button.get(),
-                    LoopsState::NONE => imp.none_button.get(),
-                    LoopsState::ONE => imp.one_button.get(),
-                    LoopsState::LOOP => imp.loop_button.get(),
+                    LoopsState::Shuffle => imp.shuffle_button.get(),
+                    LoopsState::None => imp.none_button.get(),
+                    LoopsState::Track => imp.one_button.get(),
+                    LoopsState::Playlist => imp.loop_button.get(),
                 };
                 if !switch.is_active() {
                     switch.set_active(true);
                 }
 
-                mpris.set_loop_status(value).unwrap();
+                if let Some(mpris) = imp.mpris.get() {
+                    crate::MAINCONTEXT.spawn_local_with_priority(
+                        Priority::LOW,
+                        clone!(@weak mpris => async move {
+                            if let Err(err) = mpris.set_loop_status(value).await {
+                                warn!("设置 MPRIS 循环状态失败: {err:?}");
+                            }
+                        }),
+                    );
+                }
 
                 if let Ok(mut playlist) = imp.playlist.lock() {
                     playlist.set_loops(value);
@@ -605,7 +696,7 @@ mod imp {
         pub player: OnceCell<gstreamer_play::Play>,
         pub player_signal: OnceCell<gstreamer_play::PlaySignalAdapter>,
         pub playlist: Arc<Mutex<PlayList>>,
-        pub mpris: OnceCell<MprisController>,
+        pub mpris: OnceCell<Rc<MprisController>>,
 
         volume: Cell<f64>,
         loops: Cell<LoopsState>,
@@ -660,19 +751,36 @@ mod imp {
         #[template_callback]
         fn play_button_clicked_cb(&self, button: Button) {
             let player = self.player.get().unwrap();
-            let mpris = self.mpris.get().unwrap();
             if button
                 .icon_name()
                 .unwrap()
                 .eq("media-playback-start-symbolic")
             {
                 player.play();
-                mpris.set_playback_status(PlaybackStatus::Playing).unwrap();
                 button.set_icon_name("media-playback-pause-symbolic");
+                if let Some(mpris) = self.mpris.get() {
+                    crate::MAINCONTEXT.spawn_local_with_priority(
+                        Priority::LOW,
+                        clone!(@weak mpris => async move {
+                            if let Err(err) = mpris.set_playback_status(PlaybackStatus::Playing).await {
+                                warn!("设置 MPRIS 播放状态失败: {err:?}");
+                            }
+                        }),
+                    );
+                }
             } else {
                 player.pause();
-                mpris.set_playback_status(PlaybackStatus::Paused).unwrap();
                 button.set_icon_name("media-playback-start-symbolic");
+                if let Some(mpris) = self.mpris.get() {
+                    crate::MAINCONTEXT.spawn_local_with_priority(
+                        Priority::LOW,
+                        clone!(@weak mpris => async move {
+                            if let Err(err) = mpris.set_playback_status(PlaybackStatus::Paused).await {
+                                warn!("设置 MPRIS 播放状态失败: {err:?}");
+                            }
+                        }),
+                    );
+                }
             }
         }
 
@@ -728,7 +836,7 @@ mod imp {
             self.repeat_image
                 .set_icon_name(Some("media-playlist-consecutive-symbolic"));
 
-            self.obj().set_loops(LoopsState::NONE);
+            self.obj().set_loops(LoopsState::None);
         }
 
         #[template_callback]
@@ -736,7 +844,7 @@ mod imp {
             self.repeat_image
                 .set_icon_name(Some("media-playlist-repeat-song-symbolic"));
 
-            self.obj().set_loops(LoopsState::ONE);
+            self.obj().set_loops(LoopsState::Track);
         }
 
         #[template_callback]
@@ -744,7 +852,7 @@ mod imp {
             self.repeat_image
                 .set_icon_name(Some("media-playlist-repeat-symbolic"));
 
-            self.obj().set_loops(LoopsState::LOOP);
+            self.obj().set_loops(LoopsState::Playlist);
         }
 
         #[template_callback]
@@ -752,7 +860,7 @@ mod imp {
             self.repeat_image
                 .set_icon_name(Some("media-playlist-shuffle-symbolic"));
 
-            self.obj().set_loops(LoopsState::SHUFFLE);
+            self.obj().set_loops(LoopsState::Shuffle);
         }
 
         #[template_callback]
@@ -791,7 +899,6 @@ mod imp {
 
             obj.setup_player();
             obj.setup_settings();
-            obj.setup_mpris();
 
             obj.setup_notify_connect();
 

@@ -15,8 +15,8 @@ use once_cell::sync::OnceCell;
 use std::{cell::RefCell, fs, path::PathBuf, sync::Arc, time::Duration};
 
 use crate::{
-    config::VERSION, gui::NeteaseCloudMusicGtk4Preferences, model::*, ncmapi::*, path::CACHE,
-    NeteaseCloudMusicGtk4Window, MAINCONTEXT,
+    audio::MprisController, config::VERSION, gui::NeteaseCloudMusicGtk4Preferences, model::*,
+    ncmapi::*, path::CACHE, NeteaseCloudMusicGtk4Window, MAINCONTEXT,
 };
 
 // implements Debug for Fn(Targ) using "blanket implementations"
@@ -115,6 +115,8 @@ pub enum Action {
     GstCacheDownloadComplete(String),
     ScaleSeekUpdate(u64),
     ScaleValueUpdate,
+
+    InitMpris(MprisController),
 }
 
 mod imp {
@@ -1077,6 +1079,9 @@ impl NeteaseCloudMusicGtk4Application {
 
             Action::PageBack => {
                 window.page_back();
+            }
+            Action::InitMpris(mpris) => {
+                window.init_mpris(mpris);
             }
         }
         glib::ControlFlow::Continue

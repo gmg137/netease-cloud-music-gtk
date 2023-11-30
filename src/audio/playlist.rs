@@ -5,7 +5,7 @@
 //
 
 use gtk::glib;
-use mpris_player::LoopStatus;
+use mpris_server::LoopStatus;
 use ncm_api::SongInfo;
 
 #[derive(Debug)]
@@ -33,7 +33,7 @@ impl PlayList {
         PlayList {
             list: Vec::new(),
             shuffle: Vec::new(),
-            loops: LoopsState::NONE,
+            loops: LoopsState::None,
             play_state: false,
             position: 0,
         }
@@ -44,7 +44,7 @@ impl PlayList {
     }
 
     pub fn current_song(&self) -> Option<&SongInfo> {
-        if let LoopsState::SHUFFLE = self.loops {
+        if let LoopsState::Shuffle = self.loops {
             if let Some(song) = self.shuffle.get(self.position) {
                 return Some(song);
             } else {
@@ -60,19 +60,19 @@ impl PlayList {
 
     pub fn add_song(&mut self, song: SongInfo) {
         if self.list.is_empty() {
-            if let LoopsState::SHUFFLE = self.loops {
+            if let LoopsState::Shuffle = self.loops {
                 self.shuffle.push(song.clone());
             }
             self.list.push(song);
             return;
         }
         if !self.list.contains(&song) {
-            if let LoopsState::SHUFFLE = self.loops {
+            if let LoopsState::Shuffle = self.loops {
                 self.shuffle.insert(self.position + 1, song.clone())
             }
             self.list.insert(self.position + 1, song);
             self.position += 1;
-        } else if let LoopsState::SHUFFLE = self.loops {
+        } else if let LoopsState::Shuffle = self.loops {
             for (i, v) in self.shuffle.iter().enumerate() {
                 if v.id == song.id {
                     self.position = i;
@@ -92,7 +92,7 @@ impl PlayList {
     pub fn add_list(&mut self, list: Vec<SongInfo>) {
         self.list = list.clone();
         let mut list = list;
-        if let LoopsState::SHUFFLE = self.loops {
+        if let LoopsState::Shuffle = self.loops {
             fastrand::shuffle(&mut list);
             self.shuffle = list;
         }
@@ -104,7 +104,7 @@ impl PlayList {
     }
 
     pub fn set_loops(&mut self, loops: LoopsState) {
-        if let LoopsState::SHUFFLE = loops {
+        if let LoopsState::Shuffle = loops {
             if self.play_state {
                 let first = self.list.remove(self.position);
                 let mut list = self.list.clone();
@@ -122,7 +122,7 @@ impl PlayList {
     }
 
     pub fn get_position(&self) -> usize {
-        if let LoopsState::SHUFFLE = self.loops {
+        if let LoopsState::Shuffle = self.loops {
             if let Some(song) = self.current_song() {
                 for (p, si) in self.list.iter().enumerate() {
                     if si.id == song.id {
@@ -141,7 +141,7 @@ impl PlayList {
     // 查询下一曲
     pub fn next_song(&mut self) -> Option<&SongInfo> {
         match self.loops {
-            LoopsState::SHUFFLE => {
+            LoopsState::Shuffle => {
                 if let Some(song) = self.shuffle.get(self.position + 1) {
                     self.position += 1;
                     Some(song)
@@ -150,7 +150,7 @@ impl PlayList {
                     self.shuffle.get(0)
                 }
             }
-            LoopsState::LOOP => {
+            LoopsState::Playlist => {
                 if let Some(song) = self.list.get(self.position + 1) {
                     self.position += 1;
                     Some(song)
@@ -159,8 +159,8 @@ impl PlayList {
                     self.list.get(0)
                 }
             }
-            LoopsState::ONE => self.list.get(self.position),
-            LoopsState::NONE => {
+            LoopsState::Track => self.list.get(self.position),
+            LoopsState::None => {
                 if let Some(song) = self.list.get(self.position + 1) {
                     self.position += 1;
                     Some(song)
@@ -179,7 +179,7 @@ impl PlayList {
             self.position - 1
         };
         match self.loops {
-            LoopsState::SHUFFLE => {
+            LoopsState::Shuffle => {
                 if let Some(song) = self.shuffle.get(position) {
                     self.position = position;
                     Some(song)
@@ -187,7 +187,7 @@ impl PlayList {
                     None
                 }
             }
-            LoopsState::LOOP => {
+            LoopsState::Playlist => {
                 let position = if self.position == 0 {
                     self.list.len() - 1
                 } else {
@@ -201,8 +201,8 @@ impl PlayList {
                     self.list.get(0)
                 }
             }
-            LoopsState::ONE => self.list.get(self.position),
-            LoopsState::NONE => {
+            LoopsState::Track => self.list.get(self.position),
+            LoopsState::None => {
                 if let Some(song) = self.list.get(position) {
                     self.position = position;
                     Some(song)
@@ -219,24 +219,24 @@ impl PlayList {
 #[enum_type(name = "LoopsState")]
 pub enum LoopsState {
     // 随机
-    SHUFFLE,
+    Shuffle,
     // 列表循环
-    LOOP,
+    Playlist,
     // 单曲循环
-    ONE,
+    Track,
     // 不循环
     #[default]
-    NONE,
+    None,
 }
 
 impl LoopsState {
     pub fn from_str(s: &str) -> Self {
         match s {
-            "none" => LoopsState::NONE,
-            "one" => LoopsState::ONE,
-            "loop" => LoopsState::LOOP,
-            "shuffle" => LoopsState::SHUFFLE,
-            _ => LoopsState::NONE,
+            "none" => LoopsState::None,
+            "one" => LoopsState::Track,
+            "loop" => LoopsState::Playlist,
+            "shuffle" => LoopsState::Shuffle,
+            _ => LoopsState::None,
         }
     }
 }
@@ -244,9 +244,9 @@ impl LoopsState {
 impl From<LoopStatus> for LoopsState {
     fn from(status: LoopStatus) -> Self {
         match status {
-            LoopStatus::None => LoopsState::NONE,
-            LoopStatus::Track => LoopsState::ONE,
-            LoopStatus::Playlist => LoopsState::LOOP,
+            LoopStatus::None => LoopsState::None,
+            LoopStatus::Track => LoopsState::Track,
+            LoopStatus::Playlist => LoopsState::Playlist,
         }
     }
 }
@@ -254,10 +254,10 @@ impl From<LoopStatus> for LoopsState {
 impl ToString for LoopsState {
     fn to_string(&self) -> String {
         match self {
-            LoopsState::NONE => "none".to_string(),
-            LoopsState::ONE => "one".to_string(),
-            LoopsState::LOOP => "loop".to_string(),
-            LoopsState::SHUFFLE => "shuffle".to_string(),
+            LoopsState::None => "none".to_string(),
+            LoopsState::Track => "one".to_string(),
+            LoopsState::Playlist => "loop".to_string(),
+            LoopsState::Shuffle => "shuffle".to_string(),
         }
     }
 }

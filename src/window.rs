@@ -1,5 +1,6 @@
 use crate::{
     application::{Action, NeteaseCloudMusicGtk4Application},
+    audio::MprisController,
     gui::*,
     model::*,
     ncmapi::NcmClient,
@@ -705,6 +706,9 @@ impl NeteaseCloudMusicGtk4Window {
     }
     pub fn scale_value_update(&self) {
         self.imp().player_controls.get().scale_value_update();
+    }
+    pub fn init_mpris(&self, mpris: MprisController) {
+        self.imp().player_controls.get().init_mpris(mpris);
     }
 
     pub async fn action_search(

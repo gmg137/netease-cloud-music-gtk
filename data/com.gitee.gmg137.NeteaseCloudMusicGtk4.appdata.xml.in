@@ -1,9 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop">
-	<id>com.gitee.gmg137.NeteaseCloudMusicGtk4.desktop</id>
-	<metadata_license>CC0-1.0</metadata_license>
-	<project_license>GPL-3.0-or-later</project_license>
-	<description>
-	  <p>No description</p>
-	</description>
+    <id>com.gitee.gmg137.NeteaseCloudMusicGtk4.desktop</id>
+    <metadata_license>CC0-1.0</metadata_license>
+    <project_license>GPL-3.0-or-later</project_license>
+    <releases>
+        <release version="2.2.0" date="2022-12-20" />
+    </releases>
+    <name>NetEase Cloud Music Gtk4</name>
+    <name xml:lang="zh_CN">网易云音乐</name>
+    <name xml:lang="zh_TW">網易雲音樂</name>
+    <summary>Linux muisc player for NetEase Cloud Music</summary>
+    <summary xml:lang="zh_TW">網易雲音樂 Linux 音樂播放器</summary>
+    <summary xml:lang="zh_CN">网易云音乐 Linux 音乐播放器</summary>
+    <url type="homepage">https://gitee.com/gmg137/netease-cloud-music-gtk</url>
+    <description>
+        <p>use NetEase Cloud Music API Gtk4 player</p>
+        <p xml:lang="zh_CN">使用网易云音乐 API 的 Gtk4 音乐播放器</p>
+        <p xml:lang="zh_TW">使用網易雲音樂 API 的 Gtk4 音樂播放器</p>
+    </description>
+    <screenshots>
+        <screenshot type="default">https://gitee.com/gmg137/netease-cloud-music-gtk/raw/master/screenshots/discover.png</screenshot>
+    </screenshots>
+    <content_rating type="oars-1.1" />
 </component>
