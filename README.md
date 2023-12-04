@@ -100,8 +100,8 @@ sudo ninja install
 > **替代方案:**
 > - Mpris 插件: GNOME 推荐 [Media Controls](https://extensions.gnome.org/extension/4470/media-controls/)，其它桌面可查找相应 Mpris 插件。
 > - 直接点击启动图标，亦可唤醒程序。
-2. 为什么点击歌曲后播放会有延迟?
-> 对于未缓存歌曲会先缓存到本地后再进行播放，取决于音乐文件大小与网速，会有不同的播放延迟。
+2. 使用 osdlyrics 时没有正确匹配歌词?
+> 打开 osdlyrics 的[首选项]-[歌词位置]-[文件名]，添加匹配规则: %t-%p-%a。
 3. 音乐缓存目录在什么位置?
 > 缓存位于用户主目录下 .cache/netease-cloud-music-gtk4 文件夹内。
 4. 如何分享音乐?
