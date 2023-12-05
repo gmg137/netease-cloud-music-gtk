@@ -494,6 +494,10 @@ msgstr "已复制歌曲信息到剪贴板!"
 msgid "No more songs！"
 msgstr "没有歌曲了!"
 
+#: src/gui/player_controls.rs:628 src/gui/songlist_row.rs:136
+msgid "Album not found!"
+msgstr "没有找到专辑！"
+
 #: src/gui/player_controls.rs:684
 msgid "Collection failure！"
 msgstr "收藏失败!"

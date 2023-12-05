@@ -615,13 +615,19 @@ impl PlayerControls {
     fn cover_clicked_cb(&self) {
         let sender = self.imp().sender.get().unwrap().clone();
         if let Some(songinfo) = self.get_current_song() {
-            let songlist = SongList {
-                id: songinfo.album_id,
-                name: songinfo.album,
-                cover_img_url: songinfo.pic_url,
-                author: String::new(),
-            };
-            sender.send(Action::ToAlbumPage(songlist)).unwrap();
+            if songinfo.album_id != 0 {
+                let songlist = SongList {
+                    id: songinfo.album_id,
+                    name: songinfo.album,
+                    cover_img_url: songinfo.pic_url,
+                    author: String::new(),
+                };
+                sender.send(Action::ToAlbumPage(songlist)).unwrap();
+            } else {
+                sender
+                    .send(Action::AddToast(gettext("Album not found!")))
+                    .unwrap();
+            }
         }
     }
 

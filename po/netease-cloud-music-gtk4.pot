@@ -488,6 +488,10 @@ msgstr ""
 msgid "No more songs！"
 msgstr ""
 
+#: src/gui/player_controls.rs:628 src/gui/songlist_row.rs:136
+msgid "Album not found!"
+msgstr ""
+
 #: src/gui/player_controls.rs:684
 msgid "Collection failure！"
 msgstr ""

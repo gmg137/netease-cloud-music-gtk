@@ -8,6 +8,7 @@ use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, *};
 
 use crate::application::Action;
+use gettextrs::gettext;
 use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Sender, Value};
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::{Lazy, OnceCell};
@@ -122,13 +123,19 @@ impl SonglistRow {
         let imp = self.imp();
         let sender = imp.sender.get().unwrap();
         let si = { imp.song_info.borrow().clone().unwrap() };
-        let songlist = SongList {
-            id: si.album_id,
-            name: si.album,
-            cover_img_url: si.pic_url,
-            author: String::new(),
-        };
-        sender.send(Action::ToAlbumPage(songlist)).unwrap();
+        if si.album_id != 0 {
+            let songlist = SongList {
+                id: si.album_id,
+                name: si.album,
+                cover_img_url: si.pic_url,
+                author: String::new(),
+            };
+            sender.send(Action::ToAlbumPage(songlist)).unwrap();
+        } else {
+            sender
+                .send(Action::AddToast(gettext("Album not found!")))
+                .unwrap();
+        }
     }
 }
 
