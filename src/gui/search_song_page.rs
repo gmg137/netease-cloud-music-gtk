@@ -41,10 +41,7 @@ impl SearchSongPage {
         imp.playlist.replace(Vec::new());
         let title_clamp = imp.title_clamp.get();
         match search_type {
-            SearchType::DailyRec
-            | SearchType::Heartbeat
-            | SearchType::CloudDisk
-            | SearchType::Fm => {
+            SearchType::DailyRec | SearchType::Heartbeat | SearchType::CloudDisk => {
                 title_clamp.set_visible(true);
                 imp.title_label.set_label(keyword);
             }
@@ -53,7 +50,7 @@ impl SearchSongPage {
             }
         }
         match search_type {
-            SearchType::CloudDisk => {
+            SearchType::CloudDisk | SearchType::Radio => {
                 imp.songs_list.set_property("no-act-like", true);
                 imp.songs_list.set_property("no-act-album", true);
             }

@@ -100,10 +100,11 @@ pub enum Action {
     ToAllAlbumsPage,
     ToSongListPage(SongList),
     ToAlbumPage(SongList),
+    ToRadioPage(SongList),
     ToSingerSongsPage(SingerInfo),
     ToMyPageDailyRec,
     ToMyPageHeartbeat,
-    ToMyPageFm,
+    ToMyPageRadio,
     ToMyPageCloudDisk,
     ToMyPageAlbums,
     ToMyPageSonglist,
@@ -706,6 +707,30 @@ impl NeteaseCloudMusicGtk4Application {
                     }
                 });
             }
+            Action::ToRadioPage(songlist) => {
+                let page = window.init_songlist_page(&songlist, true);
+                window.page_new(&page, &songlist.name);
+                let page = page.downgrade();
+
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    match ncmapi.client.radio_program(songlist.id, 0, 1001).await {
+                        Ok(detail) => {
+                            debug!("获取电台详情: {:?}", detail);
+                            let detail = SongListDetail::Radio(detail);
+                            if let Some(page) = page.upgrade() {
+                                window.update_songlist_page(page, &detail);
+                            }
+                        }
+                        Err(err) => {
+                            error!("获取电台详情失败: {:?}", err);
+                            sender
+                                .send(Action::AddToast(gettext("Failed to get radio details!")))
+                                .unwrap();
+                        }
+                    }
+                });
+            }
             Action::AddPlayList(sis) => {
                 window.add_playlist(sis);
             }
@@ -964,25 +989,20 @@ impl NeteaseCloudMusicGtk4Application {
                     }
                 });
             }
-            Action::ToMyPageFm => {
-                let title = gettext("Private FM");
-                let page = window.init_search_song_page(&title, SearchType::Fm);
+            Action::ToMyPageRadio => {
+                let title = gettext("My Radio");
+                let page = window.init_search_songlist_page(&title, SearchType::Radio);
                 window.page_new(&page, &title);
                 let page = page.downgrade();
 
                 MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
-                    let mut vec = Vec::new();
-                    for _ in 0..7 {
-                        match ncmapi.client.personal_fm().await {
-                            Ok(mut sis) => {
-                                vec.append(&mut sis);
-                            }
-                            Err(err) => error!("{:?}", err),
-                        }
-                    }
-                    debug!("获取 FM：{:?}", vec);
+                    let res = window
+                        .action_search(ncmapi, String::new(), SearchType::Radio, 0, 1001)
+                        .await;
                     if let Some(page) = page.upgrade() {
-                        window.update_search_song_page(page, vec);
+                        if let Some(SearchResult::SongLists(sls)) = res {
+                            page.update_songlist(&sls);
+                        }
                     }
                 });
             }

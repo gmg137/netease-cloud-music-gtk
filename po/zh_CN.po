@@ -344,8 +344,8 @@ msgid "Favorite Songs"
 msgstr "收藏单曲"
 
 #: data/gtk/my-page.ui:95 src/application.rs:973
-msgid "Private FM"
-msgstr "私人FM"
+msgid "My Radio"
+msgstr "我的电台"
 
 #: data/gtk/my-page.ui:122 src/application.rs:946
 msgid "Cloud Music"
@@ -529,6 +529,14 @@ msgstr "{} 分钟"
 #: src/gui/songlist_page.rs:107 src/gui/songlist_page.rs:117
 msgid "{} favs"
 msgstr "{} 人收藏"
+
+#: src/gui/songlist_page.rs:119
+msgid "Total {} issues"
+msgstr "共 {} 期"
+
+#: src/gui/songlist_page.rs:219
+msgid "Favorite radio stations are not supported!"
+msgstr "不支持收藏电台！"
 
 #: src/gui/user_menus.rs:123 src/gui/user_menus.rs:137
 msgid "Input format error!"

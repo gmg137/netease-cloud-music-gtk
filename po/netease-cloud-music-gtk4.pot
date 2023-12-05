@@ -343,7 +343,7 @@ msgid "Favorite Songs"
 msgstr ""
 
 #: data/gtk/my-page.ui:95 src/application.rs:973
-msgid "Private FM"
+msgid "My Radio"
 msgstr ""
 
 #: data/gtk/my-page.ui:122 src/application.rs:946
@@ -518,6 +518,14 @@ msgstr ""
 
 #: src/gui/songlist_page.rs:107 src/gui/songlist_page.rs:117
 msgid "{} favs"
+msgstr ""
+
+#: src/gui/songlist_page.rs:119
+msgid "Total {} issues"
+msgstr ""
+
+#: src/gui/songlist_page.rs:219
+msgid "Favorite radio stations are not supported!"
 msgstr ""
 
 #: src/gui/user_menus.rs:123 src/gui/user_menus.rs:137

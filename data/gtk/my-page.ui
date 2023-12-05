@@ -82,7 +82,7 @@
                                         <property name="size">100</property>
                                         <child>
                                             <object class="GtkGestureClick">
-                                                <signal name="pressed" handler="fm_cb" swapped="true" />
+                                                <signal name="pressed" handler="radio_cb" swapped="true" />
                                             </object>
                                         </child>
                                     </object>
@@ -92,7 +92,7 @@
                                         <property name="halign">start</property>
                                         <property name="valign">center</property>
                                         <property name="margin-start">9</property>
-                                        <property name="label" translatable="yes">Private FM</property>
+                                        <property name="label" translatable="yes">My Radio</property>
                                         <attributes>
                                             <attribute name="size" value="15000" />
                                         </attributes>

@@ -139,12 +139,14 @@ pub enum UserMenuChild {
 pub enum DiscoverSubPage {
     SongList,
     Album,
+    Radio,
 }
 
 #[derive(Debug, Clone)]
 pub enum SongListDetail {
     PlayList(ncm_api::PlayListDetail, ncm_api::PlayListDetailDynamic),
     Album(ncm_api::AlbumDetail, ncm_api::AlbumDetailDynamic),
+    Radio(Vec<SongInfo>),
 }
 
 impl SongListDetail {
@@ -152,6 +154,7 @@ impl SongListDetail {
         match self {
             Self::PlayList(d, ..) => &d.songs,
             Self::Album(d, ..) => &d.songs,
+            Self::Radio(v) => &v,
         }
     }
 }
@@ -183,8 +186,8 @@ pub enum SearchType {
     Heartbeat,
     // 云盘音乐
     CloudDisk,
-    // 每人FM
-    Fm,
+    // 我的电台
+    Radio,
     // 收藏的专辑
     LikeAlbums,
     // 收藏的歌单

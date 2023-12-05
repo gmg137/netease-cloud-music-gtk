@@ -100,9 +100,9 @@ mod imp {
         }
 
         #[template_callback]
-        fn fm_cb(&self) {
+        fn radio_cb(&self) {
             let sender = self.sender.get().unwrap();
-            sender.send(Action::ToMyPageFm).unwrap();
+            sender.send(Action::ToMyPageRadio).unwrap();
         }
 
         #[template_callback]

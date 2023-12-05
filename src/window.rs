@@ -788,11 +788,14 @@ impl NeteaseCloudMusicGtk4Window {
                         SearchResult::SongLists(res)
                     })
             }
-            SearchType::Fm => ncmapi.client.personal_fm().await.map(|res| {
-                debug!("获取FM：{:?}", res);
-                let likes = window.get_song_likes(&res);
-                SearchResult::Songs(res, likes)
-            }),
+            SearchType::Radio => ncmapi
+                .client
+                .user_radio_sublist(offset, limit)
+                .await
+                .map(|res| {
+                    debug!("获取电台：{:?}", res);
+                    SearchResult::SongLists(res)
+                }),
             SearchType::LikeAlbums => ncmapi.client.album_sublist(offset, limit).await.map(|res| {
                 debug!("获取收藏的专辑：{:?}", res);
                 SearchResult::SongLists(res)

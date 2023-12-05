@@ -51,7 +51,7 @@ impl SearchSongListPage {
 
         let show_author = matches!(
             self.property::<SearchType>("search-type"),
-            SearchType::Album | SearchType::AllAlbums | SearchType::LikeAlbums
+            SearchType::Album | SearchType::AllAlbums | SearchType::LikeAlbums | SearchType::Radio
         );
 
         SongListGridItem::view_update_songlist(grid, song_list, 140, show_author, sender);
@@ -207,6 +207,9 @@ impl SearchSongListPage {
             }
             SearchType::SongList | SearchType::TopPicks | SearchType::LikeSongList => {
                 sender.send(Action::ToSongListPage(item.into())).unwrap();
+            }
+            SearchType::Radio => {
+                sender.send(Action::ToRadioPage(item.into())).unwrap();
             }
             _ => (),
         }

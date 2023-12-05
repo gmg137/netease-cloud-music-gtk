@@ -82,7 +82,7 @@ impl SonglistPage {
         let imp = self.imp();
         let songs_list = imp.songs_list.get();
 
-        let sis = detail.sis();
+        let sis = &mut detail.sis().clone();
 
         match detail {
             SongListDetail::Album(detail, dy) => {
@@ -110,6 +110,22 @@ impl SonglistPage {
                     gettext!("{} songs", sis.len()),
                     gettext!("{} favs", dy.booked_count)
                 ));
+            }
+            SongListDetail::Radio(detail) => {
+                imp.songs_list.set_property("no-act-album", true);
+                imp.songs_list.set_property("no-act-like", true);
+                imp.page_type.replace(Some(DiscoverSubPage::Radio));
+                imp.num_label
+                    .set_label(&gettext!("Total {} issues", detail.len()).to_string());
+                for si in sis.iter_mut() {
+                    if let Ok(date) = si.album.parse() {
+                        let dt = Utc.timestamp_millis_opt(date).unwrap();
+                        let dt = dt.format("%Y-%m-%d");
+                        si.album = dt.to_string();
+                    } else {
+                        si.album = "未知".to_string();
+                    }
+                }
             }
         }
 
@@ -206,6 +222,11 @@ mod imp {
                             .unwrap(),
                         DiscoverSubPage::Album => sender
                             .send(Action::LikeAlbum(songlist.id, !like, Some(cb)))
+                            .unwrap(),
+                        DiscoverSubPage::Radio => sender
+                            .send(Action::AddToast(gettext(
+                                "Favorite radio stations are not supported!",
+                            )))
                             .unwrap(),
                     }
                 }
