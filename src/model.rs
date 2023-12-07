@@ -154,7 +154,7 @@ impl SongListDetail {
         match self {
             Self::PlayList(d, ..) => &d.songs,
             Self::Album(d, ..) => &d.songs,
-            Self::Radio(v) => &v,
+            Self::Radio(v) => v,
         }
     }
 }

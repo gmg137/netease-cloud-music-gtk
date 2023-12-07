@@ -87,7 +87,7 @@ impl NcmClient {
     }
 
     pub fn load_cookie_jar_from_file() -> Option<CookieJar> {
-        match fs::File::open(&Self::cookie_file_path()) {
+        match fs::File::open(Self::cookie_file_path()) {
             Err(err) => match err.kind() {
                 io::ErrorKind::NotFound => (),
                 other => error!("{:?}", other),
@@ -116,7 +116,7 @@ impl NcmClient {
 
     pub fn save_cookie_jar_to_file(&self) {
         if let Some(cookie_jar) = self.client.cookie_jar() {
-            match fs::File::create(&Self::cookie_file_path()) {
+            match fs::File::create(Self::cookie_file_path()) {
                 Err(err) => error!("{:?}", err),
                 Ok(mut file) => {
                     let mut cookie_store = CookieStore::default();

@@ -32,7 +32,7 @@ impl SongListGridItem {
         let icon = Image::from_icon_name("image-missing-symbolic");
 
         let s: Self = glib::Object::builder()
-            .property("id", &sl.id)
+            .property("id", sl.id)
             .property("name", &sl.name)
             .property("pic-url", &sl.cover_img_url)
             .property("author", &sl.author)
