@@ -20,7 +20,6 @@ use env_logger::Env;
 use once_cell::sync::Lazy;
 
 const APP_ID: &str = "com.gitee.gmg137.NeteaseCloudMusicGtk4";
-const MPRIS_NAME: &str = "NeteaseCloudMusicGtk";
 const APP_NAME: &str = "NetEase Cloud Music Gtk4";
 
 pub static MAINCONTEXT: Lazy<glib::MainContext> = Lazy::new(glib::MainContext::default);

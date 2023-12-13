@@ -29,7 +29,7 @@ pub struct MprisController {
 impl MprisController {
     pub async fn new() -> Result<Self> {
         let mpris_player = Rc::new(
-            Player::builder(crate::MPRIS_NAME)
+            Player::builder(crate::APP_ID)
                 .identity(gettextrs::gettext(crate::APP_NAME))
                 .desktop_entry(crate::APP_ID)
                 .can_raise(true)

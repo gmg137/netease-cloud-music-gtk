@@ -14,7 +14,7 @@
         "--device=dri",
         "--socket=wayland",
         "--socket=pulseaudio",
-        "--persist=.lyrics",
+        "--filesystem=~/.lyrics",
         "--own-name=org.mpris.MediaPlayer2.com.gitee.gmg137.NeteaseCloudMusicGtk4"
     ],
     "build-options" : {
@@ -46,7 +46,8 @@
             "sources" : [
                 {
                     "type" : "git",
-                    "url" : "file:///home/gmg/projects/netease-cloud-music-gtk4"
+                    "url" : "https://github.com/gmg137/netease-cloud-music-gtk.git",
+                    "tag" : "2.3.0"
                 }
             ],
             "config-opts" : []
