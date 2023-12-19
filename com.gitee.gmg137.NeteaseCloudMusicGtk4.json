@@ -15,7 +15,7 @@
         "--socket=wayland",
         "--socket=pulseaudio",
         "--filesystem=~/.lyrics",
-        "--own-name=org.mpris.MediaPlayer2.com.gitee.gmg137.NeteaseCloudMusicGtk4"
+        "--own-name=org.mpris.MediaPlayer2.NeteaseCloudMusicGtk4"
     ],
     "build-options" : {
         "append-path" : "/usr/lib/sdk/rust-stable/bin",
