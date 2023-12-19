@@ -21,6 +21,7 @@ use once_cell::sync::Lazy;
 
 const APP_ID: &str = "com.gitee.gmg137.NeteaseCloudMusicGtk4";
 const APP_NAME: &str = "NetEase Cloud Music Gtk4";
+const MPRIS_NAME: &str = "NeteaseCloudMusicGtk4";
 
 pub static MAINCONTEXT: Lazy<glib::MainContext> = Lazy::new(glib::MainContext::default);
 
