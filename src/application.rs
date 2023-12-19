@@ -113,6 +113,7 @@ pub enum Action {
     // gst
     GstDurationChanged(u64),
     GstStateChanged(gstreamer_play::PlayState),
+    GstVolumeChanged(f64),
     GstCacheDownloadComplete(String),
     ScaleSeekUpdate(u64),
     ScaleValueUpdate,
@@ -1086,6 +1087,9 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::GstStateChanged(state) => {
                 window.gst_state_changed(state);
+            }
+            Action::GstVolumeChanged(volume) => {
+                window.gst_volume_changed(volume);
             }
             Action::GstCacheDownloadComplete(loc) => {
                 window.gst_cache_download_complete(loc);

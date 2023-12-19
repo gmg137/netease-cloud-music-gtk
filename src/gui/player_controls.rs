@@ -260,9 +260,14 @@ impl PlayerControls {
             sender.send(Action::PlayNextSong).unwrap();
         });
 
-        let sender = sender_;
+        let sender = sender_.clone();
         player_sig.connect_state_changed(move |_, state| {
             sender.send(Action::GstStateChanged(state)).unwrap();
+        });
+
+        let sender = sender_.clone();
+        player_sig.connect_volume_changed(move |_, volume| {
+            sender.send(Action::GstVolumeChanged(volume)).unwrap();
         });
 
         // let sender = sender_.clone();
@@ -346,6 +351,10 @@ impl PlayerControls {
             PlayState::Playing => play_button.set_icon_name("media-playback-pause-symbolic"),
             _ => (),
         }
+    }
+
+    pub fn gst_volume_changed(&self, volume: f64) {
+        self.set_property("volume", volume);
     }
 
     pub fn gst_cache_download_complete(&self, loc: String) {
@@ -534,6 +543,8 @@ impl PlayerControls {
         let old: f64 = self.property("volume");
         if (old * 100.0).round() as i64 != (value * 100.0).round() as i64 {
             self.set_property("volume", value);
+            let player = self.imp().player.get().unwrap();
+            player.set_volume(value);
         }
     }
 
@@ -545,11 +556,9 @@ impl PlayerControls {
 
     fn property_changed(&self, name: &str, _: &ParamSpec) {
         let imp = self.imp();
-        let player = imp.player.get().unwrap();
         match name {
             "volume" => {
                 let value = self.property::<f64>("volume");
-                player.set_volume(value);
                 self.imp().volume_button.get().set_value(value);
                 if let Some(mpris) = imp.mpris.get() {
                     crate::MAINCONTEXT.spawn_local_with_priority(
