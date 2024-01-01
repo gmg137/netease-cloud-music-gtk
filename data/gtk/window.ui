@@ -36,7 +36,6 @@
                 </child>
                 <child type="title">
                     <object class="GtkBox">
-                        <property name="height-request">50</property>
                         <property name="orientation">horizontal</property>
                         <child>
                             <object class="AdwViewSwitcherTitle" id="switcher_title">
