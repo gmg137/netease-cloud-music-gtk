@@ -9,8 +9,9 @@ use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, *};
 
 use crate::{application::Action, gui::songlist_row::SonglistRow};
+use async_channel::Sender;
 use glib::{
-    clone, subclass::Signal, ParamSpec, ParamSpecBoolean, ParamSpecInt, RustClosure, Sender,
+    clone, subclass::Signal, ParamSpec, ParamSpecBoolean, ParamSpecInt, RustClosure,
     SignalHandlerId, Value,
 };
 use ncm_api::SongInfo;
@@ -73,7 +74,7 @@ impl SongListView {
             row.connect_activate(clone!(@weak self as s => move |row| {
                 if row.is_activatable() || row.not_ignore_grey() {
                     row.switch_image(true);
-                    sender.send(Action::AddPlay(si.clone())).unwrap();
+                    sender.send_blocking(Action::AddPlay(si.clone())).unwrap();
                     s.emit_row_activated(row);
                 }
             }));

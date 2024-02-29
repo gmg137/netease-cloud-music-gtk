@@ -3,11 +3,12 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
+use async_channel::Sender;
 use gettextrs::gettext;
 use gio::Settings;
 use glib::{
     clone, source::Priority, ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum,
-    ParamSpecUInt, ParamSpecUInt64, Sender, Value,
+    ParamSpecUInt, ParamSpecUInt64, Value,
 };
 use gst::{prelude::ObjectExt, ClockTime};
 use gstreamer_play::{prelude::ElementExt, *};
@@ -78,7 +79,7 @@ impl PlayerControls {
         let sender = imp.sender.get().unwrap().clone();
         crate::MAINCONTEXT.spawn_local_with_priority(Priority::LOW, async move {
             if let Ok(mc) = MprisController::new().await {
-                sender.send(Action::InitMpris(mc)).unwrap();
+                sender.send(Action::InitMpris(mc)).await.unwrap();
             }
         });
     }
@@ -126,7 +127,7 @@ impl PlayerControls {
 
         let sender = imp.sender.get().unwrap();
         sender
-            .send(Action::AddToast(gettext!(
+            .send_blocking(Action::AddToast(gettext!(
                 "Start playback [{}] ...",
                 song_info.name
             )))
@@ -212,7 +213,9 @@ impl PlayerControls {
                 if let Some(stu) = ele.structure() {
                     if "GstCacheDownloadComplete" == stu.name() {
                         if let Ok(loc) = stu.get::<String>("location") {
-                            sender.send(Action::GstCacheDownloadComplete(loc)).unwrap();
+                            sender
+                                .send_blocking(Action::GstCacheDownloadComplete(loc))
+                                .unwrap();
                         }
                     }
                 }
@@ -228,7 +231,7 @@ impl PlayerControls {
                 let msec = clock.mseconds();
                 if old_msec.get() / 500 != msec / 500 {
                     sender
-                        .send(Action::ScaleSeekUpdate(clock.useconds()))
+                        .send_blocking(Action::ScaleSeekUpdate(clock.useconds()))
                         .unwrap();
                     old_msec.replace(msec);
                 }
@@ -239,35 +242,39 @@ impl PlayerControls {
         player_sig.connect_duration_changed(move |_, clock| {
             if let Some(clock) = clock {
                 sender
-                    .send(Action::GstDurationChanged(clock.useconds()))
+                    .send_blocking(Action::GstDurationChanged(clock.useconds()))
                     .unwrap();
             }
         });
 
         let sender = sender_.clone();
         player_sig.connect_end_of_stream(move |_| {
-            sender.send(Action::PlayNextSong).unwrap();
+            sender.send_blocking(Action::PlayNextSong).unwrap();
         });
 
         let sender = sender_.clone();
         player_sig.connect_error(move |_, e, _| {
             sender
-                .send(Action::AddToast(gettext!(
+                .send_blocking(Action::AddToast(gettext!(
                     "Playback error:{}",
                     e.to_string()
                 )))
                 .unwrap();
-            sender.send(Action::PlayNextSong).unwrap();
+            sender.send_blocking(Action::PlayNextSong).unwrap();
         });
 
         let sender = sender_.clone();
         player_sig.connect_state_changed(move |_, state| {
-            sender.send(Action::GstStateChanged(state)).unwrap();
+            sender
+                .send_blocking(Action::GstStateChanged(state))
+                .unwrap();
         });
 
         let sender = sender_.clone();
         player_sig.connect_volume_changed(move |_, volume| {
-            sender.send(Action::GstVolumeChanged(volume)).unwrap();
+            sender
+                .send_blocking(Action::GstVolumeChanged(volume))
+                .unwrap();
         });
 
         // let sender = sender_.clone();
@@ -422,7 +429,7 @@ impl PlayerControls {
             });
         let sender = self.imp().sender.get().unwrap().clone();
         gesture.connect_released(move |_, _, _, _| {
-            sender.send(Action::ScaleValueUpdate).unwrap();
+            sender.send_blocking(Action::ScaleValueUpdate).unwrap();
         });
     }
 
@@ -631,10 +638,10 @@ impl PlayerControls {
                     cover_img_url: songinfo.pic_url,
                     author: String::new(),
                 };
-                sender.send(Action::ToAlbumPage(songlist)).unwrap();
+                sender.send_blocking(Action::ToAlbumPage(songlist)).unwrap();
             } else {
                 sender
-                    .send(Action::AddToast(gettext("Album not found!")))
+                    .send_blocking(Action::AddToast(gettext("Album not found!")))
                     .unwrap();
             }
         }
@@ -653,7 +660,7 @@ impl PlayerControls {
             );
             clipboard.set_text(&share);
             sender
-                .send(Action::AddToast(gettext(
+                .send_blocking(Action::AddToast(gettext(
                     "Copied song information to the clipboard!",
                 )))
                 .unwrap();
@@ -748,18 +755,21 @@ mod imp {
             let sender = self.sender.get().unwrap().clone();
             if let Ok(mut playlist) = self.playlist.lock() {
                 if let Some(song_info) = playlist.prev_song() {
-                    sender.send(Action::Play(song_info.to_owned())).unwrap();
+                    let song_info = song_info.to_owned();
                     sender
-                        .send(Action::UpdateLyrics(song_info.to_owned()))
+                        .send_blocking(Action::Play(song_info.to_owned()))
                         .unwrap();
                     sender
-                        .send(Action::UpdatePlayListStatus(playlist.get_position()))
+                        .send_blocking(Action::UpdateLyrics(song_info))
+                        .unwrap();
+                    sender
+                        .send_blocking(Action::UpdatePlayListStatus(playlist.get_position()))
                         .unwrap();
                     return;
                 }
             }
             sender
-                .send(Action::AddToast(gettext("No more songs！")))
+                .send_blocking(Action::AddToast(gettext("No more songs！")))
                 .unwrap();
         }
 
@@ -804,18 +814,21 @@ mod imp {
             let sender = self.sender.get().unwrap().clone();
             if let Ok(mut playlist) = self.playlist.lock() {
                 if let Some(song_info) = playlist.next_song() {
-                    sender.send(Action::Play(song_info.to_owned())).unwrap();
+                    let song_info = song_info.to_owned();
                     sender
-                        .send(Action::UpdateLyrics(song_info.to_owned()))
+                        .send_blocking(Action::Play(song_info.to_owned()))
                         .unwrap();
                     sender
-                        .send(Action::UpdatePlayListStatus(playlist.get_position()))
+                        .send_blocking(Action::UpdateLyrics(song_info))
+                        .unwrap();
+                    sender
+                        .send_blocking(Action::UpdatePlayListStatus(playlist.get_position()))
                         .unwrap();
                     return;
                 }
             }
             sender
-                .send(Action::AddToast(gettext("No more songs！")))
+                .send_blocking(Action::AddToast(gettext("No more songs！")))
                 .unwrap();
         }
 
@@ -836,13 +849,13 @@ mod imp {
             if let Ok(playlist) = self.playlist.lock() {
                 if let Some(song_info) = playlist.current_song() {
                     sender
-                        .send(Action::LikeSong(song_info.id, !self.like.get(), None))
+                        .send_blocking(Action::LikeSong(song_info.id, !self.like.get(), None))
                         .unwrap();
                     return;
                 }
             }
             sender
-                .send(Action::AddToast(gettext("Collection failure！")))
+                .send_blocking(Action::AddToast(gettext("Collection failure！")))
                 .unwrap();
         }
 
@@ -897,7 +910,7 @@ mod imp {
                     .to_owned();
                 let sender = self.sender.get().unwrap().clone();
                 sender
-                    .send(Action::ToPlayListLyricsPage(
+                    .send_blocking(Action::ToPlayListLyricsPage(
                         playlist.get_list(),
                         current_song,
                     ))

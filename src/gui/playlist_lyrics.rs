@@ -4,8 +4,9 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use adw::subclass::prelude::BinImpl;
+use async_channel::Sender;
 use gettextrs::gettext;
-use glib::{closure_local, ParamSpec, Sender, Value};
+use glib::{closure_local, ParamSpec, Value};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::SongInfo;
 use once_cell::sync::Lazy;
@@ -13,8 +14,10 @@ use once_cell::sync::OnceCell;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::application::Action;
-use crate::gui::{songlist_row::SonglistRow, songlist_view::SongListView};
+use crate::{
+    application::Action,
+    gui::{songlist_row::SonglistRow, songlist_view::SongListView},
+};
 
 glib::wrapper! {
     pub struct PlayListLyricsPage(ObjectSubclass<imp::PlayListLyricsPage>)
@@ -37,7 +40,7 @@ impl PlayListLyricsPage {
             .get()
             .connect_row_activated(closure_local!(move |_: SongListView, row: SonglistRow| {
                 if let Some(si) = row.get_song_info() {
-                    sender.send(Action::UpdateLyrics(si)).unwrap();
+                    sender.send_blocking(Action::UpdateLyrics(si)).unwrap();
                 }
             }));
     }

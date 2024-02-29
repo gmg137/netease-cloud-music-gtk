@@ -3,7 +3,7 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use glib::Sender;
+use async_channel::Sender;
 use glib::{
     clone, ParamSpec, ParamSpecBoolean, ParamSpecEnum, ParamSpecInt, ParamSpecString, Value,
 };
@@ -11,9 +11,11 @@ pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, 
 use ncm_api::SongInfo;
 use once_cell::sync::{Lazy, OnceCell};
 
-use crate::application::Action;
-use crate::gui::songlist_view::SongListView;
-use crate::model::{SearchResult, SearchType};
+use crate::{
+    application::Action,
+    gui::songlist_view::SongListView,
+    model::{SearchResult, SearchType},
+};
 use gettextrs::gettext;
 use std::{
     cell::{Cell, RefCell},
@@ -211,7 +213,7 @@ impl SearchSongPage {
                 self.set_property("update", false);
                 let s = glib::SendWeakRef::from(self.downgrade());
                 sender
-                    .send(Action::Search(
+                    .send_blocking(Action::Search(
                         self.property("keyword"),
                         self.property("search-type"),
                         offset as u16,
@@ -226,7 +228,7 @@ impl SearchSongPage {
                     ))
                     .unwrap_or(());
                 sender
-                    .send(Action::AddToast(gettext("Loading more content...")))
+                    .send_blocking(Action::AddToast(gettext("Loading more content...")))
                     .unwrap();
             }
         }
@@ -237,10 +239,12 @@ impl SearchSongPage {
         let sender = self.imp().sender.get().unwrap();
         if !self.imp().playlist.borrow().is_empty() {
             let playlist = &*self.imp().playlist.borrow();
-            sender.send(Action::AddPlayList(playlist.clone())).unwrap();
+            sender
+                .send_blocking(Action::AddPlayList(playlist.clone()))
+                .unwrap();
         } else {
             sender
-                .send(Action::AddToast(gettext("This is an empty song list！")))
+                .send_blocking(Action::AddToast(gettext("This is an empty song list！")))
                 .unwrap();
         }
     }

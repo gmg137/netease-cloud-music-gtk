@@ -8,8 +8,9 @@ use crate::{
     model::{ImageDownloadImpl, UserMenuChild},
 };
 use adw::*;
+use async_channel::Sender;
 use gettextrs::gettext;
-use glib::{clone, Sender};
+use glib::clone;
 use gtk::{
     prelude::*,
     traits::{ButtonExt, WidgetExt},
@@ -99,17 +100,17 @@ impl UserMenus {
     fn setup_signal(&self) {
         let sender = self.sender.get().unwrap().clone();
         self.refresh_button.connect_clicked(move |_| {
-            sender.send(Action::TryUpdateQrCode).unwrap();
+            sender.send_blocking(Action::TryUpdateQrCode).unwrap();
         });
 
         let sender = self.sender.get().unwrap().clone();
         self.change_button.connect_clicked(move |_| {
-            sender.send(Action::SwitchUserMenuToPhone).unwrap();
+            sender.send_blocking(Action::SwitchUserMenuToPhone).unwrap();
         });
 
         let sender = self.sender.get().unwrap().clone();
         self.back_button.connect_clicked(move |_| {
-            sender.send(Action::SwitchUserMenuToQr).unwrap();
+            sender.send_blocking(Action::SwitchUserMenuToQr).unwrap();
         });
 
         let sender = self.sender.get().unwrap().clone();
@@ -117,11 +118,11 @@ impl UserMenus {
             clone!(@weak self.ctcode_entry as ctcode, @weak self.phone_entry as phone => move |_| {
                 let ctcode = ctcode.text().to_string();
                 let phone = phone.text().to_string();
-                if ctcode.parse::<u64>().is_ok() &&  phone.parse::<u64>().is_ok() {
-                    sender.send(Action::GetCaptcha(ctcode,phone)).unwrap();
-                }else {
-                    sender.send(Action::AddToast(gettext("Input format error!"))).unwrap();
-                }
+                    if ctcode.parse::<u64>().is_ok() &&  phone.parse::<u64>().is_ok() {
+                        sender.send_blocking(Action::GetCaptcha(ctcode,phone)).unwrap();
+                    }else {
+                        sender.send_blocking(Action::AddToast(gettext("Input format error!"))).unwrap();
+                    }
             }),
         );
 
@@ -131,17 +132,17 @@ impl UserMenus {
                 let ctcode = ctcode.text().to_string();
                 let phone = phone.text().to_string();
                 let captcha = captcha.text().to_string();
-                if ctcode.parse::<u64>().is_ok() &&  phone.parse::<u64>().is_ok() && !captcha.is_empty() {
-                    sender.send(Action::CaptchaLogin(ctcode, phone, captcha)).unwrap();
-                }else {
-                    sender.send(Action::AddToast(gettext("Input format error!"))).unwrap();
-                }
+                    if ctcode.parse::<u64>().is_ok() &&  phone.parse::<u64>().is_ok() && !captcha.is_empty() {
+                        sender.send_blocking(Action::CaptchaLogin(ctcode, phone, captcha)).unwrap();
+                    }else {
+                        sender.send_blocking(Action::AddToast(gettext("Input format error!"))).unwrap();
+                    }
             }),
         );
 
         let sender = self.sender.get().unwrap().clone();
         self.logout_button.connect_clicked(move |_| {
-            sender.send(Action::Logout).unwrap();
+            sender.send_blocking(Action::Logout).unwrap();
         });
     }
 

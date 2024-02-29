@@ -7,8 +7,8 @@ use crate::{
     application::Action, gui::songlist_view::SongListView, model::ImageDownloadImpl, path::CACHE,
 };
 use adw::{subclass::prelude::BinImpl, traits::ActionRowExt, ActionRow};
+use async_channel::Sender;
 use gettextrs::gettext;
-use glib::Sender;
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::{SongInfo, TopList};
 use once_cell::sync::OnceCell;
@@ -146,10 +146,12 @@ mod imp {
             let sender = self.sender.get().unwrap();
             if !self.playlist.borrow().is_empty() {
                 let playlist = &*self.playlist.borrow();
-                sender.send(Action::AddPlayList(playlist.clone())).unwrap();
+                sender
+                    .send_blocking(Action::AddPlayList(playlist.clone()))
+                    .unwrap();
             } else {
                 sender
-                    .send(Action::AddToast(gettext("This is an empty song list！")))
+                    .send_blocking(Action::AddToast(gettext("This is an empty song list！")))
                     .unwrap();
             }
         }
@@ -163,7 +165,7 @@ mod imp {
                 self.sender
                     .get()
                     .unwrap()
-                    .send(Action::GetToplistSongsList(info.id))
+                    .send_blocking(Action::GetToplistSongsList(info.id))
                     .unwrap();
                 let mut path = CACHE.clone();
 

@@ -8,8 +8,9 @@ use gtk::subclass::prelude::*;
 use gtk::{glib, CompositeTemplate, *};
 
 use crate::application::Action;
+use async_channel::Sender;
 use gettextrs::gettext;
-use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Sender, Value};
+use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Value};
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
@@ -106,7 +107,7 @@ impl SonglistRow {
         let s_send = SendWeakRef::from(self.downgrade());
         let like = imp.like.get();
         sender
-            .send(Action::LikeSong(
+            .send_blocking(Action::LikeSong(
                 si.id,
                 !like,
                 Some(Arc::new(move |_| {
@@ -130,10 +131,10 @@ impl SonglistRow {
                 cover_img_url: si.pic_url,
                 author: String::new(),
             };
-            sender.send(Action::ToAlbumPage(songlist)).unwrap();
+            sender.send_blocking(Action::ToAlbumPage(songlist)).unwrap();
         } else {
             sender
-                .send(Action::AddToast(gettext("Album not found!")))
+                .send_blocking(Action::AddToast(gettext("Album not found!")))
                 .unwrap();
         }
     }

@@ -1,10 +1,8 @@
 use adw::subclass::prelude::*;
+use async_channel::{unbounded, Receiver, Sender};
 use gettextrs::gettext;
 use gio::Settings;
-use glib::{
-    clone, source::Priority, timeout_future, timeout_future_seconds, MainContext, Receiver, Sender,
-    WeakRef,
-};
+use glib::{clone, source::Priority, timeout_future, timeout_future_seconds, WeakRef};
 use gtk::{gio, glib, prelude::*};
 use log::*;
 use ncm_api::{
@@ -141,7 +139,7 @@ mod imp {
         type Type = super::NeteaseCloudMusicGtk4Application;
         type ParentType = adw::Application;
         fn new() -> Self {
-            let (sender, r) = MainContext::channel(glib::Priority::DEFAULT);
+            let (sender, r) = unbounded();
             let receiver = RefCell::new(Some(r));
             let window = OnceCell::new();
             let unikey = Arc::new(RwLock::new(String::new()));
@@ -191,9 +189,13 @@ mod imp {
 
             // Setup action channel
             let receiver = self.receiver.borrow_mut().take().unwrap();
-            receiver.attach(
-                None,
-                clone!(@strong app => move |action| app.process_action(action)),
+            MAINCONTEXT.spawn_local_with_priority(
+                Priority::HIGH,
+                clone!(@strong app => async move {
+                    while let Ok(action) = receiver.recv().await {
+                        app.process_action(action);
+                    }
+                }),
             );
 
             // Ask the window manager/compositor to present the window
@@ -273,19 +275,23 @@ impl NeteaseCloudMusicGtk4Application {
 
                                 sender
                                     .send(Action::InitUserInfo(login_info.to_owned()))
+                                    .await
                                     .unwrap();
                                 sender
                                     .send(Action::SwitchUserMenuToUser(login_info, user_menu))
+                                    .await
                                     .unwrap();
-                                sender.send(Action::InitMyPage).unwrap();
+                                sender.send(Action::InitMyPage).await.unwrap();
                                 sender
                                     .send(Action::AddToast(gettext("Login successful!")))
+                                    .await
                                     .unwrap();
                             }
                             Err(err) => {
                                 error!("获取用户信息失败！{:?}", err);
                                 sender
                                     .send(Action::AddToast(gettext("Login failed!")))
+                                    .await
                                     .unwrap();
 
                                 s.imp().ncmapi.replace(None);
@@ -306,8 +312,11 @@ impl NeteaseCloudMusicGtk4Application {
 
                     window.logout();
                     window.switch_my_page_to_logout();
-                    sender.send(Action::SwitchUserMenuToQr).unwrap();
-                    sender.send(Action::AddToast(gettext("Logout!"))).unwrap();
+                    sender.send(Action::SwitchUserMenuToQr).await.unwrap();
+                    sender
+                        .send(Action::AddToast(gettext("Logout!")))
+                        .await
+                        .unwrap();
                 });
             }
             Action::InitUserInfo(login_info) => {
@@ -325,8 +334,8 @@ impl NeteaseCloudMusicGtk4Application {
                     let sender = imp.sender.clone();
                     MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                         if let Ok(res) = ncmapi.create_qrcode().await {
-                            sender.send(Action::SetQrImage(res.0)).unwrap();
-                            sender.send(Action::CheckQrTimeout(res.1)).unwrap();
+                            sender.send(Action::SetQrImage(res.0)).await.unwrap();
+                            sender.send(Action::CheckQrTimeout(res.1)).await.unwrap();
                         }
                     });
                 }
@@ -338,7 +347,9 @@ impl NeteaseCloudMusicGtk4Application {
                 if let Ok(key) = imp.unikey.read() {
                     if unikey != *key {
                         let sender = imp.sender.clone();
-                        sender.send(Action::CheckQrTimeoutCb(unikey)).unwrap();
+                        sender
+                            .send_blocking(Action::CheckQrTimeoutCb(unikey))
+                            .unwrap();
                     }
                 }
             }
@@ -366,7 +377,7 @@ impl NeteaseCloudMusicGtk4Application {
                                     // 已过期
                                     800 => {
                                         debug!("二维码已过期，unikey={}", unikey);
-                                        sender.send(Action::SetQrImageTimeout).unwrap();
+                                        sender.send(Action::SetQrImageTimeout).await.unwrap();
                                         break;
                                     }
                                     // 等待扫码
@@ -379,7 +390,7 @@ impl NeteaseCloudMusicGtk4Application {
                                         if send_toast {
                                             sender
                                                 .send(Action::AddToast(gettext("Have scanned the QR code, waiting for confirmation!")))
-                                                .unwrap();
+                                                .await.unwrap();
                                             send_toast = false;
                                         }
                                     }
@@ -390,7 +401,7 @@ impl NeteaseCloudMusicGtk4Application {
                                             error!("No login cookie found");
                                             CookieJar::new()
                                         });
-                                        sender.send(Action::CheckLogin(UserMenuChild::Qr, cookie_jar)).unwrap();
+                                        sender.send(Action::CheckLogin(UserMenuChild::Qr, cookie_jar)).await.unwrap();
                                         break;
                                     }
                                     _ => break,
@@ -421,7 +432,7 @@ impl NeteaseCloudMusicGtk4Application {
                             .send(Action::AddToast(gettext(
                                 "Please pay attention to check the cell phone verification code!",
                             )))
-                            .unwrap();
+                            .await.unwrap();
                         }
                         Err(err) => {
                             warn!("获取验证码失败! {:?}", err);
@@ -429,6 +440,7 @@ impl NeteaseCloudMusicGtk4Application {
                                 .send(Action::AddToast(gettext(
                                     "Failed to get verification code!",
                                 )))
+                                .await
                                 .unwrap();
                         }
                     }
@@ -447,11 +459,13 @@ impl NeteaseCloudMusicGtk4Application {
                         });
                         sender
                             .send(Action::CheckLogin(UserMenuChild::Phone, cookie_jar))
+                            .await
                             .unwrap();
                     } else {
                         error!("登录失败！");
                         sender
                             .send(Action::AddToast(gettext("Login failed!")))
+                            .await
                             .unwrap();
                     }
                 });
@@ -481,13 +495,14 @@ impl NeteaseCloudMusicGtk4Application {
                             if let Some(cookie_jar) = NcmClient::load_cookie_jar_from_file() {
                                 sender
                                     .send(Action::CheckLogin(UserMenuChild::Qr, cookie_jar))
+                                    .await
                                     .unwrap();
                             }
                         }
                         Err(err) => {
                             error!("获取首页轮播信息失败！{:?}", err);
                             timeout_future(Duration::from_millis(500)).await;
-                            sender.send(Action::InitCarousel).unwrap();
+                            sender.send(Action::InitCarousel).await.unwrap();
                         }
                     }
                 });
@@ -498,12 +513,12 @@ impl NeteaseCloudMusicGtk4Application {
                     match ncmapi.client.top_song_list("全部", "hot", 0, 8).await {
                         Ok(song_list) => {
                             debug!("获取热门推荐信息：{:?}", song_list);
-                            sender.send(Action::SetupTopPicks(song_list)).unwrap();
+                            sender.send(Action::SetupTopPicks(song_list)).await.unwrap();
                         }
                         Err(err) => {
                             error!("获取热门推荐信息失败！{:?}", err);
                             timeout_future(Duration::from_millis(500)).await;
-                            sender.send(Action::InitTopPicks).unwrap();
+                            sender.send(Action::InitTopPicks).await.unwrap();
                         }
                     }
                 });
@@ -547,12 +562,15 @@ impl NeteaseCloudMusicGtk4Application {
                     match ncmapi.client.new_albums("ALL", 0, 8).await {
                         Ok(song_list) => {
                             debug!("获取新碟上架信息：{:?}", song_list);
-                            sender.send(Action::SetupNewAlbums(song_list)).unwrap();
+                            sender
+                                .send(Action::SetupNewAlbums(song_list))
+                                .await
+                                .unwrap();
                         }
                         Err(err) => {
                             error!("获取新碟上架信息失败！{:?}", err);
                             timeout_future(Duration::from_millis(500)).await;
-                            sender.send(Action::InitNewAlbums).unwrap();
+                            sender.send(Action::InitNewAlbums).await.unwrap();
                         }
                     }
                 });
@@ -580,7 +598,7 @@ impl NeteaseCloudMusicGtk4Application {
             Action::AddPlay(song_info) => {
                 window.add_play(song_info.clone());
                 let sender = imp.sender.clone();
-                sender.send(Action::Play(song_info)).unwrap();
+                sender.send_blocking(Action::Play(song_info)).unwrap();
             }
             Action::PlayNextSong => {
                 window.play_next();
@@ -593,7 +611,7 @@ impl NeteaseCloudMusicGtk4Application {
                 // 启用桌面歌词
                 if window.settings().boolean("desktop-lyrics") {
                     sender
-                        .send(Action::UpdateLyrics(song_info.to_owned()))
+                        .send_blocking(Action::UpdateLyrics(song_info.to_owned()))
                         .unwrap();
                 }
 
@@ -604,12 +622,12 @@ impl NeteaseCloudMusicGtk4Application {
                                 ncmapi.songs_url(&[song_info.id], music_rate).await
                             {
                                 debug!("获取歌曲播放链接: {:?}", song_url);
-                                if let Some(song_url) = song_url.get(0) {
+                                if let Some(song_url) = song_url.first() {
                                     let song_info = SongInfo {
                                         song_url: song_url.url.to_owned(),
                                         ..song_info
                                     };
-                                    sender.send(Action::PlayStart(song_info)).unwrap();
+                                    sender.send(Action::PlayStart(song_info)).await.unwrap();
                                 } else {
                                     error!("获取歌曲播放链接失败: {:?}", &[song_info.id]);
                                     sender
@@ -617,9 +635,10 @@ impl NeteaseCloudMusicGtk4Application {
                                             "Get [{}] Playback link failed!",
                                             song_info.name
                                         )))
+                                        .await
                                         .unwrap();
                                     timeout_future_seconds(2).await;
-                                    sender.send(Action::PlayNextSong).unwrap();
+                                    sender.send(Action::PlayNextSong).await.unwrap();
                                 }
                             } else {
                                 error!("获取歌曲播放链接失败: {:?}", &[song_info.id]);
@@ -628,12 +647,13 @@ impl NeteaseCloudMusicGtk4Application {
                                         "Get [{}] Playback link failed!",
                                         song_info.name
                                     )))
+                                    .await
                                     .unwrap();
                                 timeout_future_seconds(2).await;
-                                sender.send(Action::PlayNextSong).unwrap();
+                                sender.send(Action::PlayNextSong).await.unwrap();
                             }
                         } else {
-                            sender.send(Action::PlayStart(song_info)).unwrap();
+                            sender.send(Action::PlayStart(song_info)).await.unwrap();
                         }
                     });
                 } else {
@@ -641,7 +661,7 @@ impl NeteaseCloudMusicGtk4Application {
                         song_url: format!("file://{}", path.to_str().unwrap().to_owned()),
                         ..song_info
                     };
-                    sender.send(Action::PlayStart(song_info)).unwrap();
+                    sender.send_blocking(Action::PlayStart(song_info)).unwrap();
                 }
             }
             Action::PlayStart(song_info) => {
@@ -674,6 +694,7 @@ impl NeteaseCloudMusicGtk4Application {
                                 .send(Action::AddToast(gettext(
                                     "Failed to get song list details!",
                                 )))
+                                .await
                                 .unwrap();
                         }
                     }
@@ -703,6 +724,7 @@ impl NeteaseCloudMusicGtk4Application {
                             error!("获取专辑详情失败: {:?}", err);
                             sender
                                 .send(Action::AddToast(gettext("Failed to get album details!")))
+                                .await
                                 .unwrap();
                         }
                     }
@@ -727,6 +749,7 @@ impl NeteaseCloudMusicGtk4Application {
                             error!("获取电台详情失败: {:?}", err);
                             sender
                                 .send(Action::AddToast(gettext("Failed to get radio details!")))
+                                .await
                                 .unwrap();
                         }
                     }
@@ -752,6 +775,7 @@ impl NeteaseCloudMusicGtk4Application {
                             } else {
                                 gettext("Song list have been uncollected!")
                             }))
+                            .await
                             .unwrap();
                     } else {
                         error!("收藏/取消收藏歌单失败: {:?}", id);
@@ -761,6 +785,7 @@ impl NeteaseCloudMusicGtk4Application {
                             } else {
                                 gettext("Failed to uncollect song list!")
                             }))
+                            .await
                             .unwrap();
                     }
                 });
@@ -779,6 +804,7 @@ impl NeteaseCloudMusicGtk4Application {
                             } else {
                                 gettext("Album have been uncollected!")
                             }))
+                            .await
                             .unwrap();
                     } else {
                         error!("收藏/取消收藏专辑失败: {:?}", id);
@@ -788,6 +814,7 @@ impl NeteaseCloudMusicGtk4Application {
                             } else {
                                 gettext("Failed to uncollect album!")
                             }))
+                            .await
                             .unwrap();
                     }
                 });
@@ -804,6 +831,7 @@ impl NeteaseCloudMusicGtk4Application {
                             } else {
                                 gettext("Songs have been uncollected!")
                             }))
+                            .await
                             .unwrap();
                         if let Some(callback) = callback {
                             callback(());
@@ -816,6 +844,7 @@ impl NeteaseCloudMusicGtk4Application {
                             } else {
                                 gettext("Failed to uncollect songs!")
                             }))
+                            .await
                             .unwrap();
                     }
                 });
@@ -826,12 +855,12 @@ impl NeteaseCloudMusicGtk4Application {
                     match ncmapi.client.toplist().await {
                         Ok(toplist) => {
                             debug!("获取排行榜: {:?}", toplist);
-                            sender.send(Action::InitTopList(toplist)).unwrap();
+                            sender.send(Action::InitTopList(toplist)).await.unwrap();
                         }
                         Err(err) => {
                             error!("获取排行榜失败! {:?}", err);
                             timeout_future(Duration::from_millis(500)).await;
-                            sender.send(Action::GetToplist).unwrap();
+                            sender.send(Action::GetToplist).await.unwrap();
                         }
                     }
                 });
@@ -842,7 +871,10 @@ impl NeteaseCloudMusicGtk4Application {
                     match ncmapi.client.song_list_detail(id).await {
                         Ok(detail) => {
                             debug!("获取榜单 {} 详情：{:?}", id, detail);
-                            sender.send(Action::UpdateTopList(detail.songs)).unwrap();
+                            sender
+                                .send(Action::UpdateTopList(detail.songs))
+                                .await
+                                .unwrap();
                         }
                         Err(err) => {
                             error!("获取榜单 {} 失败! {:?}", id, err);
@@ -850,6 +882,7 @@ impl NeteaseCloudMusicGtk4Application {
                                 .send(Action::AddToast(gettext(
                                     "Request for interface failed, please try again!",
                                 )))
+                                .await
                                 .unwrap();
                         }
                     }
@@ -892,6 +925,7 @@ impl NeteaseCloudMusicGtk4Application {
                                 .send(Action::AddToast(gettext(
                                     "Request for interface failed, please try again!",
                                 )))
+                                .await
                                 .unwrap();
                         }
                     }
@@ -918,6 +952,7 @@ impl NeteaseCloudMusicGtk4Application {
                                 .send(Action::AddToast(gettext(
                                     "Request for interface failed, please try again!",
                                 )))
+                                .await
                                 .unwrap();
                         }
                     }
@@ -948,6 +983,7 @@ impl NeteaseCloudMusicGtk4Application {
                                             .send(Action::AddToast(gettext(
                                                 "Failed to get song list details!",
                                             )))
+                                            .await
                                             .unwrap();
                                     }
                                 }
@@ -959,6 +995,7 @@ impl NeteaseCloudMusicGtk4Application {
                                 .send(Action::AddToast(gettext(
                                     "Request for interface failed, please try again!",
                                 )))
+                                .await
                                 .unwrap();
                         }
                     }
@@ -985,6 +1022,7 @@ impl NeteaseCloudMusicGtk4Application {
                                 .send(Action::AddToast(gettext(
                                     "Request for interface failed, please try again!",
                                 )))
+                                .await
                                 .unwrap();
                         }
                     }
@@ -1048,11 +1086,14 @@ impl NeteaseCloudMusicGtk4Application {
                     match ncmapi.client.recommend_resource().await {
                         Ok(sls) => {
                             debug!("获取推荐歌单：{:?}", sls);
-                            sender.send(Action::InitMyPageRecSongList(sls)).unwrap();
+                            sender
+                                .send(Action::InitMyPageRecSongList(sls))
+                                .await
+                                .unwrap();
                         }
                         Err(err) => {
                             error!("{:?}", err);
-                            sender.send(Action::InitMyPage).unwrap();
+                            sender.send(Action::InitMyPage).await.unwrap();
                         }
                     }
                 });
@@ -1064,9 +1105,9 @@ impl NeteaseCloudMusicGtk4Application {
                 let sender = imp.sender.clone();
                 if !window.page_cur_playlist_lyrics_page() {
                     window.init_playlist_lyrics_page(sis, si.to_owned());
-                    sender.send(Action::UpdateLyrics(si)).unwrap();
+                    sender.send_blocking(Action::UpdateLyrics(si)).unwrap();
                 } else {
-                    sender.send(Action::PageBack).unwrap();
+                    sender.send_blocking(Action::PageBack).unwrap();
                 }
             }
             Action::UpdateLyrics(si) => {
@@ -1171,6 +1212,7 @@ impl NeteaseCloudMusicGtk4Application {
                     if remove_all_file(cache_path).is_ok() {
                         sender
                             .send(Action::AddToast(gettext("Cache cleared.")))
+                            .await
                             .unwrap();
                     }
                 }
@@ -1180,6 +1222,7 @@ impl NeteaseCloudMusicGtk4Application {
                             if remove_all_file(cache_path).is_ok() {
                                 sender
                                     .send(Action::AddToast(gettext("Cache cleared.")))
+                                    .await
                                     .unwrap();
                             }
                             settings.set_boolean("cache-clear-flag", true).unwrap();
@@ -1194,6 +1237,7 @@ impl NeteaseCloudMusicGtk4Application {
                             if remove_all_file(cache_path).is_ok() {
                                 sender
                                     .send(Action::AddToast(gettext("Cache cleared.")))
+                                    .await
                                     .unwrap();
                             }
                             settings.set_boolean("cache-clear-flag", true).unwrap();

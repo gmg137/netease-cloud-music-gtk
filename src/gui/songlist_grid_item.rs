@@ -3,7 +3,7 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use glib::Sender;
+use async_channel::Sender;
 use glib::{ParamSpec, ParamSpecObject, ParamSpecString, ParamSpecUInt64, Value};
 use gtk::{glib, prelude::*, subclass::prelude::*, *};
 use ncm_api::SongList;

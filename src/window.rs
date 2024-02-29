@@ -6,11 +6,11 @@ use crate::{
     ncmapi::NcmClient,
 };
 use adw::{ColorScheme, StyleManager, Toast};
+use async_channel::Sender;
 use gettextrs::gettext;
 use gio::{Settings, SimpleAction};
 use glib::{
-    clone, source::Priority, ParamSpec, ParamSpecEnum, ParamSpecObject, ParamSpecUInt64, Sender,
-    Value,
+    clone, source::Priority, ParamSpec, ParamSpecEnum, ParamSpecObject, ParamSpecUInt64, Value,
 };
 use gtk::{
     gio::{self, SettingsBindFlags},
@@ -227,11 +227,11 @@ impl NeteaseCloudMusicGtk4Window {
         let popover = imp.popover_menu.get().unwrap();
         let sender = sender_.clone();
         popover.connect_child_notify(move |_| {
-            sender.send(Action::TryUpdateQrCode).unwrap();
+            sender.send_blocking(Action::TryUpdateQrCode).unwrap();
         });
         let sender = sender_.clone();
         popover.connect_show(move |_| {
-            sender.send(Action::TryUpdateQrCode).unwrap();
+            sender.send_blocking(Action::TryUpdateQrCode).unwrap();
         });
 
         // 绑定设置与主题
@@ -272,7 +272,7 @@ impl NeteaseCloudMusicGtk4Window {
 
         let sender = sender_;
         action_back.connect_activate(move |_, _| {
-            sender.send(Action::PageBack).unwrap();
+            sender.send_blocking(Action::PageBack).unwrap();
         });
     }
 
@@ -448,18 +448,18 @@ impl NeteaseCloudMusicGtk4Window {
         let player_controls = self.imp().player_controls.get();
         player_controls.add_list(sis);
         let sender = self.imp().sender.get().unwrap();
-        sender.send(Action::PlayListStart).unwrap();
+        sender.send_blocking(Action::PlayListStart).unwrap();
     }
 
     pub fn playlist_start(&self) {
         let sender = self.imp().sender.get().unwrap();
         let player_controls = self.imp().player_controls.get();
         if let Some(song_info) = player_controls.get_current_song() {
-            sender.send(Action::Play(song_info)).unwrap();
+            sender.send_blocking(Action::Play(song_info)).unwrap();
             return;
         }
         sender
-            .send(Action::AddToast(gettext("No playable songs found！")))
+            .send_blocking(Action::AddToast(gettext("No playable songs found！")))
             .unwrap();
     }
 
@@ -497,7 +497,7 @@ impl NeteaseCloudMusicGtk4Window {
         discover.init_page();
 
         // 初始化榜单
-        sender.send(Action::GetToplist).unwrap();
+        sender.send_blocking(Action::GetToplist).unwrap();
         let toplist = imp.toplist.get();
         toplist.set_sender(sender.clone());
 
@@ -818,7 +818,7 @@ impl NeteaseCloudMusicGtk4Window {
         if let Err(err) = &res {
             error!("{:?}", err);
             sender
-                .send(Action::AddToast(gettext(
+                .send_blocking(Action::AddToast(gettext(
                     "Request for interface failed, please try again!",
                 )))
                 .unwrap();
@@ -936,7 +936,7 @@ impl NeteaseCloudMusicGtk4Window {
             self.page_new_with_name("search", &page, text.as_str());
             let page = glib::SendWeakRef::from(page.downgrade());
             sender
-                .send(Action::Search(
+                .send_blocking(Action::Search(
                     text,
                     search_type,
                     0,

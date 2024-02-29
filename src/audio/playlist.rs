@@ -147,7 +147,7 @@ impl PlayList {
                     Some(song)
                 } else {
                     self.position = 0;
-                    self.shuffle.get(0)
+                    self.shuffle.first()
                 }
             }
             LoopsState::Playlist => {
@@ -156,7 +156,7 @@ impl PlayList {
                     Some(song)
                 } else {
                     self.position = 0;
-                    self.list.get(0)
+                    self.list.first()
                 }
             }
             LoopsState::Track => self.list.get(self.position),
@@ -198,7 +198,7 @@ impl PlayList {
                     Some(song)
                 } else {
                     self.position = 0;
-                    self.list.get(0)
+                    self.list.first()
                 }
             }
             LoopsState::Track => self.list.get(self.position),

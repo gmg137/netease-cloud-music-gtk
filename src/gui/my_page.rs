@@ -4,7 +4,7 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 
-use glib::Sender;
+use async_channel::Sender;
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate};
 use ncm_api::SongList;
 use once_cell::sync::OnceCell;
@@ -42,7 +42,9 @@ impl MyPage {
         top_picks.connect_child_activated(move |_, child| {
             let index = child.index() as usize;
             if let Some(sl) = song_list.get(index) {
-                sender.send(Action::ToSongListPage(sl.clone())).unwrap();
+                sender
+                    .send_blocking(Action::ToSongListPage(sl.clone()))
+                    .unwrap();
             }
         });
     }
@@ -90,37 +92,37 @@ mod imp {
         #[template_callback]
         fn daily_rec_cb(&self) {
             let sender = self.sender.get().unwrap();
-            sender.send(Action::ToMyPageDailyRec).unwrap();
+            sender.send_blocking(Action::ToMyPageDailyRec).unwrap();
         }
 
         #[template_callback]
         fn heartbeat_cb(&self) {
             let sender = self.sender.get().unwrap();
-            sender.send(Action::ToMyPageHeartbeat).unwrap();
+            sender.send_blocking(Action::ToMyPageHeartbeat).unwrap();
         }
 
         #[template_callback]
         fn radio_cb(&self) {
             let sender = self.sender.get().unwrap();
-            sender.send(Action::ToMyPageRadio).unwrap();
+            sender.send_blocking(Action::ToMyPageRadio).unwrap();
         }
 
         #[template_callback]
         fn cloud_disk_cb(&self) {
             let sender = self.sender.get().unwrap();
-            sender.send(Action::ToMyPageCloudDisk).unwrap();
+            sender.send_blocking(Action::ToMyPageCloudDisk).unwrap();
         }
 
         #[template_callback]
         fn collection_album_cb(&self) {
             let sender = self.sender.get().unwrap();
-            sender.send(Action::ToMyPageAlbums).unwrap();
+            sender.send_blocking(Action::ToMyPageAlbums).unwrap();
         }
 
         #[template_callback]
         fn collection_songlist_cb(&self) {
             let sender = self.sender.get().unwrap();
-            sender.send(Action::ToMyPageSonglist).unwrap();
+            sender.send_blocking(Action::ToMyPageSonglist).unwrap();
         }
     }
 

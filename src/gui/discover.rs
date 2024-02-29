@@ -4,7 +4,8 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use crate::{application::Action, gui::SongListGridItem, model::ImageDownloadImpl, path::CACHE};
-use glib::{clone, ControlFlow, MainContext, Sender, Priority};
+use async_channel::{unbounded, Sender};
+use glib::{clone, ControlFlow};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::{BannersInfo, SongInfo, SongList};
 use once_cell::sync::OnceCell;
@@ -34,17 +35,17 @@ impl Discover {
 
     pub fn init_carousel(&self) {
         let sender = self.imp().sender.get().unwrap();
-        sender.send(Action::InitCarousel).unwrap();
+        sender.send_blocking(Action::InitCarousel).unwrap();
     }
 
     pub fn init_top_picks(&self) {
         let sender = self.imp().sender.get().unwrap();
-        sender.send(Action::InitTopPicks).unwrap();
+        sender.send_blocking(Action::InitTopPicks).unwrap();
     }
 
     pub fn init_new_albums(&self) {
         let sender = self.imp().sender.get().unwrap();
-        sender.send(Action::InitNewAlbums).unwrap();
+        sender.send_blocking(Action::InitNewAlbums).unwrap();
     }
 
     pub fn setup_top_picks(&self, song_list: Vec<SongList>) {
@@ -56,7 +57,9 @@ impl Discover {
         top_picks.connect_child_activated(move |_, child| {
             let index = child.index() as usize;
             if let Some(sl) = song_list.get(index) {
-                sender.send(Action::ToSongListPage(sl.clone())).unwrap();
+                sender
+                    .send_blocking(Action::ToSongListPage(sl.clone()))
+                    .unwrap();
             }
         });
     }
@@ -70,7 +73,9 @@ impl Discover {
         new_albums.connect_child_activated(move |_, child| {
             let index = child.index() as usize;
             if let Some(sl) = song_list.get(index) {
-                sender.send(Action::ToAlbumPage(sl.clone())).unwrap();
+                sender
+                    .send_blocking(Action::ToAlbumPage(sl.clone()))
+                    .unwrap();
             }
         });
     }
@@ -191,20 +196,20 @@ mod imp {
                     copyright: ncm_api::SongCopyright::Unknown,
                 };
                 let sender = self.sender.get().unwrap();
-                sender.send(Action::AddPlay(song_info)).unwrap();
+                sender.send_blocking(Action::AddPlay(song_info)).unwrap();
             }
         }
 
         #[template_callback]
         fn top_picks_cb(&self) {
             let sender = self.sender.get().unwrap();
-            sender.send(Action::ToTopPicksPage).unwrap();
+            sender.send_blocking(Action::ToTopPicksPage).unwrap();
         }
 
         #[template_callback]
         fn new_albums_cb(&self) {
             let sender = self.sender.get().unwrap();
-            sender.send(Action::ToAllAlbumsPage).unwrap();
+            sender.send_blocking(Action::ToAllAlbumsPage).unwrap();
         }
 
         fn show_relative_page(carousel: adw::Carousel, delta: f64) {
@@ -231,7 +236,7 @@ mod imp {
                     glib::timeout_add_seconds(5, move || {
                         let mut rotation_timer_id = rotation_timer_id.write().unwrap();
                         *rotation_timer_id = false;
-                        sender.send(()).unwrap();
+                        sender.send_blocking(()).unwrap();
                         ControlFlow::Break
                     });
                 }
@@ -254,17 +259,16 @@ mod imp {
             self.banners.replace(Vec::new());
 
             // 自动轮播
-            let (sender, receiver) = MainContext::channel(Priority::DEFAULT);
+            let (sender, receiver) = unbounded();
             self.timeout_sender.set(sender).unwrap();
             let carousel = self.carousel.get();
-            receiver.attach(
-                None,
-                clone!(@weak carousel => @default-return ControlFlow::Break, move |_| {
+            glib::spawn_future_local(clone!(@weak carousel => async move {
+                while (receiver.recv().await).is_ok() {
                     let current_page = carousel.position();
                     let n_pages = carousel.n_pages();
                     let mut animate = true;
                     if n_pages == 0 {
-                        return ControlFlow::Break;
+                        break;
                     }
                     let new_page = (current_page + 1. + n_pages as f64) % n_pages as f64;
                     let widget = carousel.nth_page(new_page as u32);
@@ -272,9 +276,8 @@ mod imp {
                         animate = false;
                     }
                     carousel.scroll_to(&widget, animate);
-                    ControlFlow::Continue
-                }),
-            );
+                }
+            }));
             Self::show_relative_page(self.carousel.get(), 0.);
         }
     }

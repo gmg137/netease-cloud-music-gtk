@@ -3,7 +3,7 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
-use glib::Sender;
+use async_channel::Sender;
 use glib::{ParamSpec, ParamSpecBoolean, ParamSpecInt, ParamSpecString, Value};
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::SingerInfo;
@@ -91,7 +91,9 @@ impl SearchSingerPage {
             let gesture_click = GestureClick::new();
             let sender = sender.clone();
             gesture_click.connect_pressed(move |_, _, _, _| {
-                sender.send(Action::ToSingerSongsPage(si.clone())).unwrap();
+                sender
+                    .send_blocking(Action::ToSingerSongsPage(si.clone()))
+                    .unwrap();
             });
             avatar.add_controller(gesture_click);
         }
@@ -192,7 +194,7 @@ impl SearchSingerPage {
                 self.set_property("update", false);
                 let s = glib::SendWeakRef::from(self.downgrade());
                 sender
-                    .send(Action::Search(
+                    .send_blocking(Action::Search(
                         self.property("keyword"),
                         SearchType::Singer,
                         offset as u16,
@@ -207,7 +209,7 @@ impl SearchSingerPage {
                     ))
                     .unwrap_or(());
                 sender
-                    .send(Action::AddToast(gettextrs::gettext(
+                    .send_blocking(Action::AddToast(gettextrs::gettext(
                         "Loading more content...",
                     )))
                     .unwrap();

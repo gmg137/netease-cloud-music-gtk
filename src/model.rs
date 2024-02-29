@@ -4,7 +4,8 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use crate::application::Action;
-use glib::{source::Priority, SendWeakRef, Sender};
+use async_channel::Sender;
+use glib::{source::Priority, SendWeakRef};
 use gtk::{gdk_pixbuf, glib, prelude::*, Image, Picture};
 use ncm_api::{SingerInfo, SongInfo, SongList};
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
@@ -213,7 +214,7 @@ impl ImageDownloadImpl for Image {
     fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>) {
         let image = glib::SendWeakRef::from(self.downgrade());
         sender
-            .send(Action::DownloadImage(
+            .send_blocking(Action::DownloadImage(
                 url,
                 path.to_owned(),
                 size.0,
@@ -232,7 +233,7 @@ impl ImageDownloadImpl for Picture {
     fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>) {
         let picture = glib::SendWeakRef::from(self.downgrade());
         sender
-            .send(Action::DownloadImage(
+            .send_blocking(Action::DownloadImage(
                 url,
                 path.to_owned(),
                 size.0,
@@ -259,7 +260,7 @@ impl ImageDownloadImpl for adw::Avatar {
     fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>) {
         let avatar = SendWeakRef::from(self.downgrade());
         sender
-            .send(Action::DownloadImage(
+            .send_blocking(Action::DownloadImage(
                 url,
                 path.to_owned(),
                 size.0,

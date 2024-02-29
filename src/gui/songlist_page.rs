@@ -3,9 +3,10 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
+use async_channel::Sender;
 use chrono::{TimeZone, Utc};
 use gettextrs::gettext;
-use glib::{ParamSpec, ParamSpecBoolean, Sender, Value};
+use glib::{ParamSpec, ParamSpecBoolean, Value};
 pub(crate) use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
 use ncm_api::SongList;
 use once_cell::sync::{Lazy, OnceCell};
@@ -195,10 +196,10 @@ mod imp {
             let sender = self.sender.get().unwrap();
             let playlist = self.songs_list.get_songinfo_list();
             if !playlist.is_empty() {
-                sender.send(Action::AddPlayList(playlist)).unwrap();
+                sender.send_blocking(Action::AddPlayList(playlist)).unwrap();
             } else {
                 sender
-                    .send(Action::AddToast(gettext("This is an empty song list！")))
+                    .send_blocking(Action::AddToast(gettext("This is an empty song list！")))
                     .unwrap();
             }
         }
@@ -218,13 +219,13 @@ mod imp {
                     });
                     match pt {
                         DiscoverSubPage::SongList => sender
-                            .send(Action::LikeSongList(songlist.id, !like, Some(cb)))
+                            .send_blocking(Action::LikeSongList(songlist.id, !like, Some(cb)))
                             .unwrap(),
                         DiscoverSubPage::Album => sender
-                            .send(Action::LikeAlbum(songlist.id, !like, Some(cb)))
+                            .send_blocking(Action::LikeAlbum(songlist.id, !like, Some(cb)))
                             .unwrap(),
                         DiscoverSubPage::Radio => sender
-                            .send(Action::AddToast(gettext(
+                            .send_blocking(Action::AddToast(gettext(
                                 "Favorite radio stations are not supported!",
                             )))
                             .unwrap(),
