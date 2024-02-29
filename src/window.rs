@@ -196,7 +196,10 @@ glib::wrapper! {
 }
 
 impl NeteaseCloudMusicGtk4Window {
-    pub fn new<P: glib::IsA<gtk::Application>>(application: &P, sender: Sender<Action>) -> Self {
+    pub fn new<P: glib::object::IsA<gtk::Application>>(
+        application: &P,
+        sender: Sender<Action>,
+    ) -> Self {
         let window: NeteaseCloudMusicGtk4Window = glib::Object::builder()
             .property("application", application)
             .build();
@@ -545,7 +548,12 @@ impl NeteaseCloudMusicGtk4Window {
         label_title.set_label(title);
     }
     // same name will clear old page
-    pub fn page_new_with_name(&self, name: &str, page: &impl glib::IsA<Widget>, title: &str) {
+    pub fn page_new_with_name(
+        &self,
+        name: &str,
+        page: &impl glib::object::IsA<Widget>,
+        title: &str,
+    ) {
         let imp = self.imp();
         let stack = imp.page_stack.get().unwrap();
         // stack.set_transition_type(StackTransitionType::SlideLeft);
@@ -554,7 +562,7 @@ impl NeteaseCloudMusicGtk4Window {
         self.page_set_info(title);
         self.page_widget_switch(true);
     }
-    pub fn page_new(&self, page: &impl glib::IsA<Widget>, title: &str) {
+    pub fn page_new(&self, page: &impl glib::object::IsA<Widget>, title: &str) {
         let imp = self.imp();
         let stack = imp.page_stack.get().unwrap();
         // stack.set_transition_type(StackTransitionType::SlideLeft);

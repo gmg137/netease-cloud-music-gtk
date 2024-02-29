@@ -11,11 +11,7 @@ use adw::*;
 use async_channel::Sender;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::{
-    prelude::*,
-    traits::{ButtonExt, WidgetExt},
-    *,
-};
+use gtk::{prelude::*, *};
 use once_cell::sync::OnceCell;
 use std::cell::Cell;
 use std::path::PathBuf;

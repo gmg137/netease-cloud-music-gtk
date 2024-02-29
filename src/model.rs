@@ -55,7 +55,7 @@ impl PageStack {
         });
     }
 
-    pub fn new_page(&self, page: &impl glib::IsA<gtk::Widget>) -> gtk::StackPage {
+    pub fn new_page(&self, page: &impl glib::object::IsA<gtk::Widget>) -> gtk::StackPage {
         let mut stack = self.stack.borrow_mut();
         let page = page.clone().upcast::<gtk::Widget>();
         let stack_page = if let Some(idx) = stack.iter().position(|p| p.child() == page) {
@@ -73,7 +73,7 @@ impl PageStack {
 
     pub fn new_page_with_name(
         &self,
-        page: &impl glib::IsA<gtk::Widget>,
+        page: &impl glib::object::IsA<gtk::Widget>,
         name: &str,
     ) -> gtk::StackPage {
         let stack = &self.stack;

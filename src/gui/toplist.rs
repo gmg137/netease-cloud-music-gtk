@@ -6,7 +6,7 @@
 use crate::{
     application::Action, gui::songlist_view::SongListView, model::ImageDownloadImpl, path::CACHE,
 };
-use adw::{subclass::prelude::BinImpl, traits::ActionRowExt, ActionRow};
+use adw::{prelude::ActionRowExt, subclass::prelude::BinImpl, ActionRow};
 use async_channel::Sender;
 use gettextrs::gettext;
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
