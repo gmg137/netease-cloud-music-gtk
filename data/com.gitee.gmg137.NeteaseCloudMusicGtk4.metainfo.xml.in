@@ -4,7 +4,7 @@
     <metadata_license>CC0-1.0</metadata_license>
     <project_license>GPL-3.0-or-later</project_license>
     <releases>
-        <release version="2.3.0" date="2023-12-12" />
+        <release version="2.3.1" date="2024-03-04" />
     </releases>
     <name>NetEase Cloud Music Gtk4</name>
     <name xml:lang="zh_CN">网易云音乐</name>
