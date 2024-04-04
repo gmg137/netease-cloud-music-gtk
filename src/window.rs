@@ -411,7 +411,7 @@ impl NeteaseCloudMusicGtk4Window {
         let pre = self.property::<Toast>("toast");
 
         let toast = Toast::builder()
-            .title(mes)
+            .title(glib::markup_escape_text(&mes))
             .priority(adw::ToastPriority::High)
             .build();
         self.set_property("toast", &toast);
