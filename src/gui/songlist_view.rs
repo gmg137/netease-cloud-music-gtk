@@ -62,7 +62,7 @@ impl SongListView {
         let listbox = imp.listbox.get();
         let no_act_like = self.property::<bool>("no-act-like");
         let no_act_album = self.property::<bool>("no-act-album");
-        let no_act_remove = self.property::<bool>("no-act-album");
+        let no_act_remove = self.property::<bool>("no-act-remove");
         sis.iter().zip(likes.iter()).for_each(|(si, like)| {
             let sender = sender.clone();
 
@@ -272,7 +272,7 @@ mod imp {
             match pspec.name() {
                 "no-act-like" => self.no_act_like.get().to_value(),
                 "no-act-album" => self.no_act_album.get().to_value(),
-                "no-act-remove" => self.no_act_album.get().to_value(),
+                "no-act-remove" => self.no_act_remove.get().to_value(),
                 "clamp-margin-top" => self.adw_clamp.margin_top().to_value(),
                 "clamp-margin-bottom" => self.adw_clamp.margin_bottom().to_value(),
                 "clamp-maximum-size" => self.adw_clamp.maximum_size().to_value(),

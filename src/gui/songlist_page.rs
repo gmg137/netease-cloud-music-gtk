@@ -106,7 +106,7 @@ impl SonglistPage {
             SongListDetail::PlayList(_detail, dy) => {
                 self.set_property("like", dy.subscribed);
                 imp.songs_list.set_property("no-act-album", false);
-                imp.songs_list.set_property("no-act-remove", false);
+                imp.songs_list.set_property("no-act-remove", true);
                 imp.page_type.replace(Some(DiscoverSubPage::SongList));
                 imp.num_label.set_label(&format!(
                     "{}, {}",
