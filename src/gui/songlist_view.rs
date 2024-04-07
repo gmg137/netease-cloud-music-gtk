@@ -204,7 +204,6 @@ mod imp {
                     if let Some(row) = list.row_at_index(index) {
                         let row = row.downcast::<SonglistRow>().unwrap();
                         row.switch_image(false);
-                        row.set_property("no-act-remove", true);
                     }
                 }
             });
