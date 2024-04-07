@@ -42,6 +42,7 @@ impl SearchSongPage {
         let imp = self.imp();
         imp.playlist.replace(Vec::new());
         let title_clamp = imp.title_clamp.get();
+        imp.songs_list.set_property("no-act-remove", true);
         match search_type {
             SearchType::DailyRec | SearchType::Heartbeat | SearchType::CloudDisk => {
                 title_clamp.set_visible(true);
