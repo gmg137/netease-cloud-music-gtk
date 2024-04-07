@@ -48,6 +48,7 @@ pub enum Action {
 
     // play
     AddPlay(SongInfo),
+    RemovePlay(SongInfo),
     PlayNextSong,
     Play(SongInfo),
     PlayStart(SongInfo),
@@ -599,6 +600,14 @@ impl NeteaseCloudMusicGtk4Application {
                 window.add_play(song_info.clone());
                 let sender = imp.sender.clone();
                 sender.send_blocking(Action::Play(song_info)).unwrap();
+            }
+            Action::RemovePlay(si) => {
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    sender
+                        .send(Action::AddToast(String::from("remove song"))).await.unwrap();
+                    window.remove_play(si);
+                });
             }
             Action::PlayNextSong => {
                 window.play_next();
