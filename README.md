@@ -94,7 +94,7 @@ sudo emerge --ask media-sound/netease-cloud-music-gtk
 // 安装依赖（Debian）
 sudo apt-get install -y libssl-dev meson rustc libgtk-4-dev libadwaita-1-dev libgstreamer-plugins-bad1.0-dev
 
-// 安装依赖 (Ubuntu）
+// 安装依赖（Ubuntu）
 # 通过 pip 安装 meson, 使用 rustup 安装 rustc
 sudo apt install -y libssl-dev libgtk-4-dev libdbus-glib-1-dev libadwaita-1-dev libgstreamer-plugins-bad1.0-dev gettext
 
