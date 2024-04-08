@@ -101,18 +101,42 @@ impl PlayList {
             return;
         }
 
-        let list = match self.loops {
-            LoopsState::Shuffle => &mut self.shuffle,
-            _ => &mut self.list,
-        };
+        let mut shuffle_index = 0;
+        let mut list_index = 0;
 
-        if let Some(index) = list.iter().position(|s| s.id == song.id) {
-            list.remove(index);
+        if let Some(idx) = self.shuffle.iter().position(|s| s.id == song.id) {
+            self.shuffle.remove(idx);
+            shuffle_index = idx;
+        }
 
-            if self.position > index {
+        if let Some(idx) = self.list.iter().position(|s| s.id == song.id) {
+            self.list.remove(idx);
+            list_index = idx;
+        }
+
+        if let LoopsState::Shuffle = self.loops {
+            if self.position > shuffle_index {
+                self.position -= 1;
+            }
+        } else {
+            if self.position > list_index {
                 self.position -= 1;
             }
         }
+
+        //// 旧的实现，只能在顺序播放的时候有用
+        // let list = match self.loops {
+        //     LoopsState::Shuffle => &mut self.shuffle,
+        //     _ => &mut self.list,
+        // };
+
+        // if let Some(index) = list.iter().position(|s| s.id == song.id) {
+        //     list.remove(index);
+
+        //     if self.position > index {
+        //         self.position -= 1;
+        //     }
+        // }
     }
 
     pub fn add_list(&mut self, list: Vec<SongInfo>) {
