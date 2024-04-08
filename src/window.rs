@@ -450,6 +450,14 @@ impl NeteaseCloudMusicGtk4Window {
     pub fn remove_play(&self, song_info: SongInfo) {
         let player_controls = self.imp().player_controls.get();
         player_controls.remove_song(song_info);
+
+        let sis = player_controls.get_list();
+        let si = player_controls.get_current_song();
+        if let Some(si) = si {
+            let sender = self.imp().sender.get().unwrap();
+            self.init_playlist_lyrics_page(sis, si.to_owned());
+            sender.send_blocking(Action::UpdateLyrics(si)).unwrap();
+        }
     }
 
     pub fn add_playlist(&self, sis: Vec<SongInfo>) {

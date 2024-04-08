@@ -447,6 +447,14 @@ impl PlayerControls {
         }
     }
 
+    pub fn get_list(&self) -> Vec<SongInfo>{
+        if let Ok(playlist) = self.imp().playlist.lock() {
+            playlist.get_list()
+        } else {
+            vec![]
+        }
+    }
+
     pub fn remove_song(&self, song: SongInfo) {
         if let Some(songinfo) = self.get_current_song() {
             if songinfo.id == song.id {
