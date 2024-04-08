@@ -439,6 +439,29 @@ impl PlayerControls {
         }
     }
 
+    fn playlist_length(&self) -> usize {
+        if let Ok(playlist) = self.imp().playlist.lock() {
+            playlist.len()
+        } else {
+            0
+        }
+    }
+
+    pub fn remove_song(&self, song: SongInfo) {
+        if let Some(songinfo) = self.get_current_song() {
+            if songinfo.id == song.id {
+                if self.playlist_length() > 1 {
+                    self.next_song();
+                } else {
+                    self.switch_stop();
+                }
+            }
+            if let Ok(mut playlist) = self.imp().playlist.lock() {
+                playlist.remove_song(song);
+            }
+        }
+    }
+
     pub fn add_list(&self, list: Vec<SongInfo>) {
         let settings = self.settings();
         let not_ignore_grey = settings.get("not-ignore-grey");

@@ -601,12 +601,12 @@ impl NeteaseCloudMusicGtk4Application {
                 let sender = imp.sender.clone();
                 sender.send_blocking(Action::Play(song_info)).unwrap();
             }
-            Action::RemovePlay(si) => {
+            Action::RemovePlay(song_info) => {
                 let sender = imp.sender.clone();
                 MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     sender
                         .send(Action::AddToast(String::from("remove song"))).await.unwrap();
-                    window.remove_play(si);
+                    window.remove_play(song_info);
                 });
             }
             Action::PlayNextSong => {

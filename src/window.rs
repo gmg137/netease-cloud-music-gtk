@@ -448,37 +448,8 @@ impl NeteaseCloudMusicGtk4Window {
     }
 
     pub fn remove_play(&self, song_info: SongInfo) {
-        // let player_controls = self.imp().player_controls.get();
-        // let player_revealer = self.imp().player_revealer.get();
-
-        // if let Some(next_song) = player_controls.get_next_song() {
-        //     println!("next song: {:?}", next_song)
-        // }
-        // println!("current song: {:?}", song_info);
-        // println!();
-
-        // let playlist_page = self.imp().playlist_lyrics_page.get().unwrap();
-        
-        
-
-
-        // playlist_page.remove_row()
-
-        // player_revealer.set_visible(false);
-        // player_revealer.set_reveal_child(false);
-
-        
-
-        // player_controls.imp().play_button.emit_activate();
-        
-
-        // player_controls.remove_song(song_info);
-        // // if let Some(_) = player_controls.get_next_song() {
-        // // } else {
-        // //     let player_revealer = self.imp().player_revealer.get();
-        // //     player_revealer.set_visible(false);
-        // //     player_revealer.set_reveal_child(false);
-        // // }
+        let player_controls = self.imp().player_controls.get();
+        player_controls.remove_song(song_info);
     }
 
     pub fn add_playlist(&self, sis: Vec<SongInfo>) {
