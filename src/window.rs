@@ -452,11 +452,28 @@ impl NeteaseCloudMusicGtk4Window {
         player_controls.remove_song(song_info);
 
         let sis = player_controls.get_list();
-        let si = player_controls.get_current_song();
-        if let Some(si) = si {
-            let sender = self.imp().sender.get().unwrap();
-            self.init_playlist_lyrics_page(sis, si.to_owned());
-            sender.send_blocking(Action::UpdateLyrics(si)).unwrap();
+        let si = player_controls.get_current_song().unwrap_or(SongInfo {
+            id: 0,
+            name: String::new(),
+            singer: String::new(),
+            album: String::new(),
+            album_id: 0,
+            pic_url: String::new(),
+            duration: 0,
+            song_url: String::new(),
+            copyright: ncm_api::SongCopyright::Unknown,
+        });
+
+        let sender = self.imp().sender.get().unwrap();
+        self.init_playlist_lyrics_page(sis, si.to_owned());
+        sender.send_blocking(Action::UpdateLyrics(si.to_owned())).unwrap();
+
+        if si.id == 0 {
+            let player_revealer = self.imp().player_revealer.get();
+            player_revealer.set_reveal_child(false);
+            player_revealer.set_visible(false);
+            player_revealer.set_reveal_child(false);
+            sender.send_blocking(Action::PageBack).unwrap();
         }
     }
 

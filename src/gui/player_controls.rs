@@ -467,9 +467,11 @@ impl PlayerControls {
             if let Ok(mut playlist) = self.imp().playlist.lock() {
                 playlist.remove_song(song);
                 let sender = self.imp().sender.get().unwrap().clone();
-                sender
-                    .send_blocking(Action::UpdatePlayListStatus(playlist.get_position()))
-                    .unwrap();
+                if playlist.len() >= 1 {
+                    sender
+                        .send_blocking(Action::UpdatePlayListStatus(playlist.get_position()))
+                        .unwrap();
+                }
             }
         }
     }
