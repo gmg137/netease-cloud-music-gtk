@@ -19,7 +19,9 @@
         <p xml:lang="zh_TW">使用網易雲音樂 API 的 Gtk4 音樂播放器</p>
     </description>
     <screenshots>
-        <screenshot type="default">https://gitee.com/gmg137/netease-cloud-music-gtk/raw/master/screenshots/discover.png</screenshot>
+        <screenshot type="default">
+            <image>https://gitee.com/gmg137/netease-cloud-music-gtk/raw/master/screenshots/discover.png</image>
+        </screenshot>
     </screenshots>
     <content_rating type="oars-1.1" />
 </component>
