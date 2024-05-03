@@ -760,10 +760,10 @@ mod imp {
                         .send_blocking(Action::Play(song_info.to_owned()))
                         .unwrap();
                     sender
-                        .send_blocking(Action::UpdateLyrics(song_info))
-                        .unwrap();
-                    sender
-                        .send_blocking(Action::UpdatePlayListStatus(playlist.get_position()))
+                        .send_blocking(Action::UpdatePlayListStatus(
+                            playlist.get_position(),
+                            song_info,
+                        ))
                         .unwrap();
                     return;
                 }
@@ -819,10 +819,10 @@ mod imp {
                         .send_blocking(Action::Play(song_info.to_owned()))
                         .unwrap();
                     sender
-                        .send_blocking(Action::UpdateLyrics(song_info))
-                        .unwrap();
-                    sender
-                        .send_blocking(Action::UpdatePlayListStatus(playlist.get_position()))
+                        .send_blocking(Action::UpdatePlayListStatus(
+                            playlist.get_position(),
+                            song_info,
+                        ))
                         .unwrap();
                     return;
                 }

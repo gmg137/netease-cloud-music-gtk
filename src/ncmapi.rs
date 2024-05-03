@@ -8,7 +8,7 @@ use cookie_store::CookieStore;
 use ncm_api::{CookieBuilder, CookieJar, MusicApi, SongInfo, SongUrl};
 
 use crate::path::{CACHE, LYRICS};
-use log::error;
+use log::{debug, error};
 use std::{fs, io, path::PathBuf};
 
 const COOKIE_FILE: &str = "cookies.json";
@@ -167,22 +167,72 @@ impl NcmClient {
     }
 
     pub async fn get_lyrics(&self, si: SongInfo) -> Result<String> {
-        let mut path = LYRICS.clone();
-        path.push(format!("{}-{}-{}.lrc", si.name, si.singer, si.album));
+        // 歌词文件位置
+        let mut lyric_path = LYRICS.clone();
+        lyric_path.push(format!("{}-{}-{}.lrc", si.name, si.singer, si.album));
+        // 翻译歌词文件位置
+        let mut tlyric_path = CACHE.clone();
+        tlyric_path.push(format!("{}.tlrc", si.id));
+        // 替换歌词时间
         let re = regex::Regex::new(r"\[\d+:\d+.\d+\]").unwrap();
-        if !path.exists() {
+        if !lyric_path.exists() {
             if let Ok(lyr) = self.client.song_lyric(si.id).await {
-                let lrc = lyr.into_iter().collect::<Vec<String>>().join("\n");
-                fs::write(&path, &lrc)?;
-                let lrc = re.replace_all(&lrc, "").to_string();
-                Ok(lrc)
+                debug!("歌词: {:?}", lyr);
+                // 添加歌词翻译
+                let mut lt = Vec::new();
+                for l in lyr.lyric.iter() {
+                    lt.push(l.to_owned());
+                    for t in lyr.tlyric.iter() {
+                        if t.len() >= 11 && t.starts_with(&l[0..11]) {
+                            lt.push(t.to_owned());
+                        }
+                    }
+                }
+                // 保存歌词文件
+                let lyric = lyr.lyric.into_iter().collect::<Vec<String>>().join("\n");
+                fs::write(&lyric_path, lyric)?;
+                if lyr.tlyric.is_empty() {
+                    // 保存翻译歌词文件
+                    let tlyric = lyr.tlyric.into_iter().collect::<Vec<String>>().join("\n");
+                    fs::write(&tlyric_path, tlyric)?;
+                }
+                // 组织歌词+翻译
+                let lt = lt.into_iter().collect::<Vec<String>>().join("\n");
+                Ok(re.replace_all(&lt, "").to_string())
             } else {
                 Ok(gettextrs::gettext("No lyrics found!".to_owned()))
             }
         } else {
-            let lrc = fs::read_to_string(&path)?;
-            let lrc = re.replace_all(&lrc, "").to_string();
-            Ok(lrc)
+            let lyric = fs::read_to_string(&lyric_path)?;
+            let lyrics: Vec<String> = lyric
+                .split('\n')
+                .collect::<Vec<&str>>()
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
+            let mut tlyrics = vec![];
+            if tlyric_path.exists() {
+                let tlyric = fs::read_to_string(&tlyric_path)?;
+                tlyrics = tlyric
+                    .split('\n')
+                    .collect::<Vec<&str>>()
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect();
+            }
+            // 添加歌词翻译
+            let mut lt = Vec::new();
+            for l in lyrics.iter() {
+                lt.push(l.to_string());
+                for t in tlyrics.iter() {
+                    if t.len() >= 11 && t.starts_with(&l[0..11]) {
+                        lt.push(t.to_string());
+                    }
+                }
+            }
+            // 组织歌词+翻译
+            let lt = lt.into_iter().collect::<Vec<String>>().join("\n");
+            Ok(re.replace_all(&lt, "").to_string())
         }
     }
 }

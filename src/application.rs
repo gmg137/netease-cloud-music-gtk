@@ -91,7 +91,7 @@ pub enum Action {
     // playlist
     ToPlayListLyricsPage(Vec<SongInfo>, SongInfo),
     UpdateLyrics(SongInfo),
-    UpdatePlayListStatus(usize),
+    UpdatePlayListStatus(usize, SongInfo),
 
     // page routing
     ToTopPicksPage,
@@ -608,13 +608,6 @@ impl NeteaseCloudMusicGtk4Application {
                 let music_rate = window.settings().uint("music-rate");
                 let path = crate::path::get_music_cache_path(song_info.id, music_rate);
 
-                // 启用桌面歌词
-                if window.settings().boolean("desktop-lyrics") {
-                    sender
-                        .send_blocking(Action::UpdateLyrics(song_info.to_owned()))
-                        .unwrap();
-                }
-
                 if !path.exists() {
                     MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                         if song_info.song_url.is_empty() {
@@ -665,6 +658,13 @@ impl NeteaseCloudMusicGtk4Application {
                 }
             }
             Action::PlayStart(song_info) => {
+                // 启用桌面歌词
+                if window.settings().boolean("desktop-lyrics") {
+                    let sender = imp.sender.clone();
+                    sender
+                        .send_blocking(Action::UpdateLyrics(song_info.to_owned()))
+                        .unwrap();
+                };
                 debug!("播放歌曲: {:?}", song_info);
                 window.play(song_info);
             }
@@ -1120,8 +1120,8 @@ impl NeteaseCloudMusicGtk4Application {
                     window.update_lyrics(lrc);
                 });
             }
-            Action::UpdatePlayListStatus(index) => {
-                window.updat_playlist_status(index);
+            Action::UpdatePlayListStatus(index, song_info) => {
+                window.update_playlist_status(index, song_info);
             }
             Action::GstDurationChanged(sec) => {
                 window.gst_duration_changed(sec);

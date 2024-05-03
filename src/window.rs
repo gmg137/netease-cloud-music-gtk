@@ -688,11 +688,15 @@ impl NeteaseCloudMusicGtk4Window {
         }
     }
 
-    pub fn updat_playlist_status(&self, index: usize) {
+    pub fn update_playlist_status(&self, index: usize, song_info: SongInfo) {
         let imp = self.imp();
         let page = imp.playlist_lyrics_page.get().unwrap();
         if self.page_cur_playlist_lyrics_page() {
             page.switch_row(index as i32);
+            let sender = imp.sender.get().unwrap();
+            sender
+                .send_blocking(Action::UpdateLyrics(song_info))
+                .unwrap();
         }
     }
 

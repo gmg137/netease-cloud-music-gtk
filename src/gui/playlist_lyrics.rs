@@ -83,7 +83,6 @@ impl PlayListLyricsPage {
         let lyrics_text_view = self.imp().lyrics_text_view.get();
         let buffer = lyrics_text_view.buffer();
         buffer.set_text(&lyrics);
-        lyrics_text_view.set_buffer(Some(&buffer));
     }
 
     pub fn switch_row(&self, index: i32) {
