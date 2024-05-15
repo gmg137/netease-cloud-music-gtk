@@ -301,6 +301,14 @@ impl PlayerControls {
                 }),
             );
         }
+
+        if let Some(si) = self.get_current_song() {
+            // 发送更新歌词
+            let sender = imp.sender.get().unwrap();
+            sender
+                .send_blocking(Action::UpdateLyrics(si, msec / 1000))
+                .unwrap();
+        }
     }
 
     pub fn scale_value_update(&self) {
@@ -760,10 +768,7 @@ mod imp {
                         .send_blocking(Action::Play(song_info.to_owned()))
                         .unwrap();
                     sender
-                        .send_blocking(Action::UpdatePlayListStatus(
-                            playlist.get_position(),
-                            song_info,
-                        ))
+                        .send_blocking(Action::UpdatePlayListStatus(playlist.get_position()))
                         .unwrap();
                     return;
                 }
@@ -819,10 +824,7 @@ mod imp {
                         .send_blocking(Action::Play(song_info.to_owned()))
                         .unwrap();
                     sender
-                        .send_blocking(Action::UpdatePlayListStatus(
-                            playlist.get_position(),
-                            song_info,
-                        ))
+                        .send_blocking(Action::UpdatePlayListStatus(playlist.get_position()))
                         .unwrap();
                     return;
                 }

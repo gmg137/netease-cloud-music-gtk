@@ -90,8 +90,8 @@ pub enum Action {
 
     // playlist
     ToPlayListLyricsPage(Vec<SongInfo>, SongInfo),
-    UpdateLyrics(SongInfo),
-    UpdatePlayListStatus(usize, SongInfo),
+    UpdateLyrics(SongInfo, u64),
+    UpdatePlayListStatus(usize),
 
     // page routing
     ToTopPicksPage,
@@ -662,7 +662,7 @@ impl NeteaseCloudMusicGtk4Application {
                 if window.settings().boolean("desktop-lyrics") {
                     let sender = imp.sender.clone();
                     sender
-                        .send_blocking(Action::UpdateLyrics(song_info.to_owned()))
+                        .send_blocking(Action::UpdateLyrics(song_info.to_owned(), 0))
                         .unwrap();
                 };
                 debug!("播放歌曲: {:?}", song_info);
@@ -1105,23 +1105,23 @@ impl NeteaseCloudMusicGtk4Application {
                 let sender = imp.sender.clone();
                 if !window.page_cur_playlist_lyrics_page() {
                     window.init_playlist_lyrics_page(sis, si.to_owned());
-                    sender.send_blocking(Action::UpdateLyrics(si)).unwrap();
                 } else {
                     sender.send_blocking(Action::PageBack).unwrap();
                 }
             }
-            Action::UpdateLyrics(si) => {
+            Action::UpdateLyrics(si, time) => {
                 MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
-                    let lrc = ncmapi
-                        .get_lyrics(si)
-                        .await
-                        .unwrap_or_else(|_| gettext("No lyrics found!"));
-                    debug!("获取歌词：{:?}", lrc);
-                    window.update_lyrics(lrc);
+                    match ncmapi.get_lyrics(si).await {
+                        Ok(lrc) => {
+                            debug!("获取歌词：{:?}", lrc);
+                            window.update_lyrics(lrc, time);
+                        }
+                        Err(e) => debug!("{}", e),
+                    }
                 });
             }
-            Action::UpdatePlayListStatus(index, song_info) => {
-                window.update_playlist_status(index, song_info);
+            Action::UpdatePlayListStatus(index) => {
+                window.update_playlist_status(index);
             }
             Action::GstDurationChanged(sec) => {
                 window.gst_duration_changed(sec);

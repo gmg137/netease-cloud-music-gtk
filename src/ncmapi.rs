@@ -166,10 +166,15 @@ impl NcmClient {
             .await
     }
 
-    pub async fn get_lyrics(&self, si: SongInfo) -> Result<String> {
+    pub async fn get_lyrics(&self, si: SongInfo) -> Result<Vec<(u64, String)>> {
         // 歌词文件位置
         let mut lyric_path = LYRICS.clone();
-        lyric_path.push(format!("{}-{}-{}.lrc", si.name, si.singer, si.album));
+        lyric_path.push(format!(
+            "{}-{}-{}.lrc",
+            si.name.replace('/', "／"),
+            si.singer,
+            si.album
+        ));
         // 翻译歌词文件位置
         let mut tlyric_path = CACHE.clone();
         tlyric_path.push(format!("{}.tlrc", si.id));
@@ -181,26 +186,36 @@ impl NcmClient {
                 // 添加歌词翻译
                 let mut lt = Vec::new();
                 for l in lyr.lyric.iter() {
-                    lt.push(l.to_owned());
+                    let mut time = 0;
+                    if l.len() >= 10 && re.is_match(l) {
+                        time = (l[1..3].parse::<u64>().unwrap() * 60
+                            + l[4..6].parse::<u64>().unwrap())
+                            * 1000
+                            + l[7..9].parse::<u64>().unwrap() * 10;
+                        let mut nl = re.replace_all(l, "").to_string();
+                        nl.push('\n');
+                        lt.push((time, nl));
+                    }
                     for t in lyr.tlyric.iter() {
-                        if t.len() >= 11 && t.starts_with(&l[0..11]) {
-                            lt.push(t.to_owned());
+                        if t.len() >= 10 && l.len() >= 10 && t.starts_with(&l[0..10]) {
+                            let mut nt = re.replace_all(t, "").to_string();
+                            nt.push('\n');
+                            lt.push((time, nt));
                         }
                     }
                 }
                 // 保存歌词文件
                 let lyric = lyr.lyric.into_iter().collect::<Vec<String>>().join("\n");
                 fs::write(&lyric_path, lyric)?;
-                if lyr.tlyric.is_empty() {
+                if !lyr.tlyric.is_empty() {
                     // 保存翻译歌词文件
                     let tlyric = lyr.tlyric.into_iter().collect::<Vec<String>>().join("\n");
                     fs::write(&tlyric_path, tlyric)?;
                 }
                 // 组织歌词+翻译
-                let lt = lt.into_iter().collect::<Vec<String>>().join("\n");
-                Ok(re.replace_all(&lt, "").to_string())
+                Ok(lt)
             } else {
-                Ok(gettextrs::gettext("No lyrics found!".to_owned()))
+                anyhow::bail!("No lyrics found!")
             }
         } else {
             let lyric = fs::read_to_string(&lyric_path)?;
@@ -223,16 +238,25 @@ impl NcmClient {
             // 添加歌词翻译
             let mut lt = Vec::new();
             for l in lyrics.iter() {
-                lt.push(l.to_string());
+                let mut time = 0;
+                if l.len() >= 10 && re.is_match(l) {
+                    time = (l[1..3].parse::<u64>().unwrap() * 60 + l[4..6].parse::<u64>().unwrap())
+                        * 1000
+                        + l[7..9].parse::<u64>().unwrap() * 10;
+                    let mut nl = re.replace_all(l, "").to_string();
+                    nl.push('\n');
+                    lt.push((time, nl));
+                }
                 for t in tlyrics.iter() {
-                    if t.len() >= 11 && t.starts_with(&l[0..11]) {
-                        lt.push(t.to_string());
+                    if t.len() >= 10 && l.len() >= 10 && t.starts_with(&l[0..10]) {
+                        let mut nt = re.replace_all(t, "").to_string();
+                        nt.push('\n');
+                        lt.push((time, nt));
                     }
                 }
             }
             // 组织歌词+翻译
-            let lt = lt.into_iter().collect::<Vec<String>>().join("\n");
-            Ok(re.replace_all(&lt, "").to_string())
+            Ok(lt)
         }
     }
 }

@@ -40,7 +40,7 @@ impl PlayListLyricsPage {
             .get()
             .connect_row_activated(closure_local!(move |_: SongListView, row: SonglistRow| {
                 if let Some(si) = row.get_song_info() {
-                    sender.send_blocking(Action::UpdateLyrics(si)).unwrap();
+                    sender.send_blocking(Action::UpdateLyrics(si, 0)).unwrap();
                 }
             }));
     }
@@ -79,10 +79,30 @@ impl PlayListLyricsPage {
         self.switch_row(i);
     }
 
-    pub fn update_lyrics(&self, lyrics: String) {
+    pub fn update_lyrics(&self, lyrics: Vec<(u64, String)>, time: u64) {
+        let mut lyrics = lyrics;
+        // 填充空白行，以使用window(3)方法时可以到达最后一行
+        lyrics.push((3600000000, "".to_string()));
+        lyrics.push((3600000000, "".to_string()));
         let lyrics_text_view = self.imp().lyrics_text_view.get();
         let buffer = lyrics_text_view.buffer();
-        buffer.set_text(&lyrics);
+        buffer.set_text("");
+        let mut iter = buffer.start_iter();
+        for lyr in lyrics.windows(3) {
+            if (time >= lyr[0].0 && time < lyr[1].0)
+                || lyr[0].0 == lyr[1].0 && time >= lyr[0].0 && time < lyr[2].0
+            {
+                buffer.insert_markup(
+                    &mut iter,
+                    &format!(
+                        r#"<span size="large" weight="bold" color="red">{}</span>"#,
+                        lyr[0].1
+                    ),
+                );
+            } else {
+                buffer.insert(&mut iter, &lyr[0].1);
+            }
+        }
     }
 
     pub fn switch_row(&self, index: i32) {

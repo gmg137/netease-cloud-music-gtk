@@ -680,23 +680,19 @@ impl NeteaseCloudMusicGtk4Window {
         self.page_new(page, &gettext("Play List&Lyrics"));
     }
 
-    pub fn update_lyrics(&self, lrc: String) {
+    pub fn update_lyrics(&self, lrc: Vec<(u64, String)>, time: u64) {
         let imp = self.imp();
         let page = imp.playlist_lyrics_page.get().unwrap();
         if self.page_cur_playlist_lyrics_page() {
-            page.update_lyrics(lrc);
+            page.update_lyrics(lrc, time);
         }
     }
 
-    pub fn update_playlist_status(&self, index: usize, song_info: SongInfo) {
+    pub fn update_playlist_status(&self, index: usize) {
         let imp = self.imp();
         let page = imp.playlist_lyrics_page.get().unwrap();
         if self.page_cur_playlist_lyrics_page() {
             page.switch_row(index as i32);
-            let sender = imp.sender.get().unwrap();
-            sender
-                .send_blocking(Action::UpdateLyrics(song_info))
-                .unwrap();
         }
     }
 
