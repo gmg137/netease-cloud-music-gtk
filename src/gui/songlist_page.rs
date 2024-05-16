@@ -89,6 +89,7 @@ impl SonglistPage {
             SongListDetail::Album(detail, dy) => {
                 self.set_property("like", dy.is_sub);
                 imp.songs_list.set_property("no-act-album", true);
+                imp.songs_list.set_property("no-act-remove", true);
                 imp.page_type.replace(Some(DiscoverSubPage::Album));
                 let dt = Utc
                     .timestamp_millis_opt(detail.publish_time as i64)
@@ -105,6 +106,7 @@ impl SonglistPage {
             SongListDetail::PlayList(_detail, dy) => {
                 self.set_property("like", dy.subscribed);
                 imp.songs_list.set_property("no-act-album", false);
+                imp.songs_list.set_property("no-act-remove", true);
                 imp.page_type.replace(Some(DiscoverSubPage::SongList));
                 imp.num_label.set_label(&format!(
                     "{}, {}",
@@ -115,6 +117,7 @@ impl SonglistPage {
             SongListDetail::Radio(detail) => {
                 imp.songs_list.set_property("no-act-album", true);
                 imp.songs_list.set_property("no-act-like", true);
+                imp.songs_list.set_property("no-act-remove", true);
                 imp.page_type.replace(Some(DiscoverSubPage::Radio));
                 imp.num_label
                     .set_label(&gettext!("Total {} issues", detail.len()).to_string());

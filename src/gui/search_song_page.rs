@@ -41,6 +41,7 @@ impl SearchSongPage {
     pub fn init_page(&self, keyword: &str, search_type: SearchType) {
         let imp = self.imp();
         imp.playlist.replace(Vec::new());
+        imp.songs_list.set_property("no-act-remove", true);
         let title_clamp = imp.title_clamp.get();
         match search_type {
             SearchType::DailyRec | SearchType::Heartbeat | SearchType::CloudDisk => {

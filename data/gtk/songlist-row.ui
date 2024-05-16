@@ -11,11 +11,10 @@
         <child>
             <object class="GtkBox">
                 <property name="focusable">False</property>
-                <property name="spacing">6</property>
+                <property name="margin-end">18</property>
                 <child>
                     <object class="GtkBox">
                         <property name="focusable">False</property>
-                        <property name="spacing">6</property>
                         <child>
                             <object class="GtkBox">
                                 <property name="width-request">30</property>
@@ -54,6 +53,7 @@
                         <property name="hexpand">True</property>
                         <child>
                             <object class="GtkLabel" id="artist_label">
+                                <property name="margin-start">8</property>
                                 <property name="focusable">False</property>
                                 <property name="xalign">0</property>
                                 <property name="halign">start</property>
@@ -69,8 +69,6 @@
                     <object class="GtkBox" id="_album_duration_box">
                         <property name="focusable">False</property>
                         <property name="hexpand">True</property>
-                        <property name="spacing">6</property>
-                        <property name="margin-end">18</property>
                         <child>
                             <object class="GtkLabel" id="album_label">
                                 <property name="focusable">False</property>
@@ -113,6 +111,18 @@
                                 <property name="icon-name">media-optical-cd-audio-symbolic</property>
                                 <property name="tooltip-text" translatable="yes">View album</property>
                                 <signal name="clicked" handler="album_button_clicked_cb" swapped="true" />
+                                <style>
+                                    <class name="flat" />
+                                </style>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkButton" id="remove_button">
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
+                                <property name="icon-name">app-remove-symbolic</property>
+                                <property name="tooltip-text" translatable="yes">Remove song</property>
+                                <signal name="clicked" handler="remove_button_clicked_cb" swapped="true" />
                                 <style>
                                     <class name="flat" />
                                 </style>

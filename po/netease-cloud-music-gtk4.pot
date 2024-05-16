@@ -334,6 +334,10 @@ msgstr ""
 msgid "View album"
 msgstr ""
 
+#: data/gtk/songlist-row.ui:124
+msgid "Remove song"
+msgstr ""
+
 #: data/gtk/my-page.ui:41 src/application.rs:877
 msgid "Daily Recommendation"
 msgstr ""

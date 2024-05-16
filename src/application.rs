@@ -92,6 +92,7 @@ pub enum Action {
     ToPlayListLyricsPage(Vec<SongInfo>, SongInfo),
     UpdateLyrics(SongInfo, u64),
     UpdatePlayListStatus(usize),
+    RemoveFromPlayList(SongInfo),
 
     // page routing
     ToTopPicksPage,
@@ -1122,6 +1123,11 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::UpdatePlayListStatus(index) => {
                 window.update_playlist_status(index);
+            }
+            Action::RemoveFromPlayList(song_info) => {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    window.remove_from_playlist(song_info);
+                });
             }
             Action::GstDurationChanged(sec) => {
                 window.gst_duration_changed(sec);

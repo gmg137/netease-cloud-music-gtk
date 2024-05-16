@@ -70,6 +70,11 @@ impl SonglistRow {
         imp.album_button.set_visible(visible);
     }
 
+    pub fn set_remove_button_visible(&self, visible: bool) {
+        let imp = self.imp();
+        imp.remove_button.set_visible(visible);
+    }
+
     fn set_name(&self, label: &str) {
         let imp = self.imp();
         imp.title_label.set_label(label);
@@ -138,6 +143,16 @@ impl SonglistRow {
                 .unwrap();
         }
     }
+
+    #[template_callback]
+    fn remove_button_clicked_cb(&self) {
+        let imp = self.imp();
+        let sender = imp.sender.get().unwrap();
+        let si = { imp.song_info.borrow().clone().unwrap() };
+        sender
+            .send_blocking(Action::RemoveFromPlayList(si))
+            .unwrap();
+    }
 }
 
 mod imp {
@@ -161,6 +176,8 @@ mod imp {
         pub like_button: TemplateChild<Button>,
         #[template_child]
         pub album_button: TemplateChild<Button>,
+        #[template_child]
+        pub remove_button: TemplateChild<Button>,
 
         pub sender: OnceCell<Sender<Action>>,
         pub song_info: RefCell<Option<SongInfo>>,

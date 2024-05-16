@@ -89,6 +89,40 @@ impl PlayList {
         }
     }
 
+    pub fn len(&self) -> usize {
+        match self.loops {
+            LoopsState::Shuffle => self.shuffle.len(),
+            _ => self.list.len(),
+        }
+    }
+
+    pub fn remove_song(&mut self, song: SongInfo) {
+        if self.list.is_empty() || !self.list.contains(&song) {
+            return;
+        }
+
+        let mut shuffle_index = 0;
+        let mut list_index = 0;
+
+        if let Some(idx) = self.shuffle.iter().position(|s| s.id == song.id) {
+            self.shuffle.remove(idx);
+            shuffle_index = idx;
+        }
+
+        if let Some(idx) = self.list.iter().position(|s| s.id == song.id) {
+            self.list.remove(idx);
+            list_index = idx;
+        }
+
+        if let LoopsState::Shuffle = self.loops {
+            if self.position > shuffle_index {
+                self.position -= 1;
+            }
+        } else if self.position > list_index {
+            self.position -= 1;
+        }
+    }
+
     pub fn add_list(&mut self, list: Vec<SongInfo>) {
         self.list = list.clone();
         let mut list = list;

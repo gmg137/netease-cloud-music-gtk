@@ -62,6 +62,7 @@ impl SongListView {
         let listbox = imp.listbox.get();
         let no_act_like = self.property::<bool>("no-act-like");
         let no_act_album = self.property::<bool>("no-act-album");
+        let no_act_remove = self.property::<bool>("no-act-remove");
         sis.iter().zip(likes.iter()).for_each(|(si, like)| {
             let sender = sender.clone();
 
@@ -69,6 +70,7 @@ impl SongListView {
             row.set_property("like", like);
             row.set_like_button_visible(!no_act_like);
             row.set_album_button_visible(!no_act_album);
+            row.set_remove_button_visible(!no_act_remove);
 
             let si = si.clone();
             row.connect_activate(clone!(@weak self as s => move |row| {
@@ -160,6 +162,7 @@ mod imp {
 
         no_act_like: Cell<bool>,
         no_act_album: Cell<bool>,
+        no_act_remove: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -220,6 +223,7 @@ mod imp {
                 vec![
                     ParamSpecBoolean::builder("no-act-like").build(),
                     ParamSpecBoolean::builder("no-act-album").build(),
+                    ParamSpecBoolean::builder("no-act-remove").build(),
                     ParamSpecInt::builder("clamp-margin-top").build(),
                     ParamSpecInt::builder("clamp-margin-bottom").build(),
                     ParamSpecInt::builder("clamp-maximum-size").build(),
@@ -238,6 +242,10 @@ mod imp {
                 "no-act-album" => {
                     let val = value.get().unwrap();
                     self.no_act_album.replace(val);
+                }
+                "no-act-remove" => {
+                    let val = value.get().unwrap();
+                    self.no_act_remove.replace(val);
                 }
                 "clamp-margin-top" => {
                     let val = value.get().unwrap();
@@ -263,6 +271,7 @@ mod imp {
             match pspec.name() {
                 "no-act-like" => self.no_act_like.get().to_value(),
                 "no-act-album" => self.no_act_album.get().to_value(),
+                "no-act-remove" => self.no_act_remove.get().to_value(),
                 "clamp-margin-top" => self.adw_clamp.margin_top().to_value(),
                 "clamp-margin-bottom" => self.adw_clamp.margin_bottom().to_value(),
                 "clamp-maximum-size" => self.adw_clamp.maximum_size().to_value(),

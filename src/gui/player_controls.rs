@@ -441,9 +441,46 @@ impl PlayerControls {
         });
     }
 
+    fn playlist_length(&self) -> usize {
+        if let Ok(playlist) = self.imp().playlist.lock() {
+            playlist.len()
+        } else {
+            0
+        }
+    }
+
+    pub fn get_list(&self) -> Vec<SongInfo> {
+        if let Ok(playlist) = self.imp().playlist.lock() {
+            playlist.get_list()
+        } else {
+            vec![]
+        }
+    }
+
     pub fn add_song(&self, song: SongInfo) {
         if let Ok(mut playlist) = self.imp().playlist.lock() {
             playlist.add_song(song);
+        }
+    }
+
+    pub fn remove_song(&self, song: SongInfo) {
+        if let Some(songinfo) = self.get_current_song() {
+            if songinfo.id == song.id {
+                if self.playlist_length() > 1 {
+                    self.next_song();
+                } else {
+                    self.switch_stop();
+                }
+            }
+            if let Ok(mut playlist) = self.imp().playlist.lock() {
+                playlist.remove_song(song);
+                let sender = self.imp().sender.get().unwrap().clone();
+                if playlist.len() >= 1 {
+                    sender
+                        .send_blocking(Action::UpdatePlayListStatus(playlist.get_position()))
+                        .unwrap();
+                }
+            }
         }
     }
 

@@ -335,6 +335,10 @@ msgstr "收藏歌曲"
 msgid "View album"
 msgstr "查看专辑"
 
+#: data/gtk/songlist-row.ui:124
+msgid "Remove song"
+msgstr "删除歌曲"
+
 #: data/gtk/my-page.ui:41 src/application.rs:877
 msgid "Daily Recommendation"
 msgstr "每日推荐"

@@ -36,8 +36,9 @@ impl TopListView {
     }
 
     pub fn init_sidebar(&self, list: Vec<TopList>) {
-        let sidebar = self.imp().sidebar.get();
-        let sender = self.imp().sender.get().unwrap();
+        let imp = self.imp();
+        let sidebar = imp.sidebar.get();
+        let sender = imp.sender.get().unwrap();
 
         let mut select = false;
         for t in &list {
@@ -68,13 +69,12 @@ impl TopListView {
                 // 加载初始选中的榜单封面
                 let mut path = CACHE.clone();
                 path.push(format!("{}-toplist.jpg", t.id));
-                self.imp()
-                    .cover_image
+                imp.cover_image
                     .set_from_net(t.cover.to_owned(), path, (140, 140), sender);
             }
         }
-        self.imp().data.set(list).unwrap();
-        self.imp().update_toplist_info(0);
+        imp.data.set(list).unwrap();
+        imp.update_toplist_info(0);
     }
 
     pub fn update_songs_list(&self, sis: &[SongInfo], likes: &[bool]) {
@@ -88,6 +88,7 @@ impl TopListView {
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
         songs_list.init_new_list(sis, likes);
+        songs_list.set_property("no-act-remove", true);
     }
 }
 
@@ -158,6 +159,7 @@ mod imp {
 
         pub fn update_toplist_info(&self, index: i32) {
             let songs_list = self.songs_list.get();
+            songs_list.set_property("no-act-remove", true);
             songs_list.clear_list();
 
             let data = self.data.get().unwrap();
