@@ -191,7 +191,7 @@ impl NcmClient {
                         time = (l[1..3].parse::<u64>().unwrap() * 60
                             + l[4..6].parse::<u64>().unwrap())
                             * 1000
-                            + l[7..9].parse::<u64>().unwrap() * 10;
+                            + l[7..9].parse::<u64>().unwrap_or(0) * 10;
                         let mut nl = re.replace_all(l, "").to_string();
                         nl.push('\n');
                         lt.push((time, nl));
@@ -242,7 +242,7 @@ impl NcmClient {
                 if l.len() >= 10 && re.is_match(l) {
                     time = (l[1..3].parse::<u64>().unwrap() * 60 + l[4..6].parse::<u64>().unwrap())
                         * 1000
-                        + l[7..9].parse::<u64>().unwrap() * 10;
+                        + l[7..9].parse::<u64>().unwrap_or(0) * 10;
                     let mut nl = re.replace_all(l, "").to_string();
                     nl.push('\n');
                     lt.push((time, nl));
