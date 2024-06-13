@@ -27,6 +27,7 @@ package = "libadwaita"
 version = "~0.6"
 
 # cargo deb 打包配置
+# 打包前在__build目录下执行: meson configure --prefix=/usr && ninja
 [package.metadata.deb]
 maintainer = "gmg137 <gmg137@live.com>"
 copyright = "2024, gmg137 <gmg137@live.com>"
@@ -38,42 +39,42 @@ depends = "$auto"
 section = "sound"
 assets = [
     [
-        "__build/host/bin/netease-cloud-music-gtk4",
+        "__build/src/netease-cloud-music-gtk4",
         "usr/bin/",
         "755",
     ],
     [
-        "__build/host/share/applications/com.gitee.gmg137.NeteaseCloudMusicGtk4.desktop",
+        "__build/data/com.gitee.gmg137.NeteaseCloudMusicGtk4.desktop",
         "usr/share/applications/",
         "644",
     ],
     [
-        "__build/host/share/netease-cloud-music-gtk4/netease-cloud-music-gtk4.gresource",
+        "__build/data/netease-cloud-music-gtk4.gresource",
         "usr/share/netease-cloud-music-gtk4/",
         "644",
     ],
     [
-        "__build/host/share/icons/hicolor/scalable/apps/com.gitee.gmg137.NeteaseCloudMusicGtk4.svg",
+        "data/icons/hicolor/scalable/apps/com.gitee.gmg137.NeteaseCloudMusicGtk4.svg",
         "usr/share/icons/hicolor/scalable/apps/",
         "644",
     ],
     [
-        "__build/host/share/icons/hicolor/symbolic/apps/com.gitee.gmg137.NeteaseCloudMusicGtk4-symbolic.svg",
+        "data/icons/hicolor/symbolic/apps/com.gitee.gmg137.NeteaseCloudMusicGtk4-symbolic.svg",
         "usr/share/icons/hicolor/symbolic/apps/",
         "644",
     ],
     [
-        "__build/host/share/locale/zh_CN/LC_MESSAGES/netease-cloud-music-gtk4.mo",
+        "__build/po/zh_CN/LC_MESSAGES/netease-cloud-music-gtk4.mo",
         "usr/share/locale/zh_CN/LC_MESSAGES/",
         "644",
     ],
     [
-        "__build/host/share/glib-2.0/schemas/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml",
-        "usr/share/locale/zh_CN/LC_MESSAGES/",
+        "data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml",
+        "usr/share/glib-2.0/schemas",
         "644",
     ],
     [
-        "__build/host/share/metainfo/com.gitee.gmg137.NeteaseCloudMusicGtk4.metainfo.xml",
+        "__build/data/com.gitee.gmg137.NeteaseCloudMusicGtk4.metainfo.xml",
         "usr/share/metainfo/",
         "644",
     ],
