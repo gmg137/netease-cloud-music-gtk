@@ -65,12 +65,9 @@ apt install netease-cloud-music-gtk
 ```
 
 ### Flatpak
-```
-// 从 Flathub 安装
-flatpak install flathub com.github.gmg137.netease-cloud-music-gtk
-// 离线安装，先下载 Flatpak 安装包
-sudo flatpak install com.gitee.gmg137.NeteaseCloudMusicGtk4-*.flatpak
-```
+<a href='https://flathub.org/apps/com.github.gmg137.netease-cloud-music-gtk'>
+    <img width='240' alt='Download on Flathub' src='https://flathub.org/api/badge?locale=zh-Hans'/>
+</a>
 
 ### Nix
 ```bash
