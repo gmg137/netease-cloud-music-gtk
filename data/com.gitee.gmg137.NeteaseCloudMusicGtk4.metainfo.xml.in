@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<component type="desktop">
-    <id>com.gitee.gmg137.NeteaseCloudMusicGtk4.desktop</id>
+<component type="desktop-application">
+    <id>com.gitee.gmg137.NeteaseCloudMusicGtk4</id>
+    <developer_name>gmg137</developer_name>
     <metadata_license>CC0-1.0</metadata_license>
     <project_license>GPL-3.0-or-later</project_license>
     <releases>
@@ -12,16 +13,26 @@
     <summary>Linux muisc player for NetEase Cloud Music</summary>
     <summary xml:lang="zh_TW">網易雲音樂 Linux 音樂播放器</summary>
     <summary xml:lang="zh_CN">网易云音乐 Linux 音乐播放器</summary>
-    <url type="homepage">https://gitee.com/gmg137/netease-cloud-music-gtk</url>
+    <url type="homepage">https://github.com/gmg137/netease-cloud-music-gtk</url>
+    <url type="bugtracker">https://github.com/gmg137/netease-cloud-music-gtk/issues</url>
+    <recommends>
+        <control>pointing</control>
+        <control>keyboard</control>
+        <control>touch</control>
+    </recommends>
     <description>
-        <p>use NetEase Cloud Music API Gtk4 player</p>
-        <p xml:lang="zh_CN">使用网易云音乐 API 的 Gtk4 音乐播放器</p>
-        <p xml:lang="zh_TW">使用網易雲音樂 API 的 Gtk4 音樂播放器</p>
+        <p>netease-cloud-music-gtk is a Netease cloud music player based on Rust + GTK, and developed specifically for Linux systems.</p>
+        <p xml:lang="zh_CN">netease-cloud-music-gtk 是使用 Rust + GTK 开发的网易云音乐客户端，专为 Linux 系统打造。</p>
+        <p xml:lang="zh_TW">netease-cloud-music-gtk 是使用 Rust + GTK 開發的網易雲音樂客戶端，專為 Linux 系統打造。</p>
     </description>
     <screenshots>
         <screenshot type="default">
             <image>https://gitee.com/gmg137/netease-cloud-music-gtk/raw/master/screenshots/discover.png</image>
         </screenshot>
+        <screenshot>
+            <image>https://gitee.com/gmg137/netease-cloud-music-gtk/raw/master/screenshots/toplist.png</image>
+        </screenshot>
     </screenshots>
     <content_rating type="oars-1.1" />
+    <launchable type="desktop-id">com.gitee.gmg137.NeteaseCloudMusicGtk4.desktop</launchable>
 </component>
