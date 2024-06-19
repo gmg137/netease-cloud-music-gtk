@@ -51,6 +51,16 @@ paru -S netease-cloud-music-gtk4
 sudo pacman -Syu netease-cloud-music-gtk4
 ```
 
+### Ubuntu(Noble, Mantic, Jammy)
+```
+# 添加 PPA 源
+sudo add-apt-repository ppa:gmg137/ncm
+# 刷新源
+sudo apt update
+# 安装
+sudo apt install netease-cloud-music-gtk
+```
+
 ### Debian 12
 // 添加 [铜豌豆软件源](https://www.atzlinux.com/allpackages-x86_64-v12.htm)
 ```bash
