@@ -7,7 +7,7 @@ use crate::{application::Action, gui::SongListGridItem, model::ImageDownloadImpl
 use async_channel::{unbounded, Sender};
 use glib::{clone, ControlFlow};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
-use ncm_api::{BannersInfo, SongInfo, SongList};
+use ncm_api::{BannersInfo, SongList};
 use once_cell::sync::OnceCell;
 use std::sync::{Arc, RwLock};
 
@@ -89,11 +89,11 @@ impl Discover {
         }
 
         let mut path = CACHE.clone();
-        path.push(format!("{}-banner.jpg", banner.id));
+        path.push(format!("{}-banner.jpg", banner.target_id));
 
         let sender = self.imp().sender.get().unwrap().clone();
         let image = Picture::new();
-        image.set_from_net(banner.pic_url.to_owned(), path, (730, 283), &sender);
+        image.set_from_net(banner.pic.to_owned(), path, (730, 283), &sender);
 
         // 图片加载方式已验证，必须这样才能实现。
         // let image = gtk::gdk_pixbuf::Pixbuf::from_file(path).unwrap();
@@ -184,19 +184,10 @@ mod imp {
         fn carousel_pressed_cb(&self) {
             let position = self.carousel.position();
             if let Some(banner) = self.banners.borrow().get(position as usize) {
-                let song_info = SongInfo {
-                    id: banner.id.to_owned(),
-                    name: banner.name.to_owned(),
-                    singer: banner.singer.to_owned(),
-                    album: banner.album.to_owned(),
-                    album_id: banner.album_id.to_owned(),
-                    pic_url: banner.pic_url.to_owned(),
-                    duration: banner.duration.to_owned(),
-                    song_url: "".to_owned(),
-                    copyright: ncm_api::SongCopyright::Unknown,
-                };
                 let sender = self.sender.get().unwrap();
-                sender.send_blocking(Action::AddPlay(song_info)).unwrap();
+                sender
+                    .send_blocking(Action::BannerTo(banner.clone()))
+                    .unwrap();
             }
         }
 

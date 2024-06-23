@@ -6,8 +6,8 @@ use glib::{clone, source::Priority, timeout_future, timeout_future_seconds, Weak
 use gtk::{gio, glib, prelude::*};
 use log::*;
 use ncm_api::{
-    AlbumDetailDynamic, CookieJar, LoginInfo, PlayListDetailDynamic, SingerInfo, SongInfo,
-    SongList, TopList,
+    AlbumDetailDynamic, BannersInfo, CookieJar, LoginInfo, PlayListDetailDynamic, SingerInfo,
+    SongInfo, SongList, TargetType, TopList,
 };
 use once_cell::sync::OnceCell;
 use std::{cell::RefCell, fs, path::PathBuf, sync::Arc, time::Duration};
@@ -77,6 +77,7 @@ pub enum Action {
     SetupTopPicks(Vec<SongList>),
     InitNewAlbums,
     SetupNewAlbums(Vec<SongList>),
+    BannerTo(BannersInfo),
 
     // toplist
     GetToplist,
@@ -595,6 +596,60 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::SetupNewAlbums(song_list) => {
                 window.setup_new_albums(song_list);
+            }
+            Action::BannerTo(banner) => {
+                let sender = imp.sender.clone();
+                match banner.target_type {
+                    TargetType::Song => {
+                        MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                            match ncmapi.client.songs_detail(&[banner.target_id]).await {
+                                Ok(songs) => {
+                                    debug!("获取轮播歌曲信息：{:?}", songs);
+                                    if let Some(song) = songs.first() {
+                                        sender.send(Action::AddPlay(song.clone())).await.unwrap();
+                                    }
+                                }
+                                Err(err) => {
+                                    error!("获取轮播歌曲信息失败！{:?}", err);
+                                }
+                            }
+                        });
+                    }
+                    TargetType::Album => {
+                        MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                            match ncmapi.client.album(banner.target_id).await {
+                                Ok(album) => {
+                                    debug!("获取轮播专辑信息：{:?}", album);
+                                    let page = window.init_songlist_page(
+                                        &SongList {
+                                            id: album.id,
+                                            name: album.name.to_owned(),
+                                            cover_img_url: album.pic_url.to_owned(),
+                                            author: album.artist_name.to_owned(),
+                                        },
+                                        true,
+                                    );
+                                    window.page_new(&page, &album.name);
+                                    let page = page.downgrade();
+                                    let detal_dynamic_as =
+                                        ncmapi.client.album_detail_dynamic(album.id);
+                                    let dy = detal_dynamic_as.await.unwrap_or_else(|err| {
+                                        error!("{:?}", err);
+                                        AlbumDetailDynamic::default()
+                                    });
+                                    let detail = SongListDetail::Album(album, dy);
+                                    if let Some(page) = page.upgrade() {
+                                        window.update_songlist_page(page, &detail);
+                                    }
+                                }
+                                Err(err) => {
+                                    error!("获取轮播专辑信息失败！{:?}", err);
+                                }
+                            }
+                        });
+                    }
+                    TargetType::Unknown => (),
+                }
             }
             Action::AddPlay(song_info) => {
                 window.add_play(song_info.clone());
