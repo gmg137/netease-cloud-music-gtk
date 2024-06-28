@@ -44,7 +44,7 @@ impl TopListView {
         for t in &list {
             let action = ActionRow::builder()
                 .activatable(true)
-                .title(&t.name)
+                .title(glib::markup_escape_text(&t.name))
                 .title_lines(1)
                 .subtitle(&t.update)
                 .build();
