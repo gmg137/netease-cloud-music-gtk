@@ -14,7 +14,7 @@
                     </object>
                 </property>
                 <property name="flap">
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="scroll_lyrics_win">
                         <property name="width-request">500</property>
                         <child>
                             <object class="GtkViewport">
