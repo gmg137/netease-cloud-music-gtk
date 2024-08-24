@@ -142,7 +142,9 @@ impl PlayListLyricsPage {
             if (time >= lyr[0].0 && time < lyr[1].0)
                 || lyr[0].0 == lyr[1].0 && time >= lyr[0].0 && time < lyr[2].0
             {
-                playing_index = i;
+                if playing_index == 0 {
+                    playing_index = i;
+                }
                 buffer.insert_markup(
                     &mut iter,
                     &format!(
