@@ -157,7 +157,7 @@ impl PlayListLyricsPage {
         if *(self.imp().scrolled.lock().unwrap()) == 0 {
             let offset =
                 line_height * playing_index as f64 - height as f64 / 2.0 - line_height / 2.0;
-            adjustment.set_value(offset);
+            adjustment.set_value(offset.max(0f64));
         }
     }
 
