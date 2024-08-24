@@ -121,23 +121,27 @@ impl PlayListLyricsPage {
     }
 
     pub fn update_lyrics(&self, lyrics: Vec<(u64, String)>, time: u64) {
+        let mut last_playing_index = self.imp().last_playing_index.lock().unwrap();
+
         let mut lyrics = lyrics;
         // 填充空白行，以使用window(3)方法时可以到达最后一行
         lyrics.push((3600000000, "".to_string()));
         lyrics.push((3600000000, "".to_string()));
+        let playing_index = get_playing_index(&lyrics, time);
+        if playing_index == *last_playing_index {
+            return;
+        }
+
+        *last_playing_index = playing_index;
         let lyrics_text_view = self.imp().lyrics_text_view.get();
         let buffer = lyrics_text_view.buffer();
         buffer.set_text("");
         let mut iter = buffer.start_iter();
         let mut highlight_line_mark = None;
-        let mut playing_index = 0;
-        for (i, lyr) in lyrics.windows(3).enumerate() {
+        for lyr in lyrics.windows(3) {
             if (time >= lyr[0].0 && time < lyr[1].0)
                 || lyr[0].0 == lyr[1].0 && time >= lyr[0].0 && time < lyr[2].0
             {
-                if playing_index == 0 {
-                    playing_index = i;
-                }
                 if highlight_line_mark.is_none() {
                     highlight_line_mark = Some(buffer.create_mark(None, &iter, true));
                 }
@@ -192,6 +196,7 @@ mod imp {
         pub(crate) scrolled: Arc<Mutex<usize>>,
         pub playlist: Rc<RefCell<Vec<SongInfo>>>,
         pub sender: OnceCell<Sender<Action>>,
+        pub(crate) last_playing_index: Arc<Mutex<usize>>,
     }
 
     #[glib::object_subclass]
@@ -232,4 +237,15 @@ mod imp {
     }
     impl WidgetImpl for PlayListLyricsPage {}
     impl BinImpl for PlayListLyricsPage {}
+}
+
+fn get_playing_index(lyrics: &[(u64, String)], time: u64) -> usize {
+    for (i, lyr) in lyrics.windows(3).enumerate() {
+        if (time >= lyr[0].0 && time < lyr[1].0)
+            || lyr[0].0 == lyr[1].0 && time >= lyr[0].0 && time < lyr[2].0
+        {
+            return i;
+        }
+    }
+    0
 }
