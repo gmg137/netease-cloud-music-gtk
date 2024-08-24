@@ -147,7 +147,7 @@ impl PlayListLyricsPage {
                     &mut iter,
                     &format!(
                         r#"<span size="large" weight="bold" color="red">{}</span>"#,
-                        lyr[0].1
+                        lyr[0].1.replace("&", "&amp;")
                     ),
                 );
             } else {
