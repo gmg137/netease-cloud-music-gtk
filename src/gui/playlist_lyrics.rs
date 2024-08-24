@@ -126,17 +126,10 @@ impl PlayListLyricsPage {
         lyrics.push((3600000000, "".to_string()));
         lyrics.push((3600000000, "".to_string()));
         let lyrics_text_view = self.imp().lyrics_text_view.get();
-        let scroll_win = self.imp().scroll_lyrics_win.get();
-        let adjustment = scroll_win.vadjustment();
-        let height = scroll_win.allocated_height();
-
-        // the default value of line-height is normal, so the line-height in pixel is
-        // font-size * 1.2(normal)
-        let line_height = self.imp().font_size.get() * 1.2;
-
         let buffer = lyrics_text_view.buffer();
         buffer.set_text("");
         let mut iter = buffer.start_iter();
+        let mut highlight_line_mark = None;
         let mut playing_index = 0;
         for (i, lyr) in lyrics.windows(3).enumerate() {
             if (time >= lyr[0].0 && time < lyr[1].0)
@@ -144,6 +137,9 @@ impl PlayListLyricsPage {
             {
                 if playing_index == 0 {
                     playing_index = i;
+                }
+                if highlight_line_mark.is_none() {
+                    highlight_line_mark = Some(buffer.create_mark(None, &iter, true));
                 }
                 buffer.insert_markup(
                     &mut iter,
@@ -157,10 +153,9 @@ impl PlayListLyricsPage {
             }
         }
         if *(self.imp().scrolled.lock().unwrap()) == 0 {
-            let offset = line_height * playing_index as f64 - height as f64 / 2.0 - line_height / 2.0
-                    + 18.0 // text top-margin
-                    + 10.0; // text view margin-top
-            adjustment.set_value(offset.max(0f64));
+            if let Some(mark) = highlight_line_mark {
+                lyrics_text_view.scroll_to_mark(&mark, 0.0, true, 0.0, 0.5);
+            }
         }
     }
 

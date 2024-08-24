@@ -14,36 +14,32 @@
                     </object>
                 </property>
                 <property name="flap">
-                    <object class="GtkScrolledWindow" id="scroll_lyrics_win">
-                        <property name="width-request">500</property>
+                    <object class="AdwClamp">
+                        <property name="vexpand">true</property>
+                        <property name="hexpand">true</property>
+                        <property name="halign">fill</property>
+                        <property name="margin-top">10</property>
+                        <property name="margin-bottom">10</property>
+                        <property name="margin-start">20</property>
+                        <property name="margin-end">20</property>
+                        <property name="maximum-size">1000</property>
+                        <property name="tightening-threshold">730</property>
                         <child>
-                            <object class="GtkViewport">
+                            <object class="GtkScrolledWindow" id="scroll_lyrics_win">
+                                <property name="width-request">500</property>
                                 <child>
-                                    <object class="AdwClamp">
-                                        <property name="vexpand">true</property>
-                                        <property name="hexpand">true</property>
-                                        <property name="halign">fill</property>
-                                        <property name="margin-top">10</property>
-                                        <property name="margin-bottom">10</property>
-                                        <property name="margin-start">20</property>
-                                        <property name="margin-end">20</property>
-                                        <property name="maximum-size">1000</property>
-                                        <property name="tightening-threshold">730</property>
-                                        <child>
-                                            <object class="GtkTextView" id="lyrics_text_view">
-                                                <property name="hscroll-policy">natural</property>
-                                                <property name="vscroll-policy">natural</property>
-                                                <property name="pixels-below-lines">1</property>
-                                                <property name="editable">False</property>
-                                                <property name="justification">center</property>
-                                                <property name="left-margin">8</property>
-                                                <property name="right-margin">8</property>
-                                                <property name="top-margin">18</property>
-                                                <property name="bottom_margin">18</property>
-                                                <property name="cursor-visible">False</property>
-                                                <property name="accepts-tab">False</property>
-                                            </object>
-                                        </child>
+                                    <object class="GtkTextView" id="lyrics_text_view">
+                                        <property name="hscroll-policy">natural</property>
+                                        <property name="vscroll-policy">natural</property>
+                                        <property name="pixels-below-lines">1</property>
+                                        <property name="editable">False</property>
+                                        <property name="justification">center</property>
+                                        <property name="left-margin">8</property>
+                                        <property name="right-margin">8</property>
+                                        <property name="top-margin">18</property>
+                                        <property name="bottom_margin">18</property>
+                                        <property name="cursor-visible">False</property>
+                                        <property name="accepts-tab">False</property>
                                     </object>
                                 </child>
                             </object>
