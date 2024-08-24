@@ -180,6 +180,8 @@ impl NcmClient {
         tlyric_path.push(format!("{}.tlrc", si.id));
         // 替换歌词时间
         let re = regex::Regex::new(r"\[\d+:\d+.\d+\]").unwrap();
+        // 修正不正常的时间戳 [00:11:22]
+        let re_abnormal_ts = regex::Regex::new(r"^\[(\d+):(\d+):(\d+)\]").unwrap();
         if !lyric_path.exists() {
             if let Ok(lyr) = self.client.song_lyric(si.id).await {
                 debug!("歌词: {:?}", lyr);
@@ -205,11 +207,21 @@ impl NcmClient {
                     }
                 }
                 // 保存歌词文件
-                let lyric = lyr.lyric.into_iter().collect::<Vec<String>>().join("\n");
+                let lyric = lyr
+                    .lyric
+                    .into_iter()
+                    .map(|x| re_abnormal_ts.replace_all(&x, "[$1:$2.$3]").to_string())
+                    .collect::<Vec<String>>()
+                    .join("\n");
                 fs::write(&lyric_path, lyric)?;
                 if !lyr.tlyric.is_empty() {
                     // 保存翻译歌词文件
-                    let tlyric = lyr.tlyric.into_iter().collect::<Vec<String>>().join("\n");
+                    let tlyric = lyr
+                        .tlyric
+                        .into_iter()
+                        .map(|x| re_abnormal_ts.replace_all(&x, "[$1:$2.$3]").to_string())
+                        .collect::<Vec<String>>()
+                        .join("\n");
                     fs::write(&tlyric_path, tlyric)?;
                 }
                 // 组织歌词+翻译
