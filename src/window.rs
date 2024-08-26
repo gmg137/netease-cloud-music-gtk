@@ -709,11 +709,26 @@ impl NeteaseCloudMusicGtk4Window {
         self.page_new(page, &gettext("Play List&Lyrics"));
     }
 
-    pub fn update_lyrics(&self, lrc: Vec<(u64, String)>, time: u64) {
+    /// 更新歌词内容，不调整位置
+    pub fn update_lyrics(&self, lrc: Vec<(u64, String)>) {
+        let imp = self.imp();
+        let page = imp.playlist_lyrics_page.get().unwrap();
+        page.update_lyrics(lrc);
+    }
+
+    /// 强行更新歌词区文字，用于显示歌词加载提示
+    pub fn update_lyrics_text(&self, text: &str) {
+        let imp = self.imp();
+        let page = imp.playlist_lyrics_page.get().unwrap();
+        page.update_lyrics_text(text);
+    }
+
+    // 更新歌词高亮位置
+    pub fn update_lyrics_timestamp(&self, time: u64) {
         let imp = self.imp();
         let page = imp.playlist_lyrics_page.get().unwrap();
         if self.page_cur_playlist_lyrics_page() {
-            page.update_lyrics(lrc, time);
+            page.update_lyrics_highlight(time);
         }
     }
 
