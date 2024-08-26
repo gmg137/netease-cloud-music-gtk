@@ -1167,13 +1167,19 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::UpdateLyrics(si, time) => {
                 MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
-                    match ncmapi.get_lyrics(si).await {
-                        Ok(lrc) => {
-                            debug!("获取歌词：{:?}", lrc);
-                            window.update_lyrics(lrc, time);
+                    if time == 0 {
+                        // 当新曲目播放时，写入歌词内容
+                        window.update_lyrics_text(&gettext("Loading lyrics..."));
+                        match ncmapi.get_lyrics(si).await {
+                            Ok(lrc) => {
+                                debug!("获取歌词：{:?}", lrc);
+                                window.update_lyrics(lrc);
+                            }
+                            Err(e) => debug!("{}", e),
                         }
-                        Err(e) => debug!("{}", e),
                     }
+                    // 更新歌词高亮位置
+                    window.update_lyrics_timestamp(time);
                 });
             }
             Action::UpdatePlayListStatus(index) => {

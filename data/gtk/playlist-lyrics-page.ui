@@ -40,6 +40,22 @@
                                         <property name="bottom_margin">18</property>
                                         <property name="cursor-visible">False</property>
                                         <property name="accepts-tab">False</property>
+                                        <property name="buffer">
+                                            <object class="GtkTextBuffer" id="buffer">
+                                                <property name="tag_table">
+                                                    <object class="GtkTextTagTable">
+                                                        <child type="tag">
+                                                            <object class="GtkTextTag"
+                                                                id="highlight_text_tag">
+                                                                <property name="foreground">red</property>
+                                                                <property name="weight">700</property>
+                                                                <property name="size">13312</property>
+                                                            </object>
+                                                        </child>
+                                                    </object>
+                                                </property>
+                                            </object>
+                                        </property>
                                     </object>
                                 </child>
                             </object>

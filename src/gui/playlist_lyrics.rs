@@ -5,9 +5,9 @@
 //
 use adw::subclass::prelude::BinImpl;
 use async_channel::Sender;
-use gettextrs::gettext;
 use glib::{closure_local, ParamSpec, Value};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
+use log::warn;
 use ncm_api::SongInfo;
 use once_cell::sync::Lazy;
 use once_cell::sync::OnceCell;
@@ -53,11 +53,6 @@ impl PlayListLyricsPage {
         self.update_playlist(sis, si, likes);
         self.update_font_size();
         self.setup_scroll_controller();
-
-        let lyrics_text_view = imp.lyrics_text_view.get();
-        let buffer = lyrics_text_view.buffer();
-        buffer.set_text(&gettext("Loading lyrics..."));
-        lyrics_text_view.set_buffer(Some(&buffer));
     }
 
     fn setup_scroll_controller(&self) {
@@ -120,47 +115,70 @@ impl PlayListLyricsPage {
         self.switch_row(i);
     }
 
-    pub fn update_lyrics(&self, lyrics: Vec<(u64, String)>, time: u64) {
-        let mut last_playing_index = self.imp().last_playing_index.lock().unwrap();
+    pub fn update_lyrics_text(&self, text: &str) {
+        let buffer = self.imp().buffer.get();
+        buffer.set_text(text);
+    }
 
-        let mut lyrics = lyrics;
-        // 填充空白行，以使用window(3)方法时可以到达最后一行
-        lyrics.push((3600000000, "".to_string()));
-        lyrics.push((3600000000, "".to_string()));
-        let playing_index = get_playing_index(&lyrics, time);
-        if playing_index == *last_playing_index {
+    pub fn update_lyrics(&self, lyrics: Vec<(u64, String)>) {
+        let buffer = self.imp().buffer.get();
+        buffer.set_text(
+            &lyrics
+                .iter()
+                .map(|x| x.1.to_owned())
+                .collect::<Vec<_>>()
+                .join(""),
+        );
+        let mut current_lyrics = self.imp().current_lyrics.write().unwrap();
+        *current_lyrics = lyrics;
+    }
+
+    pub fn update_lyrics_highlight(&self, time: u64) {
+        let lyrics_text_view = self.imp().lyrics_text_view.get();
+        let lyrics = self.imp().current_lyrics.read().unwrap().clone();
+        let playing_indexes = get_playing_indexes(lyrics, time);
+        if playing_indexes.is_none() {
+            // 没有行需要高亮
             return;
         }
+        let (start, end) = playing_indexes.unwrap();
+        let center_mark = self.set_lyrics_highlight(start as i32, end as i32);
 
-        *last_playing_index = playing_index;
-        let lyrics_text_view = self.imp().lyrics_text_view.get();
-        let buffer = lyrics_text_view.buffer();
-        buffer.set_text("");
-        let mut iter = buffer.start_iter();
-        let mut highlight_line_mark = None;
-        for lyr in lyrics.windows(3) {
-            if (time >= lyr[0].0 && time < lyr[1].0)
-                || lyr[0].0 == lyr[1].0 && time >= lyr[0].0 && time < lyr[2].0
-            {
-                if highlight_line_mark.is_none() {
-                    highlight_line_mark = Some(buffer.create_mark(None, &iter, true));
-                }
-                buffer.insert_markup(
-                    &mut iter,
-                    &format!(
-                        r#"<span size="large" weight="bold" color="red">{}</span>"#,
-                        lyr[0].1.replace("&", "&amp;")
-                    ),
-                );
-            } else {
-                buffer.insert(&mut iter, &lyr[0].1);
-            }
-        }
-        if *(self.imp().scrolled.lock().unwrap()) == 0 {
-            if let Some(mark) = highlight_line_mark {
+        if let Some(mark) = center_mark {
+            if *(self.imp().scrolled.lock().unwrap()) == 0 {
                 lyrics_text_view.scroll_to_mark(&mark, 0.0, true, 0.0, 0.5);
             }
         }
+    }
+
+    fn set_lyrics_highlight(&self, line_start: i32, line_end: i32) -> Option<TextMark> {
+        let highlight_text_tag = self.imp().highlight_text_tag.get();
+        let buffer = self.imp().buffer.get();
+
+        let mut mark_to_return = None;
+        buffer.remove_tag(
+            &highlight_text_tag,
+            &buffer.start_iter(),
+            &buffer.end_iter(),
+        );
+        // gtk doesn't seem to be happy to apply tags to a multi-line TextIter region after an immediate `remove_tag``, so we apply tags line by line
+        for i in line_start..=line_end {
+            let start = buffer.iter_at_line(i);
+            if start.is_none() {
+                continue;
+            }
+            let start = start.unwrap();
+            if mark_to_return.is_none() {
+                mark_to_return = Some(buffer.create_mark(None, &start, true))
+            }
+            let mut end = start;
+            if !start.ends_line() {
+                end.forward_to_line_end();
+            }
+            buffer.apply_tag(&highlight_text_tag, &start, &end);
+        }
+
+        mark_to_return
     }
 
     pub fn switch_row(&self, index: i32) {
@@ -178,7 +196,7 @@ mod imp {
 
     use std::{
         cell::Cell,
-        sync::{Arc, Mutex},
+        sync::{Arc, Mutex, RwLock},
     };
 
     use super::*;
@@ -192,11 +210,15 @@ mod imp {
         pub scroll_lyrics_win: TemplateChild<ScrolledWindow>,
         #[template_child]
         pub lyrics_text_view: TemplateChild<TextView>,
+        #[template_child]
+        pub buffer: TemplateChild<TextBuffer>,
+        #[template_child]
+        pub highlight_text_tag: TemplateChild<TextTag>,
         pub(crate) font_size: Cell<f64>,
         pub(crate) scrolled: Arc<Mutex<usize>>,
         pub playlist: Rc<RefCell<Vec<SongInfo>>>,
         pub sender: OnceCell<Sender<Action>>,
-        pub(crate) last_playing_index: Arc<Mutex<usize>>,
+        pub current_lyrics: Arc<RwLock<Vec<(u64, String)>>>,
     }
 
     #[glib::object_subclass]
@@ -239,13 +261,24 @@ mod imp {
     impl BinImpl for PlayListLyricsPage {}
 }
 
-fn get_playing_index(lyrics: &[(u64, String)], time: u64) -> usize {
+fn get_playing_indexes(mut lyrics: Vec<(u64, String)>, time: u64) -> Option<(usize, usize)> {
+    // 填充空白行，以使用window(3)方法时可以到达最后一行
+    lyrics.push((3600000000, "".to_string()));
+    lyrics.push((3600000000, "".to_string()));
     for (i, lyr) in lyrics.windows(3).enumerate() {
         if (time >= lyr[0].0 && time < lyr[1].0)
             || lyr[0].0 == lyr[1].0 && time >= lyr[0].0 && time < lyr[2].0
         {
-            return i;
+            if lyr[0].0 == lyr[1].0 {
+                // 也包含翻译行
+                warn!("also has translation {}", i);
+                return Some((i, i + 1));
+            } else {
+                warn!("no translation {}", i);
+                // 不包含翻译行
+                return Some((i, i));
+            }
         }
     }
-    0
+    None
 }
