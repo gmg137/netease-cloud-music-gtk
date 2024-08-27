@@ -51,7 +51,6 @@ impl PlayListLyricsPage {
         let songs_list = imp.songs_list.get();
         songs_list.clear_list();
         self.update_playlist(sis, si, likes);
-        self.update_font_size();
         self.setup_scroll_controller();
     }
 
@@ -74,24 +73,6 @@ impl PlayListLyricsPage {
             glib::Propagation::Proceed
         });
         scroll_win.add_controller(scroll_controller);
-    }
-
-    fn update_font_size(&self) {
-        let imp = self.imp();
-        let lyrics_text_view = imp.lyrics_text_view.get();
-        let pango_context = lyrics_text_view.pango_context();
-        let font_description = pango_context
-            .font_description()
-            .expect("expect font description");
-        let font_size = font_description.size();
-
-        let font_size_in_pixels = if font_description.is_size_absolute() {
-            font_size as f64 / pango::SCALE as f64
-        } else {
-            font_size as f64 / pango::SCALE as f64
-        };
-
-        imp.font_size.replace(font_size_in_pixels);
     }
 
     pub fn update_playlist(&self, sis: &[SongInfo], current_song: SongInfo, likes: &[bool]) {
@@ -214,7 +195,6 @@ mod imp {
         pub buffer: TemplateChild<TextBuffer>,
         #[template_child]
         pub highlight_text_tag: TemplateChild<TextTag>,
-        pub(crate) font_size: Cell<f64>,
         pub(crate) scrolled: Arc<Mutex<usize>>,
         pub playlist: Rc<RefCell<Vec<SongInfo>>>,
         pub sender: OnceCell<Sender<Action>>,
