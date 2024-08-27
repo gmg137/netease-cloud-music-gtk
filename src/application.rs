@@ -53,6 +53,7 @@ pub enum Action {
     PlayStart(SongInfo),
     AddPlayList(Vec<SongInfo>),
     PlayListStart,
+    PersistVolume(f64),
 
     // login
     CheckLogin(UserMenuChild, CookieJar),
@@ -755,6 +756,9 @@ impl NeteaseCloudMusicGtk4Application {
                         }
                     }
                 });
+            }
+            Action::PersistVolume(value) => {
+                window.persist_volume(value);
             }
             Action::ToAlbumPage(songlist) => {
                 let page = window.init_songlist_page(&songlist, true);

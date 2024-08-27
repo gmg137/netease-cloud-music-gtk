@@ -616,6 +616,10 @@ impl NeteaseCloudMusicGtk4Window {
         }
         None
     }
+    pub fn persist_volume(&self,value: f64) {
+        let imp = self.imp();
+        imp.player_controls.persist_volume(value);
+    }
     pub fn page_cur_playlist_lyrics_page(&self) -> bool {
         let imp = self.imp();
         let page = imp.playlist_lyrics_page.get().unwrap();
