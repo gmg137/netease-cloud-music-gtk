@@ -18,7 +18,9 @@ use mpris_server::PlaybackStatus;
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::*;
 
-use crate::{application::Action, audio::*, model::ImageDownloadImpl, path::CACHE};
+use crate::{
+    application::Action, audio::*, model::ImageDownloadImpl, path::CACHE, utils::Debounce,
+};
 use std::{
     cell::Cell,
     fs, path,
@@ -91,6 +93,12 @@ impl PlayerControls {
         if let Some(mpris) = self.imp().mpris.get() {
             mpris.setup_signals(self);
         }
+    }
+
+    pub fn setup_debounce(&self) {
+        let imp = self.imp();
+        let debounce = Debounce::new();
+        imp.debounce.set(debounce).unwrap();
     }
 
     pub fn setup_player(&self) {
@@ -597,7 +605,21 @@ impl PlayerControls {
             self.set_property("volume", value);
             let player = self.imp().player.get().unwrap();
             player.set_volume(value);
+            if self.imp().sender.get().is_none() {
+                // if sender is not ready, just return
+                return;
+            }
+            let debounce = self.imp().debounce.get().unwrap();
+            let sender = self.imp().sender.get().unwrap().clone();
+            debounce.debounce(1, move || {
+                let _ = sender.send_blocking(Action::PersistVolume(value));
+            });
         }
+    }
+
+    pub fn persist_volume(&self, value: f64) {
+        let settings = self.imp().settings.get().unwrap();
+        settings.set_double("volume", value).unwrap();
     }
 
     pub fn setup_notify_connect(&self) {
@@ -717,6 +739,8 @@ mod imp {
 
     use gst::glib::Propagation;
 
+    use crate::utils::Debounce;
+
     use super::*;
 
     #[derive(Debug, Default, CompositeTemplate)]
@@ -764,6 +788,7 @@ mod imp {
         pub player_signal: OnceCell<gstreamer_play::PlaySignalAdapter>,
         pub playlist: Arc<Mutex<PlayList>>,
         pub mpris: OnceCell<Rc<MprisController>>,
+        pub debounce: OnceCell<Debounce>,
 
         volume: Cell<f64>,
         loops: Cell<LoopsState>,
@@ -968,6 +993,8 @@ mod imp {
             obj.setup_settings();
 
             obj.setup_notify_connect();
+
+            obj.setup_debounce();
 
             obj.load_settings();
             obj.bind_shortcut();
