@@ -15,30 +15,10 @@ jobs:
       # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
       fail-fast: false
 
-      # Set up a matrix to run the following 3 configurations:
-      # 1. <Windows, Release, latest MSVC compiler toolchain on the default runner image, default generator>
-      # 2. <Linux, Release, latest GCC compiler toolchain on the default runner image, default generator>
-      # 3. <Linux, Release, latest Clang compiler toolchain on the default runner image, default generator>
-      #
-      # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
       matrix:
         os: [ubuntu-latest, macos-12]
         build_type: [Release]
-        pm: [apt, brew]
-        ssl: [libssl-dev, openssl@3]
-        gtk: [libgtk-4-dev libadwaita-1-dev, gtk4 libadwaita]
-        decoder: [libgstreamer-plugins-bad1.0-dev, gstreamer-development]
-        include:
-          - os: macos-12
-            pm: brew
-            ssl: openssl@3
-            gtk: gtk4 libadwaita
-            decoder: gstreamer-development
-          - os: ubuntu-latest
-            pm: apt
-            ssl: libssl-dev
-            gtk: libgtk-4-dev libadwaita-1-dev
-            decoder: libgstreamer-plugins-bad1.0-dev
+
 
     steps:
     - uses: actions/checkout@v4
@@ -52,12 +32,13 @@ jobs:
 
     - name: Configure dependency
       run: |
-        ${{ matrix.pm}} install meson dbus \
-        ${{ matrix.ssl }} \
-        ${{ matrix.gtk }} \
-        ${{ matrix.decoder }}
-        #-DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        #-S ${{ github.workspace }}
+        if [[ $(uname) == "Linux" ]]; then
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        fi
+        brew install meson dbus \
+        openssl@3 \
+        libadwaita \
+        gstreamer
 
     - name: Build
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
