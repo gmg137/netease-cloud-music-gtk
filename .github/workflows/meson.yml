@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        os: [ubuntu-latest, macos-12]
+        os: [ubuntu-latest, macos-12, macos-latest]
         build_type: [Release]
 
 
@@ -31,12 +31,14 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
     - name: Configure dependency
+      # macOS gstreamer denpends on dbus, so we don't write here
       run: |
         if [[ $(uname) == "Linux" ]]; then
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         fi
-        brew install meson dbus \
+        brew install meson \
         openssl@3 \
+        # libadwaita installs gtk4 
         libadwaita \
         gstreamer
 
@@ -44,6 +46,9 @@ jobs:
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: |
+        if [[ $(uname) == "Linux" ]]; then
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        fi
         meson ${{ steps.strings.outputs.build-output-dir }}
         cd ${{ steps.strings.outputs.build-output-dir }}
         ninja
