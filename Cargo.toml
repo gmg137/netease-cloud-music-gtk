@@ -4,7 +4,7 @@ version = "2.4.1"
 edition = "2021"
 
 [dependencies]
-gettext-rs = { version = "~0.7", features = ["gettext-system"] }
+gettext-rs = { version = "=0.7.0", features = ["gettext-system"] }
 gtk = { version = "~0.8", package = "gtk4" }
 once_cell = "~1.19"
 qrcode-generator = "~4.1"
