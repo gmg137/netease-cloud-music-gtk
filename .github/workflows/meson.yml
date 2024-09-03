@@ -37,9 +37,9 @@ jobs:
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         fi
         brew install gettext meson \
-        openssl@3 \
-        libadwaita \
-        gstreamer
+          openssl@3 \
+          libadwaita adwaita-icon-theme \
+          gstreamer
 
     - name: Build
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
