@@ -38,7 +38,6 @@ jobs:
         fi
         brew install meson \
         openssl@3 \
-        # libadwaita installs gtk4 
         libadwaita \
         gstreamer
 
