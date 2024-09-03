@@ -36,7 +36,7 @@ jobs:
         if [[ $(uname) == "Linux" ]]; then
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         fi
-        brew install meson \
+        brew install gettext meson \
         openssl@3 \
         libadwaita \
         gstreamer
