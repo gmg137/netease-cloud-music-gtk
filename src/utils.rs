@@ -32,3 +32,9 @@ impl Debounce {
         *guard = Some(new_timer_id);
     }
 }
+
+impl Default for Debounce {
+    fn default() -> Self {
+        Self::new()
+    }
+}

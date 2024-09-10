@@ -137,7 +137,7 @@ impl PlayerControls {
         sender
             .send_blocking(Action::AddToast(gettext!(
                 "Start playback [{}] ...",
-                song_info.name
+                song_info.name,
             )))
             .unwrap();
 
@@ -168,7 +168,7 @@ impl PlayerControls {
         if path_cover.exists() {
             cover_image.set_from_file(Some(&path_cover));
         } else {
-            cover_image.set_from_icon_name(Some("image-missing-symbolic"));
+            cover_image.set_icon_name(Some("image-missing-symbolic"));
             let sender = imp.sender.get().unwrap().clone();
             cover_image.set_from_net(
                 song_info.pic_url.to_owned(),
@@ -189,19 +189,23 @@ impl PlayerControls {
         if let Some(mpris) = imp.mpris.get() {
             crate::MAINCONTEXT.spawn_local_with_priority(
                 Priority::LOW,
-                clone!(@weak mpris => async move {
-                    if let Err(err) = mpris.update_metadata(&song_info).await {
-                        warn!("设置 MPRIS metadata 失败: {err:?}");
+                clone!(
+                    #[weak]
+                    mpris,
+                    async move {
+                        if let Err(err) = mpris.update_metadata(&song_info).await {
+                            warn!("设置 MPRIS metadata 失败: {err:?}");
+                        }
+                        if let Err(err) = mpris.set_playback_status(PlaybackStatus::Playing).await {
+                            warn!("设置 MPRIS 播放状态失败: {err:?}");
+                        }
+                        if let Err(err) = mpris.set_volume(volume).await {
+                            warn!("设置 MPRIS 音量失败: {err:?}");
+                        }
+                        mpris.set_position(0);
+                        mpris.seeked(0).await.ok();
                     }
-                    if let Err(err) = mpris.set_playback_status(PlaybackStatus::Playing).await {
-                        warn!("设置 MPRIS 播放状态失败: {err:?}");
-                    }
-                    if let Err(err) = mpris.set_volume(volume).await {
-                        warn!("设置 MPRIS 音量失败: {err:?}");
-                    }
-                    mpris.set_position(0);
-                    mpris.seeked(0).await.ok();
-                }),
+                ),
             );
         }
     }
@@ -265,7 +269,7 @@ impl PlayerControls {
             sender
                 .send_blocking(Action::AddToast(gettext!(
                     "Playback error:{}",
-                    e.to_string()
+                    e.to_string(),
                 )))
                 .unwrap();
             sender.send_blocking(Action::PlayNextSong).unwrap();
@@ -304,9 +308,13 @@ impl PlayerControls {
             mpris.set_position(msec as i64);
             crate::MAINCONTEXT.spawn_local_with_priority(
                 Priority::LOW,
-                clone!(@weak mpris => async move {
-                    mpris.seeked(msec as i64).await.ok();
-                }),
+                clone!(
+                    #[weak]
+                    mpris,
+                    async move {
+                        mpris.seeked(msec as i64).await.ok();
+                    }
+                ),
             );
         }
 
@@ -327,9 +335,13 @@ impl PlayerControls {
             mpris.set_position(value as i64);
             crate::MAINCONTEXT.spawn_local_with_priority(
                 Priority::LOW,
-                clone!(@weak mpris => async move {
-                    mpris.seeked(value as i64).await.ok();
-                }),
+                clone!(
+                    #[weak]
+                    mpris,
+                    async move {
+                        mpris.seeked(value as i64).await.ok();
+                    }
+                ),
             );
         }
     }
@@ -357,9 +369,13 @@ impl PlayerControls {
                 si.duration = msec / 1000;
                 crate::MAINCONTEXT.spawn_local_with_priority(
                     Priority::LOW,
-                    clone!(@weak mpris => async move {
-                        mpris.update_metadata(&si).await.ok();
-                    }),
+                    clone!(
+                        #[weak]
+                        mpris,
+                        async move {
+                            mpris.update_metadata(&si).await.ok();
+                        }
+                    ),
                 );
             }
         }
@@ -537,11 +553,15 @@ impl PlayerControls {
         if let Some(mpris) = imp.mpris.get() {
             crate::MAINCONTEXT.spawn_local_with_priority(
                 Priority::LOW,
-                clone!(@weak mpris => async move {
-                    if let Err(err) = mpris.set_playback_status(PlaybackStatus::Playing).await {
-                        warn!("设置 MPRIS 播放状态失败: {err:?}");
+                clone!(
+                    #[weak]
+                    mpris,
+                    async move {
+                        if let Err(err) = mpris.set_playback_status(PlaybackStatus::Playing).await {
+                            warn!("设置 MPRIS 播放状态失败: {err:?}");
+                        }
                     }
-                }),
+                ),
             );
         }
     }
@@ -554,11 +574,15 @@ impl PlayerControls {
         if let Some(mpris) = imp.mpris.get() {
             crate::MAINCONTEXT.spawn_local_with_priority(
                 Priority::LOW,
-                clone!(@weak mpris => async move {
-                    if let Err(err) = mpris.set_playback_status(PlaybackStatus::Paused).await {
-                        warn!("设置 MPRIS 播放状态失败: {err:?}");
+                clone!(
+                    #[weak]
+                    mpris,
+                    async move {
+                        if let Err(err) = mpris.set_playback_status(PlaybackStatus::Paused).await {
+                            warn!("设置 MPRIS 播放状态失败: {err:?}");
+                        }
                     }
-                }),
+                ),
             );
         }
     }
@@ -571,11 +595,15 @@ impl PlayerControls {
         if let Some(mpris) = imp.mpris.get() {
             crate::MAINCONTEXT.spawn_local_with_priority(
                 Priority::LOW,
-                clone!(@weak mpris => async move {
-                    if let Err(err) = mpris.set_playback_status(PlaybackStatus::Stopped).await {
-                        warn!("设置 MPRIS 播放状态失败: {err:?}");
+                clone!(
+                    #[weak]
+                    mpris,
+                    async move {
+                        if let Err(err) = mpris.set_playback_status(PlaybackStatus::Stopped).await {
+                            warn!("设置 MPRIS 播放状态失败: {err:?}");
+                        }
                     }
-                }),
+                ),
             );
         }
     }
@@ -637,11 +665,15 @@ impl PlayerControls {
                 if let Some(mpris) = imp.mpris.get() {
                     crate::MAINCONTEXT.spawn_local_with_priority(
                         Priority::LOW,
-                        clone!(@weak mpris => async move {
-                            if let Err(err) = mpris.set_volume(value).await {
-                                warn!("设置 MPRIS 音量失败: {err:?}");
+                        clone!(
+                            #[weak]
+                            mpris,
+                            async move {
+                                if let Err(err) = mpris.set_volume(value).await {
+                                    warn!("设置 MPRIS 音量失败: {err:?}");
+                                }
                             }
-                        }),
+                        ),
                     );
                 }
             }
@@ -660,11 +692,15 @@ impl PlayerControls {
                 if let Some(mpris) = imp.mpris.get() {
                     crate::MAINCONTEXT.spawn_local_with_priority(
                         Priority::LOW,
-                        clone!(@weak mpris => async move {
-                            if let Err(err) = mpris.set_loop_status(value).await {
-                                warn!("设置 MPRIS 循环状态失败: {err:?}");
+                        clone!(
+                            #[weak]
+                            mpris,
+                            async move {
+                                if let Err(err) = mpris.set_loop_status(value).await {
+                                    warn!("设置 MPRIS 循环状态失败: {err:?}");
+                                }
                             }
-                        }),
+                        ),
                     );
                 }
 
@@ -853,11 +889,17 @@ mod imp {
                 if let Some(mpris) = self.mpris.get() {
                     crate::MAINCONTEXT.spawn_local_with_priority(
                         Priority::LOW,
-                        clone!(@weak mpris => async move {
-                            if let Err(err) = mpris.set_playback_status(PlaybackStatus::Playing).await {
-                                warn!("设置 MPRIS 播放状态失败: {err:?}");
+                        clone!(
+                            #[weak]
+                            mpris,
+                            async move {
+                                if let Err(err) =
+                                    mpris.set_playback_status(PlaybackStatus::Playing).await
+                                {
+                                    warn!("设置 MPRIS 播放状态失败: {err:?}");
+                                }
                             }
-                        }),
+                        ),
                     );
                 }
             } else {
@@ -866,11 +908,17 @@ mod imp {
                 if let Some(mpris) = self.mpris.get() {
                     crate::MAINCONTEXT.spawn_local_with_priority(
                         Priority::LOW,
-                        clone!(@weak mpris => async move {
-                            if let Err(err) = mpris.set_playback_status(PlaybackStatus::Paused).await {
-                                warn!("设置 MPRIS 播放状态失败: {err:?}");
+                        clone!(
+                            #[weak]
+                            mpris,
+                            async move {
+                                if let Err(err) =
+                                    mpris.set_playback_status(PlaybackStatus::Paused).await
+                                {
+                                    warn!("设置 MPRIS 播放状态失败: {err:?}");
+                                }
                             }
-                        }),
+                        ),
                     );
                 }
             }

@@ -146,63 +146,90 @@ impl MprisController {
         });
 
         // mpris play / pause
-        self.mpris_player.connect_play_pause(
-            clone!(@weak self.mpris_player as mpris, @weak player_controls => move |_| {
+        self.mpris_player.connect_play_pause(clone!(
+            #[weak(rename_to = mpris)]
+            self.mpris_player,
+            #[weak]
+            player_controls,
+            move |_| {
                 match mpris.playback_status() {
                     PlaybackStatus::Paused => player_controls.switch_play(),
                     PlaybackStatus::Stopped => player_controls.switch_play(),
                     _ => player_controls.switch_pause(),
                 };
-            }),
-        );
+            }
+        ));
 
         // mpris play
-        self.mpris_player
-            .connect_play(clone!(@weak player_controls => move |_| {
-                    player_controls.switch_play();
-            }));
+        self.mpris_player.connect_play(clone!(
+            #[weak]
+            player_controls,
+            move |_| {
+                player_controls.switch_play();
+            }
+        ));
 
         // mpris pause
-        self.mpris_player
-            .connect_pause(clone!(@weak player_controls => move |_| {
-                    player_controls.switch_pause();
-            }));
+        self.mpris_player.connect_pause(clone!(
+            #[weak]
+            player_controls,
+            move |_| {
+                player_controls.switch_pause();
+            }
+        ));
 
         // mpris stop
-        self.mpris_player
-            .connect_stop(clone!(@weak player_controls => move |_| {
-                    player_controls.switch_stop();
-            }));
+        self.mpris_player.connect_stop(clone!(
+            #[weak]
+            player_controls,
+            move |_| {
+                player_controls.switch_stop();
+            }
+        ));
 
         // mpris next
-        self.mpris_player
-            .connect_next(clone!(@weak player_controls => move |_| {
-                    player_controls.next_song();
-            }));
+        self.mpris_player.connect_next(clone!(
+            #[weak]
+            player_controls,
+            move |_| {
+                player_controls.next_song();
+            }
+        ));
 
         // mpris prev
-        self.mpris_player
-            .connect_previous(clone!(@weak player_controls => move |_| {
-                    player_controls.prev_song();
-            }));
+        self.mpris_player.connect_previous(clone!(
+            #[weak]
+            player_controls,
+            move |_| {
+                player_controls.prev_song();
+            }
+        ));
 
         // mpris loop
-        self.mpris_player.connect_set_loop_status(
-            clone!(@weak player_controls => move |_, status| {
+        self.mpris_player.connect_set_loop_status(clone!(
+            #[weak]
+            player_controls,
+            move |_, status| {
                 player_controls.set_loops(LoopsState::from(status));
-            }),
-        );
+            }
+        ));
 
         // mpris shuffle
-        self.mpris_player
-            .connect_set_shuffle(clone!(@weak player_controls => move |_, status| {
-                    player_controls.set_shuffle(status);
-            }));
+        self.mpris_player.connect_set_shuffle(clone!(
+            #[weak]
+            player_controls,
+            move |_, status| {
+                player_controls.set_shuffle(status);
+            }
+        ));
 
         // mpris volume
-        self.mpris_player
-            .connect_set_volume(clone!(@weak player_controls => move |_, value| {
-                    player_controls.set_volume(value);
-            }));
+        self.mpris_player.connect_set_volume(clone!(
+            #[weak]
+            player_controls,
+            move |_, value| {
+                player_controls.set_volume(value);
+            }
+        ));
     }
 }

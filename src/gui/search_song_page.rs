@@ -138,11 +138,16 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj();
 
-            self.songs_list.imp().scroll_win.connect_edge_overshot(
-                clone!(@weak obj as s => move|_, pos| {
-                    s.scrolled_edge_cb(pos);
-                }),
-            );
+            self.songs_list
+                .imp()
+                .scroll_win
+                .connect_edge_overshot(clone!(
+                    #[weak(rename_to = s)]
+                    obj,
+                    move |_, pos| {
+                        s.scrolled_edge_cb(pos);
+                    }
+                ));
         }
 
         fn properties() -> &'static [ParamSpec] {

@@ -253,22 +253,28 @@ mod imp {
             let (sender, receiver) = unbounded();
             self.timeout_sender.set(sender).unwrap();
             let carousel = self.carousel.get();
-            glib::spawn_future_local(clone!(@weak carousel => async move {
-                while (receiver.recv().await).is_ok() {
-                    let current_page = carousel.position();
-                    let n_pages = carousel.n_pages();
-                    let mut animate = true;
-                    if n_pages == 0 {
-                        break;
+            glib::spawn_future_local(clone!(
+                #[weak]
+                carousel,
+                async move {
+                    while (receiver.recv().await).is_ok() {
+                        let current_page = carousel.position();
+                        let n_pages = carousel.n_pages();
+                        let mut animate = true;
+                        if n_pages == 0 {
+                            break;
+                        }
+                        let new_page = (current_page + 1. + n_pages as f64) % n_pages as f64;
+                        let widget = carousel.nth_page(new_page as u32);
+                        if (new_page == 0.0 && 1. > 0.)
+                            || (new_page as u32 == n_pages - 1 && 1. < 0.)
+                        {
+                            animate = false;
+                        }
+                        carousel.scroll_to(&widget, animate);
                     }
-                    let new_page = (current_page + 1. + n_pages as f64) % n_pages as f64;
-                    let widget = carousel.nth_page(new_page as u32);
-                    if (new_page == 0.0 && 1. > 0.) || (new_page as u32 == n_pages - 1 && 1. < 0.) {
-                        animate = false;
-                    }
-                    carousel.scroll_to(&widget, animate);
                 }
-            }));
+            ));
             Self::show_relative_page(self.carousel.get(), 0.);
         }
     }

@@ -252,22 +252,28 @@ impl NeteaseCloudMusicGtk4Window {
 
         // 设置搜索动作
         let action_search = SimpleAction::new("search-button", None);
-        action_search.connect_activate(
-            clone!(@weak search_button, @weak search_entry => move |_,_|{
+        action_search.connect_activate(clone!(
+            #[weak]
+            search_button,
+            move |_, _| {
                 search_button.emit_clicked();
-            }),
-        );
+            }
+        ));
         self.add_action(&action_search);
 
         let search_bar = imp.search_bar.get();
-        search_bar.connect_search_mode_enabled_notify(clone!(@weak search_entry =>move |bar| {
-            if bar.is_search_mode() {
-                // 清空搜索框
-                search_entry.set_text("");
-                // 使搜索框获取输入焦点
-                search_entry.grab_focus();
+        search_bar.connect_search_mode_enabled_notify(clone!(
+            #[weak]
+            search_entry,
+            move |bar| {
+                if bar.is_search_mode() {
+                    // 清空搜索框
+                    search_entry.set_text("");
+                    // 使搜索框获取输入焦点
+                    search_entry.grab_focus();
+                }
             }
-        }));
+        ));
 
         // 设置返回键功能
         let action_back = SimpleAction::new("back-button", None);
@@ -616,7 +622,7 @@ impl NeteaseCloudMusicGtk4Window {
         }
         None
     }
-    pub fn persist_volume(&self,value: f64) {
+    pub fn persist_volume(&self, value: f64) {
         let imp = self.imp();
         imp.player_controls.persist_volume(value);
     }

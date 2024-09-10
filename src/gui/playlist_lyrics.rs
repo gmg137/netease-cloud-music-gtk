@@ -175,10 +175,7 @@ impl Default for PlayListLyricsPage {
 
 mod imp {
 
-    use std::{
-        cell::Cell,
-        sync::{Arc, Mutex, RwLock},
-    };
+    use std::sync::{Arc, Mutex, RwLock};
 
     use super::*;
 
