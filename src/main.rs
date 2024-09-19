@@ -5,6 +5,7 @@ mod gui;
 mod model;
 mod ncmapi;
 mod path;
+mod utils;
 mod window;
 
 use self::application::NeteaseCloudMusicGtk4Application;

@@ -73,13 +73,17 @@ impl SongListView {
             row.set_remove_button_visible(!no_act_remove);
 
             let si = si.clone();
-            row.connect_activate(clone!(@weak self as s => move |row| {
-                if row.is_activatable() || row.not_ignore_grey() {
-                    row.switch_image(true);
-                    sender.send_blocking(Action::AddPlay(si.clone())).unwrap();
-                    s.emit_row_activated(row);
+            row.connect_activate(clone!(
+                #[weak(rename_to = s)]
+                self,
+                move |row| {
+                    if row.is_activatable() || row.not_ignore_grey() {
+                        row.switch_image(true);
+                        sender.send_blocking(Action::AddPlay(si.clone())).unwrap();
+                        s.emit_row_activated(row);
+                    }
                 }
-            }));
+            ));
 
             settings
                 .bind("not-ignore-grey", &row, "not-ignore-grey")

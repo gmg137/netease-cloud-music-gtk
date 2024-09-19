@@ -63,7 +63,7 @@ impl SonglistPage {
         let mut path = CACHE.clone();
         path.push(format!("{}-songlist.jpg", songlist.id));
         if !path.exists() {
-            cover_image.set_from_icon_name(Some("image-missing-symbolic"));
+            cover_image.set_icon_name(Some("image-missing-symbolic"));
             cover_image.set_from_net(songlist.cover_img_url.to_owned(), path, (140, 140), sender);
         } else {
             cover_image.set_from_file(Some(&path));

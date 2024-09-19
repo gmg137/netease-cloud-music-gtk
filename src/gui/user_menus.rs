@@ -110,31 +110,52 @@ impl UserMenus {
         });
 
         let sender = self.sender.get().unwrap().clone();
-        self.captcha_button.connect_clicked(
-            clone!(@weak self.ctcode_entry as ctcode, @weak self.phone_entry as phone => move |_| {
+        self.captcha_button.connect_clicked(clone!(
+            #[weak(rename_to = ctcode)]
+            self.ctcode_entry,
+            #[weak(rename_to = phone)]
+            self.phone_entry,
+            move |_| {
                 let ctcode = ctcode.text().to_string();
                 let phone = phone.text().to_string();
-                    if ctcode.parse::<u64>().is_ok() &&  phone.parse::<u64>().is_ok() {
-                        sender.send_blocking(Action::GetCaptcha(ctcode,phone)).unwrap();
-                    }else {
-                        sender.send_blocking(Action::AddToast(gettext("Input format error!"))).unwrap();
-                    }
-            }),
-        );
+                if ctcode.parse::<u64>().is_ok() && phone.parse::<u64>().is_ok() {
+                    sender
+                        .send_blocking(Action::GetCaptcha(ctcode, phone))
+                        .unwrap();
+                } else {
+                    sender
+                        .send_blocking(Action::AddToast(gettext("Input format error!")))
+                        .unwrap();
+                }
+            }
+        ));
 
         let sender = self.sender.get().unwrap().clone();
-        self.login_button.connect_clicked(
-            clone!(@weak self.ctcode_entry as ctcode, @weak self.phone_entry as phone, @weak self.captcha_entry as captcha => move |_| {
+        self.login_button.connect_clicked(clone!(
+            #[weak(rename_to = ctcode)]
+            self.ctcode_entry,
+            #[weak(rename_to = phone)]
+            self.phone_entry,
+            #[weak(rename_to = captcha)]
+            self.captcha_entry,
+            move |_| {
                 let ctcode = ctcode.text().to_string();
                 let phone = phone.text().to_string();
                 let captcha = captcha.text().to_string();
-                    if ctcode.parse::<u64>().is_ok() &&  phone.parse::<u64>().is_ok() && !captcha.is_empty() {
-                        sender.send_blocking(Action::CaptchaLogin(ctcode, phone, captcha)).unwrap();
-                    }else {
-                        sender.send_blocking(Action::AddToast(gettext("Input format error!"))).unwrap();
-                    }
-            }),
-        );
+                if ctcode.parse::<u64>().is_ok()
+                    && phone.parse::<u64>().is_ok()
+                    && !captcha.is_empty()
+                {
+                    sender
+                        .send_blocking(Action::CaptchaLogin(ctcode, phone, captcha))
+                        .unwrap();
+                } else {
+                    sender
+                        .send_blocking(Action::AddToast(gettext("Input format error!")))
+                        .unwrap();
+                }
+            }
+        ));
 
         let sender = self.sender.get().unwrap().clone();
         self.logout_button.connect_clicked(move |_| {

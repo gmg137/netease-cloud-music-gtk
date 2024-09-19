@@ -53,6 +53,7 @@ pub enum Action {
     PlayStart(SongInfo),
     AddPlayList(Vec<SongInfo>),
     PlayListStart,
+    PersistVolume(f64),
 
     // login
     CheckLogin(UserMenuChild, CookieJar),
@@ -193,11 +194,15 @@ mod imp {
             let receiver = self.receiver.borrow_mut().take().unwrap();
             MAINCONTEXT.spawn_local_with_priority(
                 Priority::HIGH,
-                clone!(@strong app => async move {
-                    while let Ok(action) = receiver.recv().await {
-                        app.process_action(action);
+                clone!(
+                    #[strong]
+                    app,
+                    async move {
+                        while let Ok(action) = receiver.recv().await {
+                            app.process_action(action);
+                        }
                     }
-                }),
+                ),
             );
 
             // Ask the window manager/compositor to present the window
@@ -756,6 +761,9 @@ impl NeteaseCloudMusicGtk4Application {
                     }
                 });
             }
+            Action::PersistVolume(value) => {
+                window.persist_volume(value);
+            }
             Action::ToAlbumPage(songlist) => {
                 let page = window.init_songlist_page(&songlist, true);
                 window.page_new(&page, &songlist.name);
@@ -1221,21 +1229,33 @@ impl NeteaseCloudMusicGtk4Application {
 
     fn setup_gactions(&self) {
         let preferences_action = gio::SimpleAction::new("preferences", None);
-        preferences_action.connect_activate(clone!(@weak self as app => move |_, _| {
-            app.show_prefrerences();
-        }));
+        preferences_action.connect_activate(clone!(
+            #[weak(rename_to = app)]
+            self,
+            move |_, _| {
+                app.show_prefrerences();
+            }
+        ));
         self.add_action(&preferences_action);
 
         let quit_action = gio::SimpleAction::new("quit", None);
-        quit_action.connect_activate(clone!(@weak self as app => move |_, _| {
-            app.quit();
-        }));
+        quit_action.connect_activate(clone!(
+            #[weak(rename_to = app)]
+            self,
+            move |_, _| {
+                app.quit();
+            }
+        ));
         self.add_action(&quit_action);
 
         let about_action = gio::SimpleAction::new("about", None);
-        about_action.connect_activate(clone!(@weak self as app => move |_, _| {
-            app.show_about();
-        }));
+        about_action.connect_activate(clone!(
+            #[weak(rename_to = app)]
+            self,
+            move |_, _| {
+                app.show_about();
+            }
+        ));
         self.add_action(&about_action);
     }
 
