@@ -28,8 +28,18 @@ jobs:
       id: strings
       shell: bash
       run: |
-        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-
+        echo "build-output-dir=${{ github.workspace }}/_build" >> "$GITHUB_OUTPUT"
+    
+    - name: Cache dependency
+      uses: actions/cache@v4
+      with:
+        path: |
+          /usr/local/Cellar
+          /opt/homebrew/Cellar
+          /home/linuxbrew/.linuxbrew/Cellar
+        key:
+          ${{ matrix.os }}-homebrew-cache
+    
     - name: Configure dependency
       # macOS gstreamer denpends on dbus, so we don't write here
       run: |
@@ -51,4 +61,10 @@ jobs:
         meson ${{ steps.strings.outputs.build-output-dir }}
         cd ${{ steps.strings.outputs.build-output-dir }}
         ninja
-
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: netease-cloud-music_${{ matrix.os }}
+        path: 
+          ${{ steps.strings.outputs.build-output-dir }}/target/release/netease-cloud-music-gtk4
