@@ -70,7 +70,7 @@ assets = [
     ],
     [
         "data/com.gitee.gmg137.NeteaseCloudMusicGtk4.gschema.xml",
-        "usr/share/glib-2.0/schemas",
+        "usr/share/glib-2.0/schemas/",
         "644",
     ],
     [
