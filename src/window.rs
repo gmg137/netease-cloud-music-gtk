@@ -600,6 +600,12 @@ impl NeteaseCloudMusicGtk4Window {
     pub fn page_new(&self, page: &impl glib::object::IsA<Widget>, title: &str) {
         let imp = self.imp();
         let stack = imp.page_stack.get().unwrap();
+        if stack.len() > 1 {
+            let top_page = stack.top_page();
+            if top_page.title().unwrap() == title {
+                return;
+            }
+        }
         // stack.set_transition_type(StackTransitionType::SlideLeft);
         let stack_page = stack.new_page(page);
         stack_page.set_title(title);
