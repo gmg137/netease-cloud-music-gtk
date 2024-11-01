@@ -211,14 +211,14 @@ pub trait ImageDownloadImpl {
 }
 
 impl ImageDownloadImpl for Image {
-    fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>) {
+    fn set_from_net(&self, url: String, path: PathBuf, (width, height): (u16, u16), sender: &Sender<Action>) {
         let image = glib::SendWeakRef::from(self.downgrade());
         sender
             .send_blocking(Action::DownloadImage(
                 url,
                 path.to_owned(),
-                size.0,
-                size.1,
+                width,
+                height,
                 Some(Arc::new(move |_| {
                     if let Some(image) = image.upgrade() {
                         image.set_from_file(Some(&path));
@@ -230,20 +230,20 @@ impl ImageDownloadImpl for Image {
 }
 
 impl ImageDownloadImpl for Picture {
-    fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>) {
+    fn set_from_net(&self, url: String, path: PathBuf, (width, height): (u16, u16), sender: &Sender<Action>) {
         let picture = glib::SendWeakRef::from(self.downgrade());
         sender
             .send_blocking(Action::DownloadImage(
                 url,
                 path.to_owned(),
-                size.0,
-                size.1,
+                width,
+                height,
                 Some(Arc::new(move |_| {
                     let image = gtk::gdk_pixbuf::Pixbuf::from_file(&path).unwrap();
                     let image = image
                         .scale_simple(
-                            size.0 as i32,
-                            size.1 as i32,
+                            width as i32,
+                            height as i32,
                             gtk::gdk_pixbuf::InterpType::Bilinear,
                         )
                         .unwrap();
@@ -257,14 +257,14 @@ impl ImageDownloadImpl for Picture {
 }
 
 impl ImageDownloadImpl for adw::Avatar {
-    fn set_from_net(&self, url: String, path: PathBuf, size: (u16, u16), sender: &Sender<Action>) {
+    fn set_from_net(&self, url: String, path: PathBuf, (width, height): (u16, u16), sender: &Sender<Action>) {
         let avatar = SendWeakRef::from(self.downgrade());
         sender
             .send_blocking(Action::DownloadImage(
                 url,
                 path.to_owned(),
-                size.0,
-                size.1,
+                width,
+                height,
                 Some(Arc::new(move |_| {
                     if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
                         let image = Image::from_pixbuf(Some(&pixbuf));

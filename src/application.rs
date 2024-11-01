@@ -340,9 +340,9 @@ impl NeteaseCloudMusicGtk4Application {
                 if !window.is_logined() && window.is_user_menu_active(UserMenuChild::Qr) {
                     let sender = imp.sender.clone();
                     MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
-                        if let Ok(res) = ncmapi.create_qrcode().await {
-                            sender.send(Action::SetQrImage(res.0)).await.unwrap();
-                            sender.send(Action::CheckQrTimeout(res.1)).await.unwrap();
+                        if let Ok((path, unikey)) = ncmapi.create_qrcode().await {
+                            sender.send(Action::SetQrImage(path)).await.unwrap();
+                            sender.send(Action::CheckQrTimeout(unikey)).await.unwrap();
                         }
                     });
                 }
