@@ -153,11 +153,11 @@ impl NcmClient {
     }
 
     pub async fn create_qrcode(&self) -> Result<(PathBuf, String)> {
-        let qrinfo = self.client.login_qr_create().await?;
+        let (qr_url, unikey) = self.client.login_qr_create().await?;
         let mut path = CACHE.clone();
         path.push("qrimage.png");
-        qrcode_generator::to_png_to_file(qrinfo.0, qrcode_generator::QrCodeEcc::Low, 140, &path)?;
-        Ok((path, qrinfo.1))
+        qrcode_generator::to_png_to_file(qr_url, qrcode_generator::QrCodeEcc::Low, 140, &path)?;
+        Ok((path, unikey))
     }
 
     pub async fn songs_url(&self, ids: &[u64], rate: u32) -> Result<Vec<SongUrl>> {
