@@ -402,7 +402,11 @@ impl NeteaseCloudMusicGtk4Window {
         let popover = self.imp().popover_menu.get().unwrap();
         let user_menus = self.imp().user_menus.get().unwrap();
         user_menus.switch_menu(UserMenuChild::User, popover);
-        user_menus.set_user_name(login_info.nickname);
+        if login_info.vip_type == 0 {
+            user_menus.set_user_name(login_info.nickname);
+        } else {
+            user_menus.set_user_name(format!("👑{}", login_info.nickname));
+        }
     }
 
     pub fn set_avatar(&self, url: String, path: PathBuf) {
