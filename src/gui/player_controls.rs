@@ -815,6 +815,8 @@ mod imp {
         pub loop_button: TemplateChild<CheckButton>,
         #[template_child(id = "shuffle")]
         pub shuffle_button: TemplateChild<CheckButton>,
+        #[template_child(id = "moved_button")]
+        pub moved_button: TemplateChild<Button>,
         #[template_child(id = "like_button")]
         pub like_button: TemplateChild<Button>,
 
@@ -953,6 +955,22 @@ mod imp {
             self.scale_value.set(value);
 
             Propagation::Proceed
+        }
+
+        #[template_callback]
+        fn moved_button_cb(&self) {
+            let sender = self.sender.get().unwrap().clone();
+            if let Ok(playlist) = self.playlist.lock() {
+                if let Some(song_info) = playlist.current_song() {
+                    sender
+                        .send_blocking(Action::Moved(song_info.clone()))
+                        .unwrap();
+                    return;
+                }
+            }
+            sender
+                .send_blocking(Action::AddToast(gettext("Intelligent mode failure！")))
+                .unwrap();
         }
 
         #[template_callback]

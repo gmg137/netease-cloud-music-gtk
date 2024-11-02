@@ -199,7 +199,9 @@ mod imp {
             let sender = self.sender.get().unwrap();
             let playlist = self.songs_list.get_songinfo_list();
             if !playlist.is_empty() {
-                sender.send_blocking(Action::AddPlayList(playlist)).unwrap();
+                sender
+                    .send_blocking(Action::AddPlayList(playlist, true))
+                    .unwrap();
             } else {
                 sender
                     .send_blocking(Action::AddToast(gettext("This is an empty song list！")))
