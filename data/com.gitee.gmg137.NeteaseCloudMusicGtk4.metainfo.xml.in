@@ -5,6 +5,19 @@
     <metadata_license>CC0-1.0</metadata_license>
     <project_license>GPL-3.0-or-later</project_license>
     <releases>
+        <release version="2.5.0" date="2024-11-03" type="stable">
+            <description>
+                <ul>
+                    <li>添加歌词滚动播放功能</li>
+                    <li>持久化音量设置</li>
+                    <li>锁定gettext版本</li>
+                    <li>修复相同页面多次创建问题</li>
+                    <li>修复删除歌曲按钮图标缺失</li>
+                    <li>在用户名前添加皇冠图标以标示VIP用户</li>
+                    <li>添加心动模式/智能播放功能</li>
+                </ul>
+            </description>
+        </release>
         <release version="2.4.1" date="2024-08-10" />
         <release version="2.4.0" date="2024-05-22" />
     </releases>
