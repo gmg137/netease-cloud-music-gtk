@@ -51,7 +51,7 @@ paru -S netease-cloud-music-gtk4
 sudo pacman -Syu netease-cloud-music-gtk4
 ```
 
-### Ubuntu(Noble, Mantic, Jammy)
+### Ubuntu(24.10/24.04/22.04)
 ```
 # 添加 PPA 源
 sudo add-apt-repository ppa:gmg137/ncm
@@ -59,19 +59,6 @@ sudo add-apt-repository ppa:gmg137/ncm
 sudo apt update
 # 安装
 sudo apt install netease-cloud-music-gtk
-```
-
-### Debian 12
-// 添加 [铜豌豆软件源](https://www.atzlinux.com/allpackages-x86_64-v12.htm)
-```bash
-apt -y install wget
-wget -c -O atzlinux-v12-archive-keyring_lastest_all.deb https://www.atzlinux.com/atzlinux/pool/main/a/atzlinux-archive-keyring/atzlinux-v12-archive-keyring_lastest_all.deb
-apt -y install ./atzlinux-v12-archive-keyring_lastest_all.deb
-apt update
-```
-// 安装
-```bash
-apt install netease-cloud-music-gtk
 ```
 
 ### Flatpak
