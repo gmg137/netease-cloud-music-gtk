@@ -61,6 +61,13 @@ sudo apt update
 sudo apt install netease-cloud-music-gtk
 ```
 
+### Debian 12
+> [手动下载 deb 包](https://launchpad.net/~gmg137/+archive/ubuntu/ncm/+packages)
+```
+# 安装
+sudo apt install netease-cloud-music-gtk*.deb
+```
+
 ### Flatpak
 #### 从 Flathub 安装
 <a href='https://flathub.org/apps/com.github.gmg137.netease-cloud-music-gtk'>
