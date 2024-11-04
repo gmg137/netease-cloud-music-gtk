@@ -5,6 +5,7 @@
 //
 use crate::{
     application::Action, gui::songlist_view::SongListView, model::ImageDownloadImpl, path::CACHE,
+    utils::*,
 };
 use adw::{prelude::ActionRowExt, subclass::prelude::BinImpl, ActionRow};
 use async_channel::Sender;
@@ -81,9 +82,10 @@ impl TopListView {
         let imp = self.imp();
 
         imp.playlist.replace(Clone::clone(&sis).to_vec());
-        imp.num_label
-            .get()
-            .set_label(&gettext!("{} songs", sis.len()));
+        imp.num_label.get().set_label(&gettext_f(
+            "{num} songs",
+            &[("num", &sis.len().to_string())],
+        ));
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());

@@ -15,6 +15,7 @@ use crate::{
     application::Action,
     gui::songlist_view::SongListView,
     model::{SearchResult, SearchType},
+    utils::*,
 };
 use gettextrs::gettext;
 use std::{
@@ -76,7 +77,9 @@ impl SearchSongPage {
         let imp = self.imp();
         let mut playlist = Clone::clone(&sis).to_vec();
         (*imp.playlist).borrow_mut().append(&mut playlist);
-        imp.num_label.get().set_label(&gettext!("{} songs", offset));
+        imp.num_label
+            .get()
+            .set_label(&gettext_f("{num} songs", &[("num", &offset.to_string())]));
 
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();

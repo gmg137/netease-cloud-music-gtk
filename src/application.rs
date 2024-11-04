@@ -14,7 +14,7 @@ use std::{cell::RefCell, fs, path::PathBuf, sync::Arc, time::Duration};
 
 use crate::{
     audio::MprisController, config::VERSION, gui::NeteaseCloudMusicGtk4Preferences, model::*,
-    ncmapi::*, path::CACHE, NeteaseCloudMusicGtk4Window, MAINCONTEXT,
+    ncmapi::*, path::CACHE, utils::*, NeteaseCloudMusicGtk4Window, MAINCONTEXT,
 };
 
 // implements Debug for Fn(Targ) using "blanket implementations"
@@ -687,9 +687,9 @@ impl NeteaseCloudMusicGtk4Application {
                                 } else {
                                     error!("获取歌曲播放链接失败: {:?}", &[song_info.id]);
                                     sender
-                                        .send(Action::AddToast(gettext!(
-                                            "Get [{}] Playback link failed!",
-                                            song_info.name
+                                        .send(Action::AddToast(gettext_f(
+                                            "Get [{name}] Playback link failed!",
+                                            &[("name", &song_info.name)],
                                         )))
                                         .await
                                         .unwrap();
@@ -699,9 +699,9 @@ impl NeteaseCloudMusicGtk4Application {
                             } else {
                                 error!("获取歌曲播放链接失败: {:?}", &[song_info.id]);
                                 sender
-                                    .send(Action::AddToast(gettext!(
-                                        "Get [{}] Playback link failed!",
-                                        song_info.name
+                                    .send(Action::AddToast(gettext_f(
+                                        "Get [{name}] Playback link failed!",
+                                        &[("name", &song_info.name)],
                                     )))
                                     .await
                                     .unwrap();

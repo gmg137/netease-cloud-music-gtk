@@ -1,10 +1,37 @@
+use gettextrs::gettext;
 use glib::{timeout_add_seconds, SourceId};
 use gtk::glib;
 use std::sync::{Arc, Mutex};
+
+/// Like `gettext`, but replaces named variables with the given dictionary.
+///
+/// The expected format to replace is `{name}`, where `name` is the first string
+/// in the dictionary entry tuple.
+/// 使用 xtr 生成 pot 文件时需添加参数: xtr -k gettext_f -k gettext -o NAME.pot src/main.rs
+pub fn gettext_f(msgid: &str, args: &[(&str, &str)]) -> String {
+    let s = gettext(msgid);
+    freplace(s, args)
+}
+
+/// Replace variables in the given string with the given dictionary.
+///
+/// The expected format to replace is `{name}`, where `name` is the first string
+/// in the dictionary entry tuple.
+pub fn freplace(s: String, args: &[(&str, &str)]) -> String {
+    let mut s = s;
+
+    for (k, v) in args {
+        s = s.replace(&format!("{{{k}}}"), v);
+    }
+
+    s
+}
+
 #[derive(Debug)]
 pub struct Debounce {
     timer_id: Arc<Mutex<Option<SourceId>>>,
 }
+
 impl Debounce {
     pub fn new() -> Self {
         Self {

@@ -18,9 +18,7 @@ use mpris_server::PlaybackStatus;
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::*;
 
-use crate::{
-    application::Action, audio::*, model::ImageDownloadImpl, path::CACHE, utils::Debounce,
-};
+use crate::{application::Action, audio::*, model::ImageDownloadImpl, path::CACHE, utils::*};
 use std::{
     cell::Cell,
     fs, path,
@@ -135,9 +133,9 @@ impl PlayerControls {
 
         let sender = imp.sender.get().unwrap();
         sender
-            .send_blocking(Action::AddToast(gettext!(
-                "Start playback [{}] ...",
-                song_info.name,
+            .send_blocking(Action::AddToast(gettext_f(
+                "Start playback [{name}] ...",
+                &[("name", &song_info.name)],
             )))
             .unwrap();
 
@@ -267,9 +265,9 @@ impl PlayerControls {
         let sender = sender_.clone();
         player_sig.connect_error(move |_, e, _| {
             sender
-                .send_blocking(Action::AddToast(gettext!(
-                    "Playback error:{}",
-                    e.to_string(),
+                .send_blocking(Action::AddToast(gettext_f(
+                    "Playback error:{err}",
+                    &[("err", &e.to_string())],
                 )))
                 .unwrap();
             sender.send_blocking(Action::PlayNextSong).unwrap();
@@ -755,11 +753,13 @@ impl PlayerControls {
         if let Some(songinfo) = self.get_current_song() {
             let sender = self.imp().sender.get().unwrap().clone();
             let clipboard = self.clipboard();
-            let share = gettext!(
-                "https://music.163.com/song?id={}\nsong:{}\nsinger:{}",
-                songinfo.id,
-                songinfo.name,
-                songinfo.singer
+            let share = gettext_f(
+                "https://music.163.com/song?id={id}\nsong:{name}\nsinger:{singer}",
+                &[
+                    ("id", &songinfo.id.to_string()),
+                    ("name", &songinfo.name),
+                    ("singer", &songinfo.singer),
+                ],
             );
             clipboard.set_text(&share);
             sender
