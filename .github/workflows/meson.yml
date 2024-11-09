@@ -47,6 +47,7 @@ jobs:
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         fi
         brew install gettext meson \
+          desktop-file-utils \
           openssl@3 \
           libadwaita adwaita-icon-theme \
           gstreamer
