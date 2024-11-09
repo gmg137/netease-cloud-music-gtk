@@ -14,7 +14,7 @@ use std::{cell::RefCell, fs, path::PathBuf, sync::Arc, time::Duration};
 
 use crate::{
     audio::MprisController, config::VERSION, gui::NeteaseCloudMusicGtk4Preferences, model::*,
-    ncmapi::*, path::CACHE, NeteaseCloudMusicGtk4Window, MAINCONTEXT,
+    ncmapi::*, path::CACHE, utils::*, NeteaseCloudMusicGtk4Window, MAINCONTEXT,
 };
 
 // implements Debug for Fn(Targ) using "blanket implementations"
@@ -45,13 +45,15 @@ pub enum Action {
     LikeSongList(u64, bool, Option<ActionCallback>),
     LikeAlbum(u64, bool, Option<ActionCallback>),
     LikeSong(u64, bool, Option<ActionCallback>),
+    Moved(SongInfo),
 
     // play
     AddPlay(SongInfo),
     PlayNextSong,
     Play(SongInfo),
     PlayStart(SongInfo),
-    AddPlayList(Vec<SongInfo>),
+    // (歌单, 是否立即播放)
+    AddPlayList(Vec<SongInfo>, bool),
     PlayListStart,
     PersistVolume(f64),
 
@@ -340,9 +342,9 @@ impl NeteaseCloudMusicGtk4Application {
                 if !window.is_logined() && window.is_user_menu_active(UserMenuChild::Qr) {
                     let sender = imp.sender.clone();
                     MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
-                        if let Ok(res) = ncmapi.create_qrcode().await {
-                            sender.send(Action::SetQrImage(res.0)).await.unwrap();
-                            sender.send(Action::CheckQrTimeout(res.1)).await.unwrap();
+                        if let Ok((path, unikey)) = ncmapi.create_qrcode().await {
+                            sender.send(Action::SetQrImage(path)).await.unwrap();
+                            sender.send(Action::CheckQrTimeout(unikey)).await.unwrap();
                         }
                     });
                 }
@@ -685,9 +687,9 @@ impl NeteaseCloudMusicGtk4Application {
                                 } else {
                                     error!("获取歌曲播放链接失败: {:?}", &[song_info.id]);
                                     sender
-                                        .send(Action::AddToast(gettext!(
-                                            "Get [{}] Playback link failed!",
-                                            song_info.name
+                                        .send(Action::AddToast(gettext_f(
+                                            "Get [{name}] Playback link failed!",
+                                            &[("name", &song_info.name)],
                                         )))
                                         .await
                                         .unwrap();
@@ -697,9 +699,9 @@ impl NeteaseCloudMusicGtk4Application {
                             } else {
                                 error!("获取歌曲播放链接失败: {:?}", &[song_info.id]);
                                 sender
-                                    .send(Action::AddToast(gettext!(
-                                        "Get [{}] Playback link failed!",
-                                        song_info.name
+                                    .send(Action::AddToast(gettext_f(
+                                        "Get [{name}] Playback link failed!",
+                                        &[("name", &song_info.name)],
                                     )))
                                     .await
                                     .unwrap();
@@ -819,8 +821,8 @@ impl NeteaseCloudMusicGtk4Application {
                     }
                 });
             }
-            Action::AddPlayList(sis) => {
-                window.add_playlist(sis);
+            Action::AddPlayList(sis, is_play) => {
+                window.add_playlist(sis, is_play);
             }
             Action::PlayListStart => {
                 window.playlist_start();
@@ -910,6 +912,35 @@ impl NeteaseCloudMusicGtk4Application {
                             }))
                             .await
                             .unwrap();
+                    }
+                });
+            }
+            Action::Moved(si) => {
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    match ncmapi
+                        .client
+                        .playmode_intelligence_list(si.id, si.album_id)
+                        .await
+                    {
+                        Ok(mut pl) => {
+                            debug!("获取心动歌曲：{:?}", pl);
+                            let mut pla = vec![si];
+                            pla.append(&mut pl);
+
+                            sender.send(Action::AddPlayList(pla, false)).await.unwrap();
+                            sender
+                                .send(Action::AddToast(gettext("Intelligent Mode")))
+                                .await
+                                .unwrap();
+                        }
+                        Err(err) => {
+                            error!("获取心动歌曲 {} 失败! {:?}", si.name, err);
+                            sender
+                                .send(Action::AddToast(gettext("Intelligent mode failed!")))
+                                .await
+                                .unwrap();
+                        }
                     }
                 });
             }

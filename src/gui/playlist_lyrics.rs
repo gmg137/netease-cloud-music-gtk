@@ -106,7 +106,7 @@ impl PlayListLyricsPage {
         buffer.set_text(
             &lyrics
                 .iter()
-                .map(|x| x.1.to_owned())
+                .map(|(_, x)| x.to_owned())
                 .collect::<Vec<_>>()
                 .join(""),
         );

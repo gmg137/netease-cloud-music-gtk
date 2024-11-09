@@ -292,6 +292,10 @@ msgid "View Album"
 msgstr "查看专辑"
 
 #: data/gtk/player-controls.ui:150
+msgid "Moved"
+msgstr "心动"
+
+#: data/gtk/player-controls.ui:162
 msgid "Like"
 msgstr "收藏"
 
@@ -399,9 +403,9 @@ msgstr "全部热门推荐"
 msgid "all new albums"
 msgstr "全部专辑"
 
-#: src/application.rs:612 src/application.rs:621
-msgid "Get [{}] Playback link failed!"
-msgstr "获取 [{}] 播放链接失败！"
+#: src/application.rs:691 src/application.rs:703
+msgid "Get [{name}] Playback link failed!"
+msgstr "获取 [{name}] 播放链接失败！"
 
 #: src/application.rs:667 src/application.rs:927
 msgid "Failed to get song list details!"
@@ -459,6 +463,14 @@ msgstr "收藏歌曲失败!"
 msgid "Failed to uncollect songs!"
 msgstr "取消收藏歌曲失败!"
 
+#: src/application.rs:932
+msgid "Intelligent Mode"
+msgstr "心动模式"
+
+#: src/application.rs:940
+msgid "Intelligent mode failed!"
+msgstr "心动模式失败！"
+
 #: src/application.rs:825 src/application.rs:869 src/application.rs:896
 #: src/application.rs:938 src/application.rs:965 src/window.rs:807
 msgid "Request for interface failed, please try again!"
@@ -472,23 +484,21 @@ msgstr "没有找到歌词!"
 msgid "Cache cleared."
 msgstr "缓存已清理完成。"
 
-#: src/gui/player_controls.rs:114
-msgid "Start playback [{}] ..."
-msgstr "开始播放 [{}] ..."
+#: src/gui/player_controls.rs:137
+msgid "Start playback [{name}] ..."
+msgstr "开始播放 [{name}] ..."
 
-#: src/gui/player_controls.rs:224
-msgid "Playback error:{}"
-msgstr "播放错误: {}"
+#: src/gui/player_controls.rs:269
+msgid "Playback error:{err}"
+msgstr "播放错误: {err}"
 
-#: src/gui/player_controls.rs:511
-msgid ""
-"https://music.163.com/song?id={}\n"
-"song:{}\n"
-"singer:{}"
-msgstr ""
-"https://music.163.com/song?id={}\n"
-"歌曲:{}\n"
-"歌手:{}"
+#: src/gui/player_controls.rs:757
+msgid "https://music.163.com/song?id={id}\n"
+"song:{name}\n"
+"singer:{singer}"
+msgstr "https://music.163.com/song?id={id}\n"
+"歌曲:{name}\n"
+"歌手:{singer}"
 
 #: src/gui/player_controls.rs:519
 msgid "Copied song information to the clipboard!"
@@ -515,28 +525,22 @@ msgstr "正在加载歌词..."
 msgid "Loading more content..."
 msgstr "加载更多内容..."
 
-#: src/gui/search_song_page.rs:80 src/gui/songlist_page.rs:74
-#: src/gui/songlist_page.rs:106 src/gui/songlist_page.rs:116
-#: src/gui/toplist.rs:85
-msgid "{} songs"
-msgstr "{} 首歌曲"
+#: src/gui/search_song_page.rs:82 src/gui/songlist_page.rs:79 src/gui/songlist_page.rs:103 src/gui/songlist_page.rs:114 src/gui/toplist.rs:86
+msgid "{num} songs"
+msgstr "{num} 首歌曲"
 
 #: src/gui/search_song_page.rs:295 src/gui/songlist_page.rs:191
 #: src/gui/toplist.rs:151
 msgid "This is an empty song list！"
 msgstr "这是一个空歌单!"
 
-#: src/gui/songlist_page.rs:101
-msgid "{} min"
-msgstr "{} 分钟"
+#: src/gui/songlist_page.rs:104 src/gui/songlist_page.rs:115
+msgid "{num} favs"
+msgstr "{num} 人收藏"
 
-#: src/gui/songlist_page.rs:107 src/gui/songlist_page.rs:117
-msgid "{} favs"
-msgstr "{} 人收藏"
-
-#: src/gui/songlist_page.rs:119
-msgid "Total {} issues"
-msgstr "共 {} 期"
+#: src/gui/songlist_page.rs:124
+msgid "Total {num} issues"
+msgstr "共 {num} 期"
 
 #: src/gui/songlist_page.rs:219
 msgid "Favorite radio stations are not supported!"

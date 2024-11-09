@@ -144,6 +144,18 @@
                 <property name="orientation">horizontal</property>
                 <property name="spacing">3</property>
                 <child>
+                    <object class="GtkButton" id="moved_button">
+                        <property name="halign">fill</property>
+                        <property name="valign">center</property>
+                        <property name="tooltip-text" translatable="yes">Moved</property>
+                        <property name="icon-name">emblem-favorite-symbolic</property>
+                        <signal name="clicked" handler="moved_button_cb" swapped="true" />
+                        <style>
+                            <class name="flat" />
+                        </style>
+                    </object>
+                </child>
+                <child>
                     <object class="GtkButton" id="like_button">
                         <property name="halign">fill</property>
                         <property name="valign">center</property>

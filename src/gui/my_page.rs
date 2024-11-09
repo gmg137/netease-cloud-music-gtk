@@ -91,6 +91,14 @@ mod imp {
     impl MyPage {
         #[template_callback]
         fn daily_rec_cb(&self) {
+            if let Ok(datetime) = glib::DateTime::now_local() {
+                self.daily_rec_avatar.set_show_initials(true);
+                self.daily_rec_avatar.set_text(Some(&format!(
+                    "{} {}",
+                    datetime.day_of_month() / 10,
+                    datetime.day_of_month() % 10
+                )));
+            }
             let sender = self.sender.get().unwrap();
             sender.send_blocking(Action::ToMyPageDailyRec).unwrap();
         }

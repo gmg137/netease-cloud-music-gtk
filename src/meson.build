@@ -6,6 +6,8 @@ conf.set_quoted('GETTEXT_PACKAGE', 'netease-cloud-music-gtk4')
 conf.set_quoted('LOCALEDIR', join_paths(get_option('prefix'), get_option('localedir')))
 conf.set_quoted('PKGDATADIR', pkgdatadir)
 
+gettext_package = meson.project_name()
+
 configure_file(
     input: 'config.rs.in',
     output: 'config.rs',

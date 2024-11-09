@@ -291,6 +291,10 @@ msgid "View Album"
 msgstr ""
 
 #: data/gtk/player-controls.ui:150
+msgid "Moved"
+msgstr ""
+
+#: data/gtk/player-controls.ui:162
 msgid "Like"
 msgstr ""
 
@@ -398,8 +402,8 @@ msgstr ""
 msgid "all new albums"
 msgstr ""
 
-#: src/application.rs:612 src/application.rs:621
-msgid "Get [{}] Playback link failed!"
+#: src/application.rs:691 src/application.rs:703
+msgid "Get [{name}] Playback link failed!"
 msgstr ""
 
 #: src/application.rs:667 src/application.rs:927
@@ -458,6 +462,14 @@ msgstr ""
 msgid "Failed to uncollect songs!"
 msgstr ""
 
+#: src/application.rs:932
+msgid "Intelligent Mode"
+msgstr ""
+
+#: src/application.rs:940
+msgid "Intelligent mode failed!"
+msgstr ""
+
 #: src/application.rs:825 src/application.rs:869 src/application.rs:896 src/application.rs:938 src/application.rs:965 src/window.rs:807
 msgid "Request for interface failed, please try again!"
 msgstr ""
@@ -470,18 +482,18 @@ msgstr ""
 msgid "Cache cleared."
 msgstr ""
 
-#: src/gui/player_controls.rs:114
-msgid "Start playback [{}] ..."
+#: src/gui/player_controls.rs:137
+msgid "Start playback [{name}] ..."
 msgstr ""
 
-#: src/gui/player_controls.rs:224
-msgid "Playback error:{}"
+#: src/gui/player_controls.rs:269
+msgid "Playback error:{err}"
 msgstr ""
 
-#: src/gui/player_controls.rs:511
-msgid "https://music.163.com/song?id={}\n"
-"song:{}\n"
-"singer:{}"
+#: src/gui/player_controls.rs:757
+msgid "https://music.163.com/song?id={id}\n"
+"song:{name}\n"
+"singer:{singer}"
 msgstr ""
 
 #: src/gui/player_controls.rs:519
@@ -508,24 +520,20 @@ msgstr ""
 msgid "Loading more content..."
 msgstr ""
 
-#: src/gui/search_song_page.rs:80 src/gui/songlist_page.rs:74 src/gui/songlist_page.rs:106 src/gui/songlist_page.rs:116 src/gui/toplist.rs:85
-msgid "{} songs"
+#: src/gui/search_song_page.rs:82 src/gui/songlist_page.rs:79 src/gui/songlist_page.rs:103 src/gui/songlist_page.rs:114 src/gui/toplist.rs:86
+msgid "{num} songs"
 msgstr ""
 
 #: src/gui/search_song_page.rs:295 src/gui/songlist_page.rs:191 src/gui/toplist.rs:151
 msgid "This is an empty song list！"
 msgstr ""
 
-#: src/gui/songlist_page.rs:101
-msgid "{} min"
+#: src/gui/songlist_page.rs:104 src/gui/songlist_page.rs:115
+msgid "{num} favs"
 msgstr ""
 
-#: src/gui/songlist_page.rs:107 src/gui/songlist_page.rs:117
-msgid "{} favs"
-msgstr ""
-
-#: src/gui/songlist_page.rs:119
-msgid "Total {} issues"
+#: src/gui/songlist_page.rs:124
+msgid "Total {num} issues"
 msgstr ""
 
 #: src/gui/songlist_page.rs:219

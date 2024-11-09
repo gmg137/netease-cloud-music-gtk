@@ -16,6 +16,7 @@ use crate::{
     gui::songlist_view::SongListView,
     model::{DiscoverSubPage, ImageDownloadImpl, SongListDetail},
     path::CACHE,
+    utils::*,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -73,7 +74,9 @@ impl SonglistPage {
         let title = imp.title_label.get();
         title.set_label(&songlist.name);
 
-        imp.num_label.get().set_label(&gettext!("{} songs", 0));
+        imp.num_label
+            .get()
+            .set_label(&gettext_f("{num} songs", &[("num", "0")]));
         self.set_property("like", false);
 
         imp.songs_list.clear_list();
@@ -99,8 +102,8 @@ impl SonglistPage {
 
                 imp.num_label.set_label(&format!(
                     "{}, {}",
-                    gettext!("{} songs", sis.len()),
-                    gettext!("{} favs", dy.sub_count)
+                    gettext_f("{num} songs", &[("num", &sis.len().to_string())]),
+                    gettext_f("{num} favs", &[("num", &dy.sub_count.to_string())])
                 ));
             }
             SongListDetail::PlayList(_detail, dy) => {
@@ -110,8 +113,8 @@ impl SonglistPage {
                 imp.page_type.replace(Some(DiscoverSubPage::SongList));
                 imp.num_label.set_label(&format!(
                     "{}, {}",
-                    gettext!("{} songs", sis.len()),
-                    gettext!("{} favs", dy.booked_count)
+                    gettext_f("{num} songs", &[("num", &sis.len().to_string())]),
+                    gettext_f("{num} favs", &[("num", &dy.booked_count.to_string())])
                 ));
             }
             SongListDetail::Radio(detail) => {
@@ -119,8 +122,10 @@ impl SonglistPage {
                 imp.songs_list.set_property("no-act-like", true);
                 imp.songs_list.set_property("no-act-remove", true);
                 imp.page_type.replace(Some(DiscoverSubPage::Radio));
-                imp.num_label
-                    .set_label(&gettext!("Total {} issues", detail.len()).to_string());
+                imp.num_label.set_label(&gettext_f(
+                    "Total {num} issues",
+                    &[("num", &detail.len().to_string())],
+                ));
                 for si in sis.iter_mut() {
                     if let Ok(date) = si.album.parse() {
                         let dt = Utc.timestamp_millis_opt(date).unwrap();
@@ -199,7 +204,9 @@ mod imp {
             let sender = self.sender.get().unwrap();
             let playlist = self.songs_list.get_songinfo_list();
             if !playlist.is_empty() {
-                sender.send_blocking(Action::AddPlayList(playlist)).unwrap();
+                sender
+                    .send_blocking(Action::AddPlayList(playlist, true))
+                    .unwrap();
             } else {
                 sender
                     .send_blocking(Action::AddToast(gettext("This is an empty song list！")))

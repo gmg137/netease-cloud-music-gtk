@@ -402,7 +402,11 @@ impl NeteaseCloudMusicGtk4Window {
         let popover = self.imp().popover_menu.get().unwrap();
         let user_menus = self.imp().user_menus.get().unwrap();
         user_menus.switch_menu(UserMenuChild::User, popover);
-        user_menus.set_user_name(login_info.nickname);
+        if login_info.vip_type == 0 {
+            user_menus.set_user_name(login_info.nickname);
+        } else {
+            user_menus.set_user_name(format!("👑{}", login_info.nickname));
+        }
     }
 
     pub fn set_avatar(&self, url: String, path: PathBuf) {
@@ -482,11 +486,13 @@ impl NeteaseCloudMusicGtk4Window {
         }
     }
 
-    pub fn add_playlist(&self, sis: Vec<SongInfo>) {
+    pub fn add_playlist(&self, sis: Vec<SongInfo>, is_play: bool) {
         let player_controls = self.imp().player_controls.get();
         player_controls.add_list(sis);
         let sender = self.imp().sender.get().unwrap();
-        sender.send_blocking(Action::PlayListStart).unwrap();
+        if is_play {
+            sender.send_blocking(Action::PlayListStart).unwrap();
+        }
     }
 
     pub fn playlist_start(&self) {
@@ -600,6 +606,12 @@ impl NeteaseCloudMusicGtk4Window {
     pub fn page_new(&self, page: &impl glib::object::IsA<Widget>, title: &str) {
         let imp = self.imp();
         let stack = imp.page_stack.get().unwrap();
+        if stack.len() > 1 {
+            let top_page = stack.top_page();
+            if top_page.title().unwrap() == title {
+                return;
+            }
+        }
         // stack.set_transition_type(StackTransitionType::SlideLeft);
         let stack_page = stack.new_page(page);
         stack_page.set_title(title);
