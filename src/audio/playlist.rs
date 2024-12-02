@@ -133,6 +133,17 @@ impl PlayList {
         self.position = 0;
     }
 
+    pub fn set_song_url(&mut self, si: SongInfo) {
+        if let Some(si_old) = self.list.iter_mut().find(|s| s.id == si.id) {
+            si_old.song_url = si.song_url.clone();
+        }
+        if let LoopsState::Shuffle = self.loops {
+            if let Some(si_old) = self.shuffle.iter_mut().find(|s| s.id == si.id) {
+                si_old.song_url = si.song_url;
+            }
+        }
+    }
+
     pub fn set_play_state(&mut self, state: bool) {
         self.play_state = state;
     }
@@ -173,6 +184,34 @@ impl PlayList {
     }
 
     // 查询下一曲
+    pub fn get_next_song(&mut self) -> Option<&SongInfo> {
+        match self.loops {
+            LoopsState::Shuffle => {
+                if let Some(song) = self.shuffle.get(self.position + 1) {
+                    Some(song)
+                } else {
+                    self.shuffle.first()
+                }
+            }
+            LoopsState::Playlist => {
+                if let Some(song) = self.list.get(self.position + 1) {
+                    Some(song)
+                } else {
+                    self.list.first()
+                }
+            }
+            LoopsState::Track => self.list.get(self.position),
+            LoopsState::None => {
+                if let Some(song) = self.list.get(self.position + 1) {
+                    Some(song)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    // 获取下一曲
     pub fn next_song(&mut self) -> Option<&SongInfo> {
         match self.loops {
             LoopsState::Shuffle => {
@@ -205,7 +244,7 @@ impl PlayList {
         }
     }
 
-    // 查询上一曲
+    // 获取上一曲
     pub fn prev_song(&mut self) -> Option<&SongInfo> {
         let position = if self.position == 0 {
             0
