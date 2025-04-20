@@ -5,6 +5,16 @@
     <metadata_license>CC0-1.0</metadata_license>
     <project_license>GPL-3.0-or-later</project_license>
     <releases>
+        <release version="2.5.1" date="2025-04-20" type="stable">
+            <description>
+                <ul>
+                    <li>优化gettext翻译</li>
+                    <li>优化播放速度</li>
+                    <li>修复rand编译错误</li>
+                    <li>更新安装说明</li>
+                </ul>
+            </description>
+        </release>
         <release version="2.5.0" date="2024-11-03" type="stable">
             <description>
                 <ul>
