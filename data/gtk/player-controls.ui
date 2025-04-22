@@ -148,7 +148,7 @@
                         <property name="halign">fill</property>
                         <property name="valign">center</property>
                         <property name="tooltip-text" translatable="yes">Moved</property>
-                        <property name="icon-name">emblem-favorite-symbolic</property>
+                        <property name="icon-name">emote-love-symbolic</property>
                         <signal name="clicked" handler="moved_button_cb" swapped="true" />
                         <style>
                             <class name="flat" />
@@ -160,7 +160,7 @@
                         <property name="halign">fill</property>
                         <property name="valign">center</property>
                         <property name="tooltip-text" translatable="yes">Like</property>
-                        <property name="icon-name">emblem-favorite-symbolic</property>
+                        <property name="icon-name">starred-symbolic</property>
                         <signal name="clicked" handler="like_button_cb" swapped="true" />
                         <style>
                             <class name="flat" />

@@ -51,7 +51,7 @@
                                 <property name="orientation">vertical</property>
                                 <child>
                                     <object class="AdwAvatar">
-                                        <property name="icon-name">emblem-favorite-symbolic</property>
+                                        <property name="icon-name">emote-love-symbolic</property>
                                         <property name="size">100</property>
                                         <child>
                                             <object class="GtkGestureClick">
