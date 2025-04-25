@@ -13,7 +13,6 @@ use ncm_api::SongInfo;
 use std::rc::Rc;
 
 use crate::gui::PlayerControls;
-use crate::path::CACHE;
 use crate::window::NeteaseCloudMusicGtk4Window;
 
 use super::LoopsState;
@@ -64,13 +63,15 @@ impl MprisController {
         metadata.set_trackid(
             TrackId::try_from(format!("/com/gitee/gmg137/NeteaseCloudMusicGtk4/{}", si.id)).ok(),
         );
-        let mut path_cover = CACHE.clone();
-        path_cover.push(format!("{}-songlist.jpg", si.album_id));
-        if path_cover.exists() {
-            metadata.set_art_url(Some(format!("file://{}", path_cover.to_string_lossy())));
-        } else {
-            metadata.set_art_url(Some(si.pic_url.to_owned()));
-        }
+        // 取消从缓存获取专辑封面
+        //let mut path_cover = crate::path::CACHE.clone();
+        //path_cover.push(format!("{}-songlist.jpg", si.album_id));
+        //if path_cover.exists() {
+        //metadata.set_art_url(Some(format!("file://{}", path_cover.to_string_lossy())));
+        //} else {
+        //metadata.set_art_url(Some(si.pic_url.to_owned()));
+        //}
+        metadata.set_art_url(Some(si.pic_url.to_owned()));
         self.mpris_player.set_metadata(metadata).await?;
         Ok(())
     }
