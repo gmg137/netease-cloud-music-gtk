@@ -18,7 +18,7 @@
                         <property name="halign">fill</property>
                         <property name="valign">start</property>
                         <property name="orientation">horizontal</property>
-                        <property name="spacing">35</property>
+                        <property name="spacing">26</property>
                         <child>
                             <object class="GtkBox">
                                 <property name="orientation">vertical</property>

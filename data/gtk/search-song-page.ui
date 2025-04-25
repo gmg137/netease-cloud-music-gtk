@@ -9,6 +9,8 @@
         <child>
             <object class="AdwClamp" id="title_clamp">
                 <property name="hexpand">true</property>
+                <property name="margin-start">20</property>
+                <property name="margin-end">20</property>
                 <property name="maximum-size">1000</property>
                 <property name="tightening-threshold">730</property>
                 <child>
@@ -72,8 +74,7 @@
             </object>
         </child>
         <child>
-            <object class="SongListView" id="songs_list">
-            </object>
+            <object class="SongListView" id="songs_list"></object>
         </child>
     </template>
 </interface>
