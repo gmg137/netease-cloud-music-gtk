@@ -56,7 +56,7 @@ mod imp {
         #[template_child]
         pub primary_menu_button: TemplateChild<MenuButton>,
         #[template_child]
-        pub switcher_title: TemplateChild<adw::ViewSwitcherTitle>,
+        pub switcher_title: TemplateChild<adw::ViewSwitcher>,
         #[template_child]
         pub label_title: TemplateChild<Label>,
         #[template_child]

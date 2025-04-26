@@ -38,7 +38,8 @@
                     <object class="GtkBox">
                         <property name="orientation">horizontal</property>
                         <child>
-                            <object class="AdwViewSwitcherTitle" id="switcher_title">
+                            <object class="AdwViewSwitcher" id="switcher_title">
+                                <property name="policy">wide</property>
                                 <property name="stack">stack</property>
                             </object>
                         </child>
@@ -221,9 +222,6 @@
                                 <child>
                                     <object class="AdwViewSwitcherBar">
                                         <property name="stack">stack</property>
-                                        <binding name="reveal">
-                                            <lookup name="title-visible">switcher_title</lookup>
-                                        </binding>
                                     </object>
                                 </child>
                             </object>

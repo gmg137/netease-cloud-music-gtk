@@ -17,7 +17,7 @@ use std::{cell::RefCell, rc::Rc};
 
 glib::wrapper! {
     pub struct TopListView(ObjectSubclass<imp::TopListView>)
-        @extends Widget, Paned,
+        @extends adw::Bin, Widget, Paned,
         @implements Accessible, Orientable, ConstraintTarget,Buildable;
 }
 
