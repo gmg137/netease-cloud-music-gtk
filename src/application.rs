@@ -1,4 +1,4 @@
-use adw::subclass::prelude::*;
+use adw::{prelude::AdwDialogExt, subclass::prelude::*};
 use async_channel::{unbounded, Receiver, Sender};
 use gettextrs::gettext;
 use gio::Settings;
@@ -1324,13 +1324,11 @@ impl NeteaseCloudMusicGtk4Application {
     fn show_prefrerences(&self) {
         let window = self.active_window().unwrap();
         let preferences = NeteaseCloudMusicGtk4Preferences::new();
-        preferences.set_modal(true);
-        preferences.set_transient_for(Some(&window));
 
         let (size, unit) = crate::path::get_cache_size();
         preferences.set_cache_size_label(size, unit);
 
-        preferences.present();
+        preferences.present(Some(&window));
     }
 
     fn show_about(&self) {

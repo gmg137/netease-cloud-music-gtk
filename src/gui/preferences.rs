@@ -11,7 +11,7 @@ use once_cell::sync::OnceCell;
 
 glib::wrapper! {
     pub struct NeteaseCloudMusicGtk4Preferences(ObjectSubclass<imp::NeteaseCloudMusicGtk4Preferences>)
-        @extends adw::PreferencesDialog, adw::Dialog, Widget, Window, adw::Window,
+        @extends adw::PreferencesDialog, adw::Dialog, Widget,
         @implements Accessible, Buildable, ConstraintTarget, Native, Root, ShortcutManager;
 }
 
@@ -141,8 +141,6 @@ mod imp {
         }
     }
     impl WidgetImpl for NeteaseCloudMusicGtk4Preferences {}
-    impl WindowImpl for NeteaseCloudMusicGtk4Preferences {}
-    impl AdwWindowImpl for NeteaseCloudMusicGtk4Preferences {}
     impl AdwDialogImpl for NeteaseCloudMusicGtk4Preferences {}
     impl PreferencesDialogImpl for NeteaseCloudMusicGtk4Preferences {}
 }
