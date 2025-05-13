@@ -18,10 +18,11 @@
                         <property name="halign">fill</property>
                         <property name="valign">start</property>
                         <property name="orientation">horizontal</property>
-                        <property name="spacing">35</property>
+                        <property name="spacing">58</property>
                         <child>
                             <object class="GtkBox">
                                 <property name="orientation">vertical</property>
+                                <property name="visible">false</property>
                                 <child>
                                     <object class="AdwAvatar" id="daily_rec_avatar">
                                         <property name="icon-name">x-office-calendar-symbolic</property>
@@ -51,7 +52,7 @@
                                 <property name="orientation">vertical</property>
                                 <child>
                                     <object class="AdwAvatar">
-                                        <property name="icon-name">emblem-favorite-symbolic</property>
+                                        <property name="icon-name">emote-love-symbolic</property>
                                         <property name="size">100</property>
                                         <child>
                                             <object class="GtkGestureClick">

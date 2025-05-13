@@ -5,6 +5,28 @@
     <metadata_license>CC0-1.0</metadata_license>
     <project_license>GPL-3.0-or-later</project_license>
     <releases>
+        <release version="2.5.2" date="2025-05-06" type="stable">
+            <description>
+                <ul>
+                    <li>修复gnome48图标异常</li>
+                    <li>修改debian安装说明</li>
+                    <li>优化界面设计</li>
+                    <li>mpris 显示原始图片</li>
+                    <li>更新依赖版本</li>
+                    <li>隐藏日推歌单</li>
+                </ul>
+            </description>
+        </release>
+        <release version="2.5.1" date="2025-04-20" type="stable">
+            <description>
+                <ul>
+                    <li>优化gettext翻译</li>
+                    <li>优化播放速度</li>
+                    <li>修复rand编译错误</li>
+                    <li>更新安装说明</li>
+                </ul>
+            </description>
+        </release>
         <release version="2.5.0" date="2024-11-03" type="stable">
             <description>
                 <ul>

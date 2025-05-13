@@ -47,7 +47,7 @@
                 {
                     "type" : "git",
                     "url" : "https://github.com/gmg137/netease-cloud-music-gtk.git",
-                    "tag" : "2.5.0"
+                    "tag" : "2.5.2"
                 }
             ],
             "config-opts" : []

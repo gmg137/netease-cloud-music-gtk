@@ -4,7 +4,7 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use anyhow::Result;
-use cookie_store::CookieStore;
+use cookie_store::{serde, CookieStore};
 use ncm_api::{CookieBuilder, CookieJar, MusicApi, SongInfo, SongUrl};
 
 use crate::path::{CACHE, LYRICS};
@@ -92,7 +92,7 @@ impl NcmClient {
                 io::ErrorKind::NotFound => (),
                 other => error!("{:?}", other),
             },
-            Ok(file) => match CookieStore::load_json(io::BufReader::new(file)) {
+            Ok(file) => match serde::json::load(io::BufReader::new(file)) {
                 Err(err) => error!("{:?}", err),
                 Ok(cookie_store) => {
                     let cookie_jar = CookieJar::default();
@@ -137,7 +137,7 @@ impl NcmClient {
                             cookie_store.insert(cookie, uri).unwrap();
                         }
                     }
-                    cookie_store.save_json(&mut file).unwrap();
+                    serde::json::save(&cookie_store, &mut file).unwrap();
                 }
             }
         }

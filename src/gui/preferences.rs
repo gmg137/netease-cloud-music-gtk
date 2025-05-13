@@ -4,7 +4,6 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 
-use adw::subclass::prelude::PreferencesWindowImpl;
 use gio::Settings;
 use gtk::gio::SettingsBindFlags;
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
@@ -12,7 +11,7 @@ use once_cell::sync::OnceCell;
 
 glib::wrapper! {
     pub struct NeteaseCloudMusicGtk4Preferences(ObjectSubclass<imp::NeteaseCloudMusicGtk4Preferences>)
-        @extends Widget, Window, adw::Window,
+        @extends adw::PreferencesDialog, adw::Dialog, Widget,
         @implements Accessible, Buildable, ConstraintTarget, Native, Root, ShortcutManager;
 }
 
@@ -93,7 +92,7 @@ impl Default for NeteaseCloudMusicGtk4Preferences {
 
 mod imp {
 
-    use adw::subclass::prelude::AdwWindowImpl;
+    use adw::subclass::prelude::*;
 
     use super::*;
 
@@ -121,7 +120,7 @@ mod imp {
     impl ObjectSubclass for NeteaseCloudMusicGtk4Preferences {
         const NAME: &'static str = "NeteaseCloudMusicGtk4Preferences";
         type Type = super::NeteaseCloudMusicGtk4Preferences;
-        type ParentType = adw::PreferencesWindow;
+        type ParentType = adw::PreferencesDialog;
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
@@ -142,7 +141,6 @@ mod imp {
         }
     }
     impl WidgetImpl for NeteaseCloudMusicGtk4Preferences {}
-    impl WindowImpl for NeteaseCloudMusicGtk4Preferences {}
-    impl AdwWindowImpl for NeteaseCloudMusicGtk4Preferences {}
-    impl PreferencesWindowImpl for NeteaseCloudMusicGtk4Preferences {}
+    impl AdwDialogImpl for NeteaseCloudMusicGtk4Preferences {}
+    impl PreferencesDialogImpl for NeteaseCloudMusicGtk4Preferences {}
 }

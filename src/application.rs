@@ -1,4 +1,4 @@
-use adw::subclass::prelude::*;
+use adw::{prelude::AdwDialogExt, subclass::prelude::*};
 use async_channel::{unbounded, Receiver, Sender};
 use gettextrs::gettext;
 use gio::Settings;
@@ -56,6 +56,8 @@ pub enum Action {
     AddPlayList(Vec<SongInfo>, bool),
     PlayListStart,
     PersistVolume(f64),
+    GetSongUrl(SongInfo),
+    SetSongUrl(SongInfo),
 
     // login
     CheckLogin(UserMenuChild, CookieJar),
@@ -766,6 +768,35 @@ impl NeteaseCloudMusicGtk4Application {
             Action::PersistVolume(value) => {
                 window.persist_volume(value);
             }
+            Action::GetSongUrl(song_info) => {
+                let sender = imp.sender.clone();
+                let music_rate = window.settings().uint("music-rate");
+                let path = crate::path::get_music_cache_path(song_info.id, music_rate);
+
+                if !path.exists() {
+                    MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                        if let Ok(song_url) = ncmapi.songs_url(&[song_info.id], music_rate).await {
+                            debug!("获取歌曲播放链接: {:?}", song_url);
+                            if let Some(song_url) = song_url.first() {
+                                let song_info = SongInfo {
+                                    song_url: song_url.url.to_owned(),
+                                    ..song_info
+                                };
+                                sender.send(Action::SetSongUrl(song_info)).await.unwrap();
+                            }
+                        }
+                    });
+                } else {
+                    let song_info = SongInfo {
+                        song_url: format!("file://{}", path.to_str().unwrap().to_owned()),
+                        ..song_info
+                    };
+                    window.set_song_url(song_info);
+                }
+            }
+            Action::SetSongUrl(song_info) => {
+                window.set_song_url(song_info);
+            }
             Action::ToAlbumPage(songlist) => {
                 let page = window.init_songlist_page(&songlist, true);
                 window.page_new(&page, &songlist.name);
@@ -1293,13 +1324,11 @@ impl NeteaseCloudMusicGtk4Application {
     fn show_prefrerences(&self) {
         let window = self.active_window().unwrap();
         let preferences = NeteaseCloudMusicGtk4Preferences::new();
-        preferences.set_modal(true);
-        preferences.set_transient_for(Some(&window));
 
         let (size, unit) = crate::path::get_cache_size();
         preferences.set_cache_size_label(size, unit);
 
-        preferences.present();
+        preferences.present(Some(&window));
     }
 
     fn show_about(&self) {

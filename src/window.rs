@@ -56,7 +56,7 @@ mod imp {
         #[template_child]
         pub primary_menu_button: TemplateChild<MenuButton>,
         #[template_child]
-        pub switcher_title: TemplateChild<adw::ViewSwitcherTitle>,
+        pub switcher_title: TemplateChild<adw::ViewSwitcher>,
         #[template_child]
         pub label_title: TemplateChild<Label>,
         #[template_child]
@@ -762,6 +762,9 @@ impl NeteaseCloudMusicGtk4Window {
         }
     }
 
+    pub fn set_song_url(&self, si: SongInfo) {
+        self.imp().player_controls.get().set_song_url(si);
+    }
     pub fn gst_duration_changed(&self, sec: u64) {
         self.imp().player_controls.get().gst_duration_changed(sec);
     }

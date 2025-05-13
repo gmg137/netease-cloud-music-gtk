@@ -316,12 +316,21 @@ impl PlayerControls {
             );
         }
 
+        let sender = imp.sender.get().unwrap();
         if let Some(si) = self.get_current_song() {
             // 发送更新歌词
-            let sender = imp.sender.get().unwrap();
             sender
                 .send_blocking(Action::UpdateLyrics(si, msec / 1000))
                 .unwrap();
+        }
+
+        // 当剩余5秒时提前获取下首歌曲的播放链接。
+        let duration: u64 = self.property("duration");
+        let secp = (msec / 10u64.pow(5)) % 10;
+        if duration - sec == 5 && secp >= 5 {
+            if let Some(si) = self.get_next_song() {
+                sender.send_blocking(Action::GetSongUrl(si)).unwrap();
+            }
         }
     }
 
@@ -522,9 +531,15 @@ impl PlayerControls {
         }
     }
 
+    pub fn set_song_url(&self, si: SongInfo) {
+        if let Ok(mut playlist) = self.imp().playlist.lock() {
+            playlist.set_song_url(si);
+        }
+    }
+
     pub fn get_next_song(&self) -> Option<SongInfo> {
         if let Ok(mut playlist) = self.imp().playlist.lock() {
-            return playlist.next_song().map(|s| s.to_owned());
+            return playlist.get_next_song().map(|s| s.to_owned());
         }
         None
     }

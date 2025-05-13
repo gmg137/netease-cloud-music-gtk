@@ -1,20 +1,20 @@
 [package]
 name = "netease-cloud-music-gtk4"
-version = "2.5.0"
-edition = "2021"
+version = "2.5.2"
+edition = "2024"
 
 [dependencies]
 gettext-rs = { version = "~0.7", features = ["gettext-system"] }
 gtk = { version = "~0.9", package = "gtk4" }
 once_cell = "~1.19"
-qrcode-generator = "~4.1"
+qrcode-generator = "~5.0"
 # ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", branch = "dev", package = "netease-cloud-music-api" }
-ncm-api = { git = "https://gitee.com/gmg137/netease-cloud-music-api.git", tag = "1.5.0", package = "netease-cloud-music-api" }
+ncm-api = { git = "https://gitee.com/gmg137/netease-cloud-music-api.git", tag = "1.5.1", package = "netease-cloud-music-api" }
 anyhow = "~1.0"
 gstreamer = "~0.23"
 gstreamer-play = "~0.23"
 fastrand = "~2.1"
-mpris-server = "~0.8"
+mpris-server = "~0.9"
 regex = "~1.10"
 log = "~0.4"
 env_logger = "~0.11"
@@ -25,6 +25,7 @@ async-channel = "~2.3"
 [dependencies.adw]
 package = "libadwaita"
 version = "~0.7"
+features = ["v1_7"]
 
 # cargo deb 打包配置
 # 打包前在__build目录下执行: meson configure --prefix=/usr && ninja
