@@ -27,9 +27,6 @@ package = "libadwaita"
 version = "~0.7"
 features = ["v1_7"]
 
-[build-dependencies]
-pkg-config = "~0.3"
-
 # cargo deb 打包配置
 # 打包前在__build目录下执行: meson configure --prefix=/usr && ninja
 [package.metadata.deb]
