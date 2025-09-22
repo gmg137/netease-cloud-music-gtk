@@ -30,16 +30,6 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/_build" >> "$GITHUB_OUTPUT"
     
-    - name: Cache dependency
-      uses: actions/cache@v4
-      with:
-        path: |
-          /usr/local/Cellar
-          /opt/homebrew/Cellar
-          /home/linuxbrew/.linuxbrew/Cellar
-        key:
-          ${{ matrix.os }}-homebrew-cache
-    
     - name: Configure dependency
       # macOS gstreamer denpends on dbus, so we don't write here
       run: |
@@ -61,14 +51,6 @@ jobs:
         if [[ $(uname) == "Linux" ]]; then
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         fi
-        brew link gettext meson \
-          dbus \
-          desktop-file-utils \
-          openssl@3 \
-          libadwaita adwaita-icon-theme \
-          gstreamer \
-          cargo-bundle
-
         export MACOSX_DEPLOYMENT_TARGET=11.0
         export CARGO_TARGET_DIR=${{ steps.strings.outputs.build-output-dir }}
         meson ${{ steps.strings.outputs.build-output-dir }}
