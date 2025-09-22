@@ -47,6 +47,7 @@ jobs:
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         fi
         brew install gettext meson \
+	  dbus \
           desktop-file-utils \
           openssl@3 \
           libadwaita adwaita-icon-theme \
@@ -61,13 +62,14 @@ jobs:
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         fi
         export CARGO_TARGET_DIR=${{ steps.strings.outputs.build-output-dir }}
-        #cd ${{ steps.strings.outputs.build-output-dir }}
-        echo -e '[package.metadata.bundle]\nosx_minimum_system_version = "11.0"' >>Cargo.toml
-        cargo bundle --release
+        meson ${{ steps.strings.outputs.build-output-dir }}
+	#cd ${{ steps.strings.outputs.build-output-dir }}
+        export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig:/Library/Frameworks/GStreamer.framework/Libraries/pkgconfig
+	cargo bundle --release
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: netease-cloud-music_${{ matrix.os }}
         path: 
-          ${{ steps.strings.outputs.build-output-dir }}/release/netease-cloud-music-gtk4*
+          ${{ steps.strings.outputs.build-output-dir }}/release/bundle
