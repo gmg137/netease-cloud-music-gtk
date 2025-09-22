@@ -47,11 +47,12 @@ jobs:
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         fi
         brew install gettext meson \
-	  dbus \
+          dbus \
           desktop-file-utils \
           openssl@3 \
           libadwaita adwaita-icon-theme \
-          gstreamer
+          gstreamer \
+          cargo-bundle
 
     - name: Build
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -64,7 +65,7 @@ jobs:
         export CARGO_TARGET_DIR=${{ steps.strings.outputs.build-output-dir }}
         meson ${{ steps.strings.outputs.build-output-dir }}
         export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig:/Library/Frameworks/GStreamer.framework/Libraries/pkgconfig
-	cargo bundle --release
+        cargo bundle --release
     
     - name: bundle macOS app
       run: |
