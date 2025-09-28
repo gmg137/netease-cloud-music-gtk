@@ -10,11 +10,12 @@ use async_channel::Sender;
 use gettextrs::gettext;
 use gio::{Settings, SimpleAction};
 use glib::{
-    clone, source::Priority, ParamSpec, ParamSpecEnum, ParamSpecObject, ParamSpecUInt64, Value,
+    ParamSpec, ParamSpecEnum, ParamSpecObject, ParamSpecUInt64, Value, clone, source::Priority,
 };
 use gtk::{
+    CompositeTemplate,
     gio::{self, SettingsBindFlags},
-    glib, CompositeTemplate,
+    glib,
 };
 use log::*;
 use ncm_api::{BannersInfo, LoginInfo, SongInfo, SongList, TopList};
@@ -603,18 +604,25 @@ impl NeteaseCloudMusicGtk4Window {
         self.page_set_info(title);
         self.page_widget_switch(true);
     }
-    pub fn page_new(&self, page: &impl glib::object::IsA<Widget>, title: &str) {
+    pub fn page_new(&self, page: &impl glib::object::IsA<Widget>, title: &str, name: &str) {
         let imp = self.imp();
         let stack = imp.page_stack.get().unwrap();
         if stack.len() > 1 {
             let top_page = stack.top_page();
             if top_page.title().unwrap() == title {
-                return;
+                if let Some(n) = top_page.name() {
+                    if n == name {
+                        return;
+                    }
+                } else {
+                    return;
+                }
             }
         }
         // stack.set_transition_type(StackTransitionType::SlideLeft);
         let stack_page = stack.new_page(page);
         stack_page.set_title(title);
+        stack_page.set_name(name);
         self.page_set_info(title);
         self.page_widget_switch(true);
     }
@@ -728,7 +736,7 @@ impl NeteaseCloudMusicGtk4Window {
         let page = imp.playlist_lyrics_page.get().unwrap();
         page.init_page(&sis, si, &self.get_song_likes(&sis));
 
-        self.page_new(page, &gettext("Play List&Lyrics"));
+        self.page_new(page, &gettext("Play List&Lyrics"), "Play List&Lyrics");
     }
 
     /// 更新歌词内容，不调整位置
