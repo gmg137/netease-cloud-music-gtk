@@ -1333,18 +1333,43 @@ impl NeteaseCloudMusicGtk4Application {
 
     fn show_about(&self) {
         let window = self.active_window().unwrap();
-        let dialog = gtk::AboutDialog::builder()
-            .transient_for(&window)
-            .modal(true)
-            .program_name(gettext(crate::APP_NAME))
-            .logo_icon_name("logo")
+        let dialog = adw::AboutDialog::builder()
+            .application_name(gettext(crate::APP_NAME))
+            .application_icon(crate::APP_ID)
             .version(VERSION)
-            .authors(vec!["gmg137", "catsout"])
+            .developer_name("gmg137")
+            .developers(vec![
+                "gmg137",
+                "catsout",
+                "fplust",
+                "outloudvi",
+                "CyrusYip",
+                "Integral-Tech",
+                "NOBLES5E",
+                "atzlinux",
+                "mokurin000",
+                "onlymash",
+                "An-n-ya",
+                "MarvelousBlack",
+                "langzime",
+                "h0cheung",
+                "weilinfox",
+                "xyzhou-1",
+                "liuyujielol",
+                "heddxh",
+                "fungaren",
+                "xen0n",
+                "arkuna23",
+                "wngtk",
+                "zyw271828",
+            ])
             .website("https://github.com/gmg137/netease-cloud-music-gtk")
+            .issue_url("https://github.com/gmg137/netease-cloud-music-gtk/issues")
             .license_type(gtk::License::Gpl30)
+            .copyright("© 2025 gmg137")
             .build();
 
-        dialog.present();
+        dialog.present(Some(&window));
     }
 
     fn setup_cache_clear(&self) {
