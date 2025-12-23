@@ -1,0 +1,74 @@
+
+name: Build on multi platforms
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
+      fail-fast: false
+
+      matrix:
+        os: [ubuntu-latest, macos-13, macos-latest]
+        build_type: [Release]
+
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set reusable strings
+      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+      id: strings
+      shell: bash
+      run: |
+        echo "build-output-dir=${{ github.workspace }}/_build" >> "$GITHUB_OUTPUT"
+    
+    - name: Configure dependency
+      # macOS gstreamer denpends on dbus, so we don't write here
+      run: |
+        if [[ $(uname) == "Linux" ]]; then
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        fi
+        brew install gettext meson \
+          dbus \
+          desktop-file-utils \
+          openssl@3 \
+          libadwaita adwaita-icon-theme \
+          gstreamer \
+          cargo-bundle
+
+    - name: Build
+      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      run: |
+        if [[ $(uname) == "Linux" ]]; then
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        fi
+        export MACOSX_DEPLOYMENT_TARGET=11.0
+        export CARGO_TARGET_DIR=${{ steps.strings.outputs.build-output-dir }}
+        meson ${{ steps.strings.outputs.build-output-dir }}
+        export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig:/Library/Frameworks/GStreamer.framework/Libraries/pkgconfig
+        cargo bundle --release
+    
+    - name: bundle macOS app
+      run: |
+        if [[ $(uname) == "Darwin" ]]; then
+          brew install dylibbundler
+          cd ${{ steps.strings.outputs.build-output-dir }}/release/bundle/osx
+          cd netease-cloud-music-gtk4.app/Contents
+          dylibbundler -od -b -x MacOS/netease-cloud-music-gtk4 -d Libraries -p @executable_path/../Libraries
+        fi
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: netease-cloud-music_${{ matrix.os }}
+        path: 
+          ${{ steps.strings.outputs.build-output-dir }}/release/bundle
