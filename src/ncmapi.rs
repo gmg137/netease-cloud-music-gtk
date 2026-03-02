@@ -4,7 +4,7 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use anyhow::Result;
-use cookie_store::{serde, CookieStore};
+use cookie_store::{CookieStore, serde};
 use ncm_api::{CookieBuilder, CookieJar, MusicApi, SongInfo, SongUrl};
 
 use crate::path::{CACHE, LYRICS};
@@ -176,7 +176,7 @@ impl NcmClient {
             si.album
         ));
         // 翻译歌词文件位置
-        let mut tlyric_path = CACHE.clone();
+        let mut tlyric_path = LYRICS.clone();
         tlyric_path.push(format!("{}.tlrc", si.id));
         // 替换歌词时间
         let re = regex::Regex::new(r"\[\d+:\d+.\d+\]").unwrap();

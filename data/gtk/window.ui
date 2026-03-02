@@ -235,7 +235,11 @@
                         <property name="transition-duration">888</property>
                         <property name="transition-type">swing-up</property>
                         <child>
-                            <object class="PlayerControls" id="player_controls" />
+                            <object class="GtkActionBar">
+                                <child>
+                                    <object class="PlayerControls" id="player_controls" />
+                                </child>
+                            </object>
                         </child>
                     </object>
                 </child>

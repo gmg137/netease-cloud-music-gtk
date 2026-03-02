@@ -4,13 +4,13 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 use gtk::subclass::prelude::*;
-use gtk::{gdk, glib, CompositeTemplate, CssProvider};
+use gtk::{CompositeTemplate, CssProvider, gdk, glib};
 use gtk::{prelude::*, style_context_add_provider_for_display};
 
 glib::wrapper! {
     pub struct ThemeSelector(ObjectSubclass<imp::ThemeSelector>)
         @extends gtk::Widget,
-        @implements gtk::Accessible;
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 impl Default for ThemeSelector {
