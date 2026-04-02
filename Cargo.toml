@@ -80,3 +80,7 @@ assets = [
         "644",
     ],
 ]
+
+[package.metadata.bundle]
+icon = ["data/icons/hicolor/512x512@2x.png"]
+osx_minimum_system_version = "11.0"
