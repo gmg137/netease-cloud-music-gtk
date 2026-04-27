@@ -5,6 +5,18 @@
     <metadata_license>CC0-1.0</metadata_license>
     <project_license>GPL-3.0-or-later</project_license>
     <releases>
+        <release version="2.5.3" date="2026-04-27" type="stable">
+            <description>
+                <ul>
+                    <li>修复页面创建错误</li>
+                    <li>修改播放栏样式</li>
+                    <li>更新关于窗口样式</li>
+                    <li>取消隐藏每日推荐</li>
+                    <li>更改翻译歌词位置</li>
+                    <li>更新依赖版本</li>
+                </ul>
+            </description>
+        </release>
         <release version="2.5.2" date="2025-05-06" type="stable">
             <description>
                 <ul>
