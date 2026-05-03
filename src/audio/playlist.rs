@@ -136,10 +136,12 @@ impl PlayList {
     pub fn set_song_url(&mut self, si: SongInfo) {
         if let Some(si_old) = self.list.iter_mut().find(|s| s.id == si.id) {
             si_old.song_url = si.song_url.clone();
+            si_old.quality = si.quality.clone();
         }
         if let LoopsState::Shuffle = self.loops {
             if let Some(si_old) = self.shuffle.iter_mut().find(|s| s.id == si.id) {
                 si_old.song_url = si.song_url;
+                si_old.quality = si.quality;
             }
         }
     }

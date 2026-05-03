@@ -15,7 +15,7 @@ use gstreamer_play::{prelude::ElementExt, *};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, GestureClick, *};
 use log::*;
 use mpris_server::PlaybackStatus;
-use ncm_api::{SongInfo, SongList};
+use ncm_api::{SongInfo, SongList, SongQuality};
 use once_cell::sync::*;
 
 use crate::{application::Action, audio::*, model::ImageDownloadImpl, path::CACHE, utils::*};
@@ -145,7 +145,15 @@ impl PlayerControls {
         player.set_volume(self.property("volume"));
         player.play();
 
-        self.init_play_info(song_info);
+        let should_load_qualities = song_info.quality.available.is_empty();
+        self.init_play_info(song_info.clone());
+        if should_load_qualities {
+            imp.sender
+                .get()
+                .unwrap()
+                .send_blocking(Action::LoadSongQualities(song_info))
+                .unwrap();
+        }
     }
 
     pub fn next_song(&self) {
@@ -182,6 +190,8 @@ impl PlayerControls {
 
         let artist_label = imp.artist_label.get();
         artist_label.set_label(&song_info.singer);
+
+        self.update_quality_ui(&song_info);
 
         let volume = self.property("volume");
         if let Some(mpris) = imp.mpris.get() {
@@ -533,7 +543,64 @@ impl PlayerControls {
 
     pub fn set_song_url(&self, si: SongInfo) {
         if let Ok(mut playlist) = self.imp().playlist.lock() {
-            playlist.set_song_url(si);
+            playlist.set_song_url(si.clone());
+        }
+        if let Some(current) = self.get_current_song() {
+            if current.id == si.id {
+                self.update_quality_ui(&si);
+            }
+        }
+    }
+
+    fn update_quality_ui(&self, song_info: &SongInfo) {
+        let imp = self.imp();
+        let quality_label = imp.quality_label.get();
+        let quality_status_label = imp.quality_status_label.get();
+        let quality_options_box = imp.quality_options_box.get();
+
+        let current = song_info
+            .quality
+            .actual
+            .or(song_info.quality.selected)
+            .map(crate::utils::quality_label)
+            .unwrap_or("Checking...");
+        quality_label.set_label(current);
+
+        let status = if song_info.quality.available.is_empty() {
+            "Checking available qualities...".to_string()
+        } else {
+            let available = song_info
+                .quality
+                .available
+                .iter()
+                .map(|quality| crate::utils::quality_label(*quality))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("Available: {available}")
+        };
+        quality_status_label.set_label(&status);
+
+        while let Some(child) = quality_options_box.last_child() {
+            quality_options_box.remove(&child);
+        }
+
+        let sender = imp.sender.get().unwrap().clone();
+        for quality in SongQuality::all() {
+            let button = CheckButton::with_label(crate::utils::quality_label(*quality));
+            button.set_halign(Align::Start);
+            let available = song_info.quality.available.contains(quality);
+            button.set_sensitive(available);
+            button.set_active(song_info.quality.selected == Some(*quality));
+            let sender = sender.clone();
+            let song_info = song_info.clone();
+            button.connect_toggled(move |button| {
+                if button.is_active() && button.is_sensitive() {
+                    sender
+                        .send_blocking(Action::SetSongQuality(song_info.clone(), *quality))
+                        .unwrap();
+                }
+            });
+            quality_options_box.append(&button);
         }
     }
 
@@ -817,6 +884,14 @@ mod imp {
         pub duration_label: TemplateChild<Label>,
         #[template_child]
         pub volume_button: TemplateChild<VolumeButton>,
+        #[template_child]
+        pub quality_menu_button: TemplateChild<MenuButton>,
+        #[template_child]
+        pub quality_label: TemplateChild<Label>,
+        #[template_child]
+        pub quality_status_label: TemplateChild<Label>,
+        #[template_child]
+        pub quality_options_box: TemplateChild<Box>,
 
         #[template_child]
         pub repeat_menu_button: TemplateChild<MenuButton>,
@@ -1041,17 +1116,7 @@ mod imp {
             if let Ok(playlist) = self.playlist.lock() {
                 let current_song = playlist
                     .current_song()
-                    .unwrap_or(&SongInfo {
-                        id: 0,
-                        name: String::new(),
-                        singer: String::new(),
-                        album: String::new(),
-                        album_id: 0,
-                        pic_url: String::new(),
-                        duration: 0,
-                        song_url: String::new(),
-                        copyright: ncm_api::SongCopyright::Unknown,
-                    })
+                    .unwrap_or(&crate::utils::empty_song_info())
                     .to_owned();
                 let sender = self.sender.get().unwrap().clone();
                 sender

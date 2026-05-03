@@ -175,6 +175,22 @@
                     </object>
                 </child>
                 <child>
+                    <object class="GtkMenuButton" id="quality_menu_button">
+                        <property name="focusable">False</property>
+                        <property name="receives_default">true</property>
+                        <property name="popover">quality_popover</property>
+                        <property name="tooltip-text" translatable="yes">Playback Quality</property>
+                        <child>
+                            <object class="GtkLabel" id="quality_label">
+                                <property name="label">Auto</property>
+                            </object>
+                        </child>
+                        <style>
+                            <class name="flat" />
+                        </style>
+                    </object>
+                </child>
+                <child>
                     <object class="GtkMenuButton" id="repeat_menu_button">
                         <property name="focusable">False</property>
                         <property name="receives_default">true</property>
@@ -262,6 +278,30 @@
                         <property name="label" translatable="yes">Shuffle</property>
                         <property name="group">none</property>
                         <signal name="toggled" handler="repeat_shuffle_cb" swapped="true" />
+                    </object>
+                </child>
+            </object>
+        </child>
+    </object>
+    <object class="GtkPopover" id="quality_popover">
+        <child>
+            <object class="GtkBox" id="quality_box">
+                <property name="orientation">vertical</property>
+                <property name="margin-top">6</property>
+                <property name="margin-bottom">6</property>
+                <property name="margin-start">6</property>
+                <property name="margin-end">6</property>
+                <property name="spacing">6</property>
+                <child>
+                    <object class="GtkLabel" id="quality_status_label">
+                        <property name="halign">start</property>
+                        <property name="label">Checking...</property>
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkBox" id="quality_options_box">
+                        <property name="orientation">vertical</property>
+                        <property name="spacing">3</property>
                     </object>
                 </child>
             </object>

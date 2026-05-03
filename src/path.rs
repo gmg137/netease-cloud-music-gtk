@@ -58,6 +58,9 @@ pub fn get_music_cache_path(id: u64, rate: u32) -> PathBuf {
         2 => 320000,
         3 => 999000,
         4 => 1900000,
+        5 => 804505,
+        6 => 2695684,
+        7 => 4532511,
         _ => 320000,
     };
     CACHE.join(format!("music_{}_{}", id, rate))
