@@ -7,7 +7,6 @@ use adw::subclass::prelude::BinImpl;
 use async_channel::Sender;
 use glib::{closure_local, ParamSpec, Value};
 use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
-use log::warn;
 use ncm_api::SongInfo;
 use once_cell::sync::Lazy;
 use once_cell::sync::OnceCell;
@@ -248,10 +247,8 @@ fn get_playing_indexes(mut lyrics: Vec<(u64, String)>, time: u64) -> Option<(usi
         {
             if lyr[0].0 == lyr[1].0 {
                 // 也包含翻译行
-                warn!("also has translation {}", i);
                 return Some((i, i + 1));
             } else {
-                warn!("no translation {}", i);
                 // 不包含翻译行
                 return Some((i, i));
             }

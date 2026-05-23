@@ -190,6 +190,14 @@ msgstr "音质"
 msgid "Requires desktop-lyrics or osdlyrics"
 msgstr "依赖于 desktop-lyrics 或 osdlyrics"
 
+#: data/gtk/preferences.ui:119
+msgid "System Tray"
+msgstr "系统托盘"
+
+#: data/gtk/preferences.ui:120
+msgid "Show system tray icon"
+msgstr "显示系统托盘图标"
+
 #: data/gtk/theme-selector.ui:22
 msgid "Use system style"
 msgstr "系统"
@@ -557,6 +565,30 @@ msgstr "没有可播放歌曲!"
 #: src/window.rs:668
 msgid "Play List&Lyrics"
 msgstr "播放列表&歌词"
+
+#: src/gui/system_tray.rs:72
+msgid "Show Main Window"
+msgstr "打开主界面"
+
+#: src/gui/system_tray.rs:84
+msgid "Pause"
+msgstr "暂停"
+
+#: src/gui/system_tray.rs:86
+msgid "Play"
+msgstr "播放"
+
+#: src/gui/system_tray.rs:106
+msgid "Previous"
+msgstr "上一曲"
+
+#: src/gui/system_tray.rs:118
+msgid "Next"
+msgstr "下一曲"
+
+#: src/gui/system_tray.rs:131
+msgid "Quit"
+msgstr "退出"
 
 #, fuzzy
 #~ msgid "NetEase Cloud Music"

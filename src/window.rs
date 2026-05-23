@@ -83,6 +83,8 @@ mod imp {
         pub sender: OnceCell<Sender<Action>>,
         pub stack_child: Arc<Mutex<LinkedList<(String, String)>>>,
         pub page_stack: OnceCell<PageStack>,
+        pub tray_handle: RefCell<TrayHandle>,
+        pub tray_setting_changed: Cell<bool>,
 
         search_type: Cell<SearchType>,
         toast: RefCell<Option<Toast>>,
@@ -186,7 +188,32 @@ mod imp {
         }
     }
     impl WidgetImpl for NeteaseCloudMusicGtk4Window {}
-    impl WindowImpl for NeteaseCloudMusicGtk4Window {}
+    impl WindowImpl for NeteaseCloudMusicGtk4Window {
+        fn close_request(&self) -> glib::Propagation {
+            let obj = self.obj();
+            let hides_on_close = obj.hides_on_close();
+
+            log::info!("close_request 被调用，hides_on_close = {}", hides_on_close);
+
+            // 如果不是退出到后台，则保存播放列表并清理系统托盘
+            if !hides_on_close {
+                log::info!("应用完全退出，保存播放列表");
+                self.player_controls.save_playlist();
+                log::info!("播放列表保存完成");
+
+                log::info!("应用完全退出，清理系统托盘");
+                self.tray_handle.borrow_mut().stop();
+                log::info!("系统托盘清理完成");
+            } else {
+                log::info!("应用退出到后台，保留系统托盘");
+                // 即使退出到后台，也保存播放列表以防万一
+                log::info!("退出到后台时也保存播放列表");
+                self.player_controls.save_playlist();
+                log::info!("播放列表保存完成");
+            }
+            self.parent_close_request()
+        }
+    }
     impl ApplicationWindowImpl for NeteaseCloudMusicGtk4Window {}
 }
 
@@ -205,10 +232,19 @@ impl NeteaseCloudMusicGtk4Window {
             .property("application", application)
             .build();
 
-        window.imp().sender.set(sender).unwrap();
+        window.imp().sender.set(sender.clone()).unwrap();
         window.setup_widget();
         window.setup_action();
         window.init_page_data();
+
+        // 初始化托盘状态（在 sender 设置之后）
+        if window.settings().boolean("system-tray") {
+            if let Err(e) = window.imp().tray_handle.borrow_mut().start(sender) {
+                warn!("Failed to start system tray on init: {}", e);
+                window.settings().set_boolean("system-tray", false).ok();
+            }
+        }
+
         window
     }
 
@@ -308,6 +344,45 @@ impl NeteaseCloudMusicGtk4Window {
             .bind("exit-switch", self, "hide-on-close")
             .flags(SettingsBindFlags::DEFAULT)
             .build();
+
+        // 系统托盘设置变化时的处理
+        let window_weak = glib::SendWeakRef::from(self.downgrade());
+        self.settings().connect_changed(
+            Some("system-tray"),
+            move |settings, _| {
+                if let Some(window) = window_weak.upgrade() {
+                    let enabled = settings.boolean("system-tray");
+                    let imp = window.imp();
+
+                    if enabled {
+                        // 开启托盘：检查是否是从关闭状态切换过来的
+                        if imp.tray_setting_changed.get() {
+                            // 用户刚刚关闭过托盘，现在又开启，提示需要重启
+                            info!("系统托盘设置已更改，需要重启应用生效");
+                            window.add_toast("系统托盘设置将在应用重启后生效".to_string());
+                        } else {
+                            // 首次开启或应用启动时的初始化，立即启动托盘
+                            if let Some(sender) = imp.sender.get() {
+                                if let Err(e) = imp.tray_handle.borrow_mut().start(sender.clone()) {
+                                    warn!("Failed to start system tray: {}", e);
+                                    // 启动失败，恢复设置
+                                    settings.set_boolean("system-tray", false).ok();
+                                    window.add_toast(format!("系统托盘启动失败: {}", e));
+                                } else {
+                                    info!("系统托盘已启动");
+                                    window.add_toast("系统托盘已启动".to_string());
+                                }
+                            }
+                        }
+                    } else {
+                        // 关闭托盘：设置标志并提示需要重启
+                        imp.tray_setting_changed.set(true);
+                        info!("系统托盘将在应用重启后关闭");
+                        window.add_toast("系统托盘设置将在应用重启后生效".to_string());
+                    }
+                }
+            },
+        );
     }
 
     fn setup_widget(&self) {
@@ -344,6 +419,23 @@ impl NeteaseCloudMusicGtk4Window {
 
     pub fn logout(&self) {
         self.imp().clear_user_info();
+    }
+
+    pub fn update_tray_playing(&self, playing: bool) {
+        self.imp().tray_handle.borrow().update_playing(playing);
+    }
+
+    pub fn update_tray_song_title(&self, title: String) {
+        self.imp().tray_handle.borrow().update_song_title(title);
+    }
+
+    pub fn show_player_bar(&self) {
+        let player_revealer = self.imp().player_revealer.get();
+        if !player_revealer.reveals_child() {
+            log::info!("显示播放栏");
+            player_revealer.set_visible(true);
+            player_revealer.set_reveal_child(true);
+        }
     }
 
     pub fn get_song_likes(&self, sis: &[SongInfo]) -> Vec<bool> {
@@ -508,9 +600,19 @@ impl NeteaseCloudMusicGtk4Window {
             .unwrap();
     }
 
+    pub fn toggle_play_pause(&self) {
+        let player_controls = self.imp().player_controls.get();
+        player_controls.toggle_play_pause();
+    }
+
     pub fn play_next(&self) {
         let player_controls = self.imp().player_controls.get();
         player_controls.next_song();
+    }
+
+    pub fn play_prev(&self) {
+        let player_controls = self.imp().player_controls.get();
+        player_controls.prev_song();
     }
 
     pub fn play(&self, song_info: SongInfo) {
@@ -778,6 +880,11 @@ impl NeteaseCloudMusicGtk4Window {
     }
     pub fn gst_state_changed(&self, state: gstreamer_play::PlayState) {
         self.imp().player_controls.get().gst_state_changed(state);
+
+        // 更新系统托盘播放状态
+        use gstreamer_play::PlayState;
+        let playing = matches!(state, PlayState::Playing);
+        self.update_tray_playing(playing);
     }
     pub fn gst_volume_changed(&self, volume: f64) {
         self.imp().player_controls.get().gst_volume_changed(volume);

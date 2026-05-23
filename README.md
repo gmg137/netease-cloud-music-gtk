@@ -24,8 +24,10 @@
 - [x] 首选项
 - [x] Mpris2 绑定
 - [x] 播放列表
+- [x] 播放列表持久化
 - [x] 歌词
 - [X] 桌面歌词(依赖于 [desktop-lyrics](https://github.com/tuberry/desktop-lyric) 或 osdlyrics)
+- [x] 系统托盘
 
 ## 运行依赖
 > openssl, gstreamer, gstreamer-plugins-base, gstreamer-plugins-good, gstreamer-plugins-bad, gstreamer-plugins-ugly
@@ -115,18 +117,26 @@ sudo ninja install
 ```
 
 ## FAQ
-1. 为什么后台运行时没有托盘图标?
-> 由于 GTK3 开始取消了托盘接口，所以目前不打算实现托盘功能。<br>
+1. 如何启用系统托盘图标?
+> 打开首选项，在"音乐"分组中启用"系统托盘"选项。系统托盘支持播放控制、显示当前歌曲等功能。<br>
+> **注意:** 系统托盘功能需要桌面环境支持 StatusNotifierItem 协议（如 KDE Plasma、GNOME Shell 等）。<br>
 > **替代方案:**
 > - Mpris 插件: GNOME 推荐 [Media Controls](https://extensions.gnome.org/extension/4470/media-controls/)，其它桌面可查找相应 Mpris 插件。
 > - 直接点击启动图标，亦可唤醒程序。
-2. 使用 osdlyrics 时没有正确匹配歌词?
+2. 播放列表会自动保存吗?
+> 是的。程序退出时会自动保存当前播放列表、播放位置和播放进度。下次启动时会自动恢复上次的播放状态，包括：
+> - 播放列表中的所有歌曲
+> - 当前播放的歌曲和播放进度
+> - 歌词定位（打开播放列表页面时自动加载）
+> 
+> 播放列表保存在 `~/.cache/netease-cloud-music-gtk/playlist.json`。
+3. 使用 osdlyrics 时没有正确匹配歌词?
 > 打开 osdlyrics 的[首选项]-[歌词位置]-[文件名]，添加匹配规则: %t-%p-%a。
-3. 音乐缓存目录在什么位置?
+4. 音乐缓存目录在什么位置?
 > 缓存位于用户主目录下 .cache/netease-cloud-music-gtk4 文件夹内。
-4. 如何分享音乐?
+5. 如何分享音乐?
 > 点击播放栏的歌曲名称，便会复制歌曲链接等信息到剪贴板。
-5. 如何查看日志
+6. 如何查看日志
 > 从终端启动程序，添加环境变量 RUST_LOG=debug 或 RUST_LOG=netease_cloud_music_gtk4。
 
 ## 截图

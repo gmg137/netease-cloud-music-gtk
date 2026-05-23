@@ -40,10 +40,124 @@ impl PlayerControls {
     }
 
     pub fn set_sender(&self, sender: Sender<Action>) {
-        self.imp().sender.set(sender).unwrap();
+        let imp = self.imp();
+        imp.sender.set(sender.clone()).unwrap();
         self.connect_gst_signals();
         self.bind_click();
         self.setup_mpris();
+
+        // sender 初始化后，检查是否有已加载的播放列表，如果有则显示播放栏
+        if let Ok(mut playlist) = imp.playlist.lock() {
+            if playlist.len() > 0 {
+                log::info!("检测到已加载的播放列表（共 {} 首歌曲），准备显示播放栏", playlist.len());
+                let position = playlist.get_position();
+                let play_position = playlist.get_play_position();
+
+                // 获取当前歌曲信息，尝试从缓存文件恢复 URL
+                if let Some(current_song) = playlist.current_song() {
+                    let song_id = current_song.id;
+                    let song_name = current_song.name.clone();
+                    let song_singer = current_song.singer.clone();
+
+                    log::info!("恢复播放歌曲: {} - {}", song_name, song_singer);
+
+                    // 检查缓存文件是否存在
+                    let settings = self.settings();
+                    let music_rate = settings.uint("music-rate");
+                    let cache_path = crate::path::get_music_cache_path(song_id, music_rate);
+
+                    let mut song_url_opt = None;
+
+                    if cache_path.exists() {
+                        // 使用缓存文件
+                        log::info!("找到缓存文件: {:?}", cache_path);
+                        let song_url = format!("file://{}", cache_path.to_str().unwrap());
+                        let mut song_info = current_song.clone();
+                        song_info.song_url = song_url.clone();
+                        playlist.set_song_url(song_info);
+                        song_url_opt = Some(song_url);
+                        log::info!("已从缓存恢复歌曲 URL");
+                    } else {
+                        log::info!("缓存文件不存在，播放时将从网络获取");
+                    }
+
+                    // 释放锁后再操作播放器
+                    drop(playlist);
+
+                    // 如果有 URL，设置到播放器并恢复进度
+                    if let Some(song_url) = song_url_opt {
+                        log::info!("设置播放器 URI: {}", song_url);
+                        let player = imp.player.get().unwrap();
+
+                        // 设置 URI
+                        player.set_uri(Some(&song_url));
+
+                        // 先暂停，让播放器加载媒体信息
+                        player.pause();
+
+                        // 异步等待播放器准备好，然后恢复进度并停止
+                        if play_position > 0 {
+                            let player_clone = player.clone();
+                            let seek_scale = imp.seek_scale.clone();
+                            let progress_label = imp.progress_time_label.clone();
+                            crate::MAINCONTEXT.spawn_local_with_priority(
+                                glib::source::Priority::DEFAULT,
+                                async move {
+                                    // 等待播放器加载媒体信息
+                                    glib::timeout_future(std::time::Duration::from_millis(200)).await;
+
+                                    log::info!("恢复播放进度到 {} 微秒", play_position);
+                                    player_clone.seek(gst::ClockTime::from_useconds(play_position));
+
+                                    // 再次暂停，确保不会自动播放
+                                    glib::timeout_future(std::time::Duration::from_millis(50)).await;
+                                    player_clone.pause();
+
+                                    // 更新进度条 UI
+                                    seek_scale.set_value(play_position as f64);
+                                    let sec = play_position / 10u64.pow(6);
+                                    let duration = format!("{:0>2}:{:0>2}", sec / 60, sec % 60);
+                                    progress_label.set_label(&duration);
+
+                                    log::info!("播放器已设置为暂停状态，进度条已更新");
+                                }
+                            );
+                        } else {
+                            // 没有保存的进度，直接停止
+                            let player_clone = player.clone();
+                            crate::MAINCONTEXT.spawn_local_with_priority(
+                                glib::source::Priority::DEFAULT,
+                                async move {
+                                    glib::timeout_future(std::time::Duration::from_millis(200)).await;
+                                    player_clone.pause();
+                                    log::info!("播放器已设置为暂停状态");
+                                }
+                            );
+                        }
+                    }
+                } else {
+                    // 释放锁
+                    drop(playlist);
+                }
+
+                // 延迟显示播放栏以实现动画效果
+                let sender_clone = sender.clone();
+                crate::MAINCONTEXT.spawn_local_with_priority(
+                    glib::source::Priority::DEFAULT_IDLE,
+                    async move {
+                        // 延迟 300ms 显示播放栏
+                        glib::timeout_future(std::time::Duration::from_millis(300)).await;
+
+                        log::info!("发送 ShowPlayerBar 动作");
+                        sender_clone.send_blocking(Action::ShowPlayerBar).ok();
+
+                        // 更新播放列表状态
+                        log::info!("发送 UpdatePlayListStatus 动作，位置: {}", position);
+                        sender_clone.send_blocking(Action::UpdatePlayListStatus(position)).ok();
+                    }
+                );
+            }
+        }
     }
 
     fn setup_settings(&self) {
@@ -145,6 +259,11 @@ impl PlayerControls {
         player.set_volume(self.property("volume"));
         player.play();
 
+        // 更新托盘状态为播放中
+        sender.send_blocking(Action::UpdateTrayPlaying(true)).ok();
+        // 更新托盘歌曲标题
+        sender.send_blocking(Action::UpdateTraySongTitle(format!("{} - {}", song_info.name, song_info.singer))).ok();
+
         self.init_play_info(song_info);
     }
 
@@ -156,6 +275,11 @@ impl PlayerControls {
     pub fn prev_song(&self) {
         let prev_button = self.imp().prev_button.get();
         prev_button.emit_clicked();
+    }
+
+    pub fn toggle_play_pause(&self) {
+        let play_button = self.imp().play_button.get();
+        play_button.emit_clicked();
     }
 
     pub fn init_play_info(&self, song_info: SongInfo) {
@@ -491,6 +615,10 @@ impl PlayerControls {
     pub fn add_song(&self, song: SongInfo) {
         if let Ok(mut playlist) = self.imp().playlist.lock() {
             playlist.add_song(song);
+            // 保存播放列表
+            if let Err(e) = playlist.save_to_file() {
+                log::warn!("保存播放列表失败: {:?}", e);
+            }
         }
     }
 
@@ -505,6 +633,10 @@ impl PlayerControls {
             }
             if let Ok(mut playlist) = self.imp().playlist.lock() {
                 playlist.remove_song(song);
+                // 保存播放列表
+                if let Err(e) = playlist.save_to_file() {
+                    log::warn!("保存播放列表失败: {:?}", e);
+                }
                 let sender = self.imp().sender.get().unwrap().clone();
                 if playlist.len() >= 1 {
                     sender
@@ -528,6 +660,10 @@ impl PlayerControls {
 
         if let Ok(mut playlist) = self.imp().playlist.lock() {
             playlist.add_list(list);
+            // 保存播放列表
+            if let Err(e) = playlist.save_to_file() {
+                log::warn!("保存播放列表失败: {:?}", e);
+            }
         }
     }
 
@@ -661,6 +797,36 @@ impl PlayerControls {
     pub fn persist_volume(&self, value: f64) {
         let settings = self.imp().settings.get().unwrap();
         settings.set_double("volume", value).unwrap();
+    }
+
+    pub fn save_playlist(&self) {
+        if let Ok(mut playlist) = self.imp().playlist.lock() {
+            let list_len = playlist.len();
+            log::info!("准备保存播放列表，当前播放列表大小: {}", list_len);
+
+            if list_len == 0 {
+                log::warn!("播放列表为空，跳过保存");
+                return;
+            }
+
+            // 获取当前播放位置（微秒）
+            let player = self.imp().player.get().unwrap();
+            if let Some(position) = player.position() {
+                let position_usec = position.useconds();
+                playlist.set_play_position(position_usec);
+                log::info!("保存播放进度: {} 微秒 (约 {} 秒)", position_usec, position_usec / 1_000_000);
+            } else {
+                log::warn!("无法获取当前播放位置");
+            }
+
+            if let Err(e) = playlist.save_to_file() {
+                log::error!("保存播放列表失败: {:?}", e);
+            } else {
+                log::info!("播放列表已保存，共 {} 首歌曲", list_len);
+            }
+        } else {
+            log::error!("无法获取播放列表锁");
+        }
     }
 
     pub fn setup_notify_connect(&self) {
@@ -896,6 +1062,7 @@ mod imp {
         #[template_callback]
         fn play_button_clicked_cb(&self, button: Button) {
             let player = self.player.get().unwrap();
+            let sender = self.sender.get().unwrap();
             if button
                 .icon_name()
                 .unwrap()
@@ -903,6 +1070,8 @@ mod imp {
             {
                 player.play();
                 button.set_icon_name("media-playback-pause-symbolic");
+                // 更新托盘状态为播放中
+                let _ = sender.try_send(Action::UpdateTrayPlaying(true));
                 if let Some(mpris) = self.mpris.get() {
                     crate::MAINCONTEXT.spawn_local_with_priority(
                         Priority::LOW,
@@ -922,6 +1091,8 @@ mod imp {
             } else {
                 player.pause();
                 button.set_icon_name("media-playback-start-symbolic");
+                // 更新托盘状态为暂停
+                let _ = sender.try_send(Action::UpdateTrayPlaying(false));
                 if let Some(mpris) = self.mpris.get() {
                     crate::MAINCONTEXT.spawn_local_with_priority(
                         Priority::LOW,
@@ -1068,7 +1239,12 @@ mod imp {
         fn constructed(&self) {
             let obj = self.obj();
             self.parent_constructed();
-            *self.playlist.lock().unwrap() = PlayList::new();
+
+            // 尝试从文件加载播放列表，如果失败则创建新的
+            *self.playlist.lock().unwrap() = PlayList::load_from_file().unwrap_or_else(|e| {
+                log::warn!("加载播放列表失败: {:?}, 创建新的播放列表", e);
+                PlayList::new()
+            });
 
             obj.setup_player();
             obj.setup_settings();
@@ -1092,6 +1268,50 @@ mod imp {
                     )
                 })
                 .build();
+
+            // 加载播放列表后，如果有歌曲，初始化 UI
+            if let Ok(playlist) = self.playlist.lock() {
+                let list_len = playlist.len();
+                if list_len > 0 {
+                    log::info!("播放列表已加载，共 {} 首歌曲，准备初始化 UI", list_len);
+
+                    // 获取当前歌曲和播放位置
+                    if let Some(current_song) = playlist.current_song() {
+                        let song_info = current_song.clone();
+                        let play_position = playlist.get_play_position();
+                        log::info!("当前歌曲: {} - {}", song_info.name, song_info.singer);
+                        log::info!("恢复播放进度: {} 微秒 (约 {} 秒)", play_position, play_position / 1_000_000);
+
+                        // 释放锁后再初始化 UI
+                        drop(playlist);
+
+                        // 初始化播放信息（封面、标题、歌手等）
+                        obj.init_play_info(song_info.clone());
+
+                        // 恢复播放进度
+                        if play_position > 0 {
+                            log::info!("设置播放位置到 {} 微秒", play_position);
+                            obj.gst_position_update(play_position);
+
+                            // 只更新进度条 UI，不调用 scale_seek_update（因为 sender 还未初始化）
+                            // scale_seek_update 会在 sender 初始化后通过 GStreamer 的 position_updated 信号自动调用
+                            let seek_scale = self.seek_scale.get();
+                            seek_scale.set_value(play_position as f64);
+
+                            let sec = play_position / 10u64.pow(6);
+                            let duration = format!("{:0>2}:{:0>2}", sec / 60, sec % 60);
+                            self.progress_time_label.get().set_label(&duration);
+
+                            log::info!("进度条 UI 已更新，等待 sender 初始化后同步其他状态");
+                        }
+
+                        // 注意：显示播放栏和更新播放列表状态的动作会在 set_sender() 中执行
+                        log::info!("UI 初始化完成，等待 sender 初始化后显示播放栏");
+                    }
+                } else {
+                    log::info!("播放列表为空，跳过 UI 初始化");
+                }
+            }
         }
 
         fn properties() -> &'static [ParamSpec] {

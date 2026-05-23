@@ -74,6 +74,12 @@ impl NeteaseCloudMusicGtk4Preferences {
             .bind("desktop-lyrics", &desktop_lyrics, "active")
             .flags(SettingsBindFlags::DEFAULT)
             .build();
+
+        let system_tray = self.imp().system_tray.get();
+        self.settings()
+            .bind("system-tray", &system_tray, "active")
+            .flags(SettingsBindFlags::DEFAULT)
+            .build();
     }
 
     pub fn set_cache_size_label(&self, size: f64, unit: String) {
@@ -114,6 +120,8 @@ mod imp {
         pub cache_clear: TemplateChild<adw::ComboRow>,
         #[template_child]
         pub desktop_lyrics: TemplateChild<Switch>,
+        #[template_child]
+        pub system_tray: TemplateChild<Switch>,
     }
 
     #[glib::object_subclass]

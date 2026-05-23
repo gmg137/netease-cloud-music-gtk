@@ -114,6 +114,20 @@
                                 </child>
                             </object>
                         </child>
+                        <child>
+                            <object class="AdwActionRow">
+                                <property name="title" translatable="yes">System Tray</property>
+                                <property name="subtitle" translatable="yes">Show system tray icon</property>
+                                <property name="use_underline">True</property>
+                                <property name="activatable-widget">system_tray</property>
+                                <child>
+                                    <object class="GtkSwitch" id="system_tray">
+                                        <property name="valign">center</property>
+                                        <property name="active">False</property>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
                     </object>
                 </child>
             </object>

@@ -17,7 +17,7 @@
                 <choice value='loop' />
                 <choice value='shuffle' />
             </choices>
-            <default>'none'</default>
+            <default>'loop'</default>
             <summary>Settings player loop</summary>
         </key>
         <key name="exit-switch" type="b">
@@ -55,6 +55,10 @@
         <key name="desktop-lyrics" type="b">
             <default>false</default>
             <summary>Desktop Lyrics</summary>
+        </key>
+        <key name="system-tray" type="b">
+            <default>false</default>
+            <summary>Enable system tray icon</summary>
         </key>
     </schema>
 </schemalist>

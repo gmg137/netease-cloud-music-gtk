@@ -50,8 +50,10 @@ pub enum Action {
     // play
     AddPlay(SongInfo),
     PlayNextSong,
+    PlayPreviousSong,
     Play(SongInfo),
     PlayStart(SongInfo),
+    TogglePlayPause,
     // (歌单, 是否立即播放)
     AddPlayList(Vec<SongInfo>, bool),
     PlayListStart,
@@ -124,6 +126,13 @@ pub enum Action {
     ScaleValueUpdate,
 
     InitMpris(MprisController),
+
+    // system tray
+    UpdateTrayPlaying(bool),
+    UpdateTraySongTitle(String),
+    ShowMainWindow,
+    ToggleMainWindow,
+    ShowPlayerBar,
 }
 
 mod imp {
@@ -211,6 +220,27 @@ mod imp {
 
             // Ask the window manager/compositor to present the window
             window.present();
+        }
+
+        fn shutdown(&self) {
+            log::info!("应用 shutdown 被调用，准备保存播放列表");
+
+            // 在应用退出前保存播放列表
+            if let Some(weak_window) = self.window.get() {
+                if let Some(window) = weak_window.upgrade() {
+                    log::info!("获取窗口实例成功，调用 save_playlist");
+                    // 获取 player_controls 并保存播放列表
+                    let player_controls = window.imp().player_controls.get();
+                    player_controls.save_playlist();
+                    log::info!("播放列表保存完成");
+                } else {
+                    log::warn!("无法获取窗口实例，跳过保存播放列表");
+                }
+            } else {
+                log::warn!("窗口未初始化，跳过保存播放列表");
+            }
+
+            self.parent_shutdown();
         }
     }
 
@@ -668,6 +698,9 @@ impl NeteaseCloudMusicGtk4Application {
             Action::PlayNextSong => {
                 window.play_next();
             }
+            Action::PlayPreviousSong => {
+                window.play_prev();
+            }
             Action::Play(song_info) => {
                 let sender = imp.sender.clone();
                 let music_rate = window.settings().uint("music-rate");
@@ -731,6 +764,17 @@ impl NeteaseCloudMusicGtk4Application {
                         .unwrap();
                 };
                 debug!("播放歌曲: {:?}", song_info);
+
+                // 更新系统托盘
+                let sender = imp.sender.clone();
+                sender
+                    .send_blocking(Action::UpdateTraySongTitle(format!(
+                        "{} - {}",
+                        song_info.name, song_info.singer
+                    )))
+                    .unwrap();
+                sender.send_blocking(Action::UpdateTrayPlaying(true)).unwrap();
+
                 window.play(song_info);
             }
             Action::ToSongListPage(songlist) => {
@@ -857,6 +901,9 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::PlayListStart => {
                 window.playlist_start();
+            }
+            Action::TogglePlayPause => {
+                window.toggle_play_pause();
             }
             Action::LikeSongList(id, is_like, callback) => {
                 let sender = imp.sender.clone();
@@ -1231,6 +1278,31 @@ impl NeteaseCloudMusicGtk4Application {
                 let sender = imp.sender.clone();
                 if !window.page_cur_playlist_lyrics_page() {
                     window.init_playlist_lyrics_page(sis, si.to_owned());
+
+                    // 打开页面后，延迟加载歌词并定位到当前播放位置
+                    let player_controls = window.imp().player_controls.get();
+                    if let Ok(playlist) = player_controls.imp().playlist.lock() {
+                        let current_position = playlist.get_play_position();
+                        drop(playlist);
+
+                        let song_info = si.to_owned();
+                        MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                            // 延迟 300ms 确保页面已初始化
+                            glib::timeout_future(std::time::Duration::from_millis(300)).await;
+
+                            // 先加载歌词内容（time = 0）
+                            log::info!("打开播放列表页面，加载歌词");
+                            sender.send_blocking(Action::UpdateLyrics(song_info.clone(), 0)).ok();
+
+                            // 如果有播放进度，等待歌词加载后再定位
+                            if current_position > 0 {
+                                // 等待歌词加载完成
+                                glib::timeout_future(std::time::Duration::from_millis(500)).await;
+                                log::info!("定位歌词到 {} 微秒", current_position);
+                                sender.send_blocking(Action::UpdateLyrics(song_info, current_position)).ok();
+                            }
+                        });
+                    }
                 } else {
                     sender.send_blocking(Action::PageBack).unwrap();
                 }
@@ -1284,6 +1356,25 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::InitMpris(mpris) => {
                 window.init_mpris(mpris);
+            }
+            Action::UpdateTrayPlaying(playing) => {
+                window.update_tray_playing(playing);
+            }
+            Action::UpdateTraySongTitle(title) => {
+                window.update_tray_song_title(title);
+            }
+            Action::ShowMainWindow => {
+                window.present();
+            }
+            Action::ToggleMainWindow => {
+                if window.is_visible() {
+                    window.hide();
+                } else {
+                    window.present();
+                }
+            }
+            Action::ShowPlayerBar => {
+                window.show_player_bar();
             }
         }
         glib::ControlFlow::Continue
