@@ -14,6 +14,38 @@ use std::sync::{Arc, Mutex};
 
 use crate::application::Action;
 
+// 嵌入应用图标（用于托盘显示）
+const ICON_DATA: &[u8] = include_bytes!("../../data/icons/hicolor/512x512@2x.png");
+
+// 加载图标像素数据
+fn load_icon_pixmap() -> Result<Vec<Icon>, Box<dyn std::error::Error>> {
+    // 使用 image crate 解码 PNG
+    let img = image::load_from_memory(ICON_DATA)?;
+    let rgba = img.to_rgba8();
+    let (width, height) = rgba.dimensions();
+
+    // 转换为 ARGB32 格式（StatusNotifierItem 协议要求）
+    let mut argb_data = Vec::with_capacity((width * height * 4) as usize);
+    for pixel in rgba.pixels() {
+        let r = pixel[0];
+        let g = pixel[1];
+        let b = pixel[2];
+        let a = pixel[3];
+
+        // ARGB32 大端序
+        argb_data.push(a);
+        argb_data.push(r);
+        argb_data.push(g);
+        argb_data.push(b);
+    }
+
+    Ok(vec![Icon {
+        width: width as i32,
+        height: height as i32,
+        data: argb_data,
+    }])
+}
+
 // 共享的托盘状态
 #[derive(Clone)]
 pub struct TrayState {
@@ -78,7 +110,15 @@ impl Tray for SystemTray {
     }
 
     fn icon_pixmap(&self) -> Vec<Icon> {
-        vec![]
+        // 为 GNOME Status Tray 等插件提供图标像素数据
+        // 某些桌面环境无法从图标主题加载图标，需要直接提供像素数据
+        match load_icon_pixmap() {
+            Ok(icons) => icons,
+            Err(e) => {
+                warn!("加载托盘图标失败: {}, 回退到图标名称", e);
+                vec![]
+            }
+        }
     }
 
     fn menu(&self) -> Vec<MenuItem<Self>> {
