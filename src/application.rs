@@ -670,7 +670,11 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::Play(song_info) => {
                 let sender = imp.sender.clone();
-                let music_rate = window.settings().uint("music-rate");
+                let music_rate = song_info
+                    .quality
+                    .selected
+                    .map(NcmClient::get_quality_index)
+                    .unwrap_or_else(|| window.settings().uint("music-rate"));
                 let path = crate::path::get_music_cache_path(song_info.id, music_rate);
 
                 if !path.exists() {
@@ -681,10 +685,15 @@ impl NeteaseCloudMusicGtk4Application {
                             {
                                 debug!("获取歌曲播放链接: {:?}", song_url);
                                 if let Some(song_url) = song_url.first() {
-                                    let song_info = SongInfo {
-                                        song_url: song_url.url.to_owned(),
-                                        ..song_info
-                                    };
+                                    let mut song_info = song_info;
+                                    song_info.song_url = song_url.url.to_owned();
+                                    song_info.quality.actual = Some(song_url.quality);
+                                    if !song_info.quality.available.contains(&song_url.quality) {
+                                        song_info.quality.available.push(song_url.quality);
+                                    }
+                                    if song_info.quality.selected.is_none() {
+                                        song_info.quality.selected = Some(song_url.quality);
+                                    }
                                     sender.send(Action::PlayStart(song_info)).await.unwrap();
                                 } else {
                                     error!("获取歌曲播放链接失败: {:?}", &[song_info.id]);
@@ -770,7 +779,11 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::GetSongUrl(song_info) => {
                 let sender = imp.sender.clone();
-                let music_rate = window.settings().uint("music-rate");
+                let music_rate = song_info
+                    .quality
+                    .selected
+                    .map(NcmClient::get_quality_index)
+                    .unwrap_or_else(|| window.settings().uint("music-rate"));
                 let path = crate::path::get_music_cache_path(song_info.id, music_rate);
 
                 if !path.exists() {
@@ -778,10 +791,15 @@ impl NeteaseCloudMusicGtk4Application {
                         if let Ok(song_url) = ncmapi.songs_url(&[song_info.id], music_rate).await {
                             debug!("获取歌曲播放链接: {:?}", song_url);
                             if let Some(song_url) = song_url.first() {
-                                let song_info = SongInfo {
-                                    song_url: song_url.url.to_owned(),
-                                    ..song_info
-                                };
+                                let mut song_info = song_info;
+                                song_info.song_url = song_url.url.to_owned();
+                                song_info.quality.actual = Some(song_url.quality);
+                                if !song_info.quality.available.contains(&song_url.quality) {
+                                    song_info.quality.available.push(song_url.quality);
+                                }
+                                if song_info.quality.selected.is_none() {
+                                    song_info.quality.selected = Some(song_url.quality);
+                                }
                                 sender.send(Action::SetSongUrl(song_info)).await.unwrap();
                             }
                         }

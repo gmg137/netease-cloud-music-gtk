@@ -5,7 +5,7 @@
 //
 use anyhow::Result;
 use cookie_store::{CookieStore, serde};
-use ncm_api::{CookieBuilder, CookieJar, MusicApi, SongInfo, SongUrl};
+use ncm_api::{CookieBuilder, CookieJar, MusicApi, SongInfo, SongQuality, SongUrl};
 
 use crate::path::{CACHE, LYRICS};
 use log::{debug, error};
@@ -58,7 +58,37 @@ impl NcmClient {
             2 => 320000,
             3 => 999000,
             4 => 1900000,
+            5 => 804505,
+            6 => 2695684,
+            7 => 4532511,
             _ => 320000,
+        }
+    }
+
+    pub fn get_quality(item: u32) -> SongQuality {
+        match item {
+            0 => SongQuality::Standard,
+            1 => SongQuality::Higher,
+            2 => SongQuality::Extreme,
+            3 => SongQuality::Lossless,
+            4 => SongQuality::HiRes,
+            5 => SongQuality::Surround,
+            6 => SongQuality::AudioVivid,
+            7 => SongQuality::Master,
+            _ => SongQuality::Extreme,
+        }
+    }
+
+    pub fn get_quality_index(quality: SongQuality) -> u32 {
+        match quality {
+            SongQuality::Standard => 0,
+            SongQuality::Higher => 1,
+            SongQuality::Extreme => 2,
+            SongQuality::Lossless => 3,
+            SongQuality::HiRes => 4,
+            SongQuality::Surround => 5,
+            SongQuality::AudioVivid => 6,
+            SongQuality::Master => 7,
         }
     }
 
@@ -162,7 +192,7 @@ impl NcmClient {
 
     pub async fn songs_url(&self, ids: &[u64], rate: u32) -> Result<Vec<SongUrl>> {
         self.client
-            .songs_url(ids, &Self::get_api_rate(rate).to_string())
+            .songs_url_v1(ids, Self::get_quality(rate))
             .await
     }
 

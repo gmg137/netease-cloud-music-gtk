@@ -90,11 +90,14 @@
                                 <property name="model">
                                     <object class="GtkStringList">
                                         <items>
-                                            <item>128k</item>
-                                            <item>192k</item>
-                                            <item>320k</item>
-                                            <item>SQ</item>
-                                            <item>HR</item>
+                                            <item>Standard (标准)</item>
+                                            <item>Higher (较高)</item>
+                                            <item>Extreme (极高)</item>
+                                            <item>Lossless SQ (无损)</item>
+                                            <item>Hi-Res HR (高解析)</item>
+                                            <item>Surround SA (高清臻音)</item>
+                                            <item>Audio Vivid (臻音全景声)</item>
+                                            <item>Master (超清母带)</item>
                                         </items>
                                     </object>
                                 </property>

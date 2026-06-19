@@ -7,12 +7,12 @@ use async_channel::Sender;
 use gettextrs::gettext;
 use gio::Settings;
 use glib::{
-    clone, source::Priority, ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum,
-    ParamSpecUInt, ParamSpecUInt64, Value,
+    ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum, ParamSpecUInt, ParamSpecUInt64,
+    Value, clone, source::Priority,
 };
-use gst::{prelude::ObjectExt, ClockTime};
+use gst::{ClockTime, prelude::ObjectExt};
 use gstreamer_play::{prelude::ElementExt, *};
-use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, GestureClick, *};
+use gtk::{CompositeTemplate, GestureClick, glib, prelude::*, subclass::prelude::*, *};
 use log::*;
 use mpris_server::PlaybackStatus;
 use ncm_api::{SongInfo, SongList};
@@ -1041,17 +1041,7 @@ mod imp {
             if let Ok(playlist) = self.playlist.lock() {
                 let current_song = playlist
                     .current_song()
-                    .unwrap_or(&SongInfo {
-                        id: 0,
-                        name: String::new(),
-                        singer: String::new(),
-                        album: String::new(),
-                        album_id: 0,
-                        pic_url: String::new(),
-                        duration: 0,
-                        song_url: String::new(),
-                        copyright: ncm_api::SongCopyright::Unknown,
-                    })
+                    .unwrap_or(&crate::utils::empty_song_info())
                     .to_owned();
                 let sender = self.sender.get().unwrap().clone();
                 sender

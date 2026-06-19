@@ -463,17 +463,7 @@ impl NeteaseCloudMusicGtk4Window {
         player_controls.remove_song(song_info);
 
         let sis = player_controls.get_list();
-        let si = player_controls.get_current_song().unwrap_or(SongInfo {
-            id: 0,
-            name: String::new(),
-            singer: String::new(),
-            album: String::new(),
-            album_id: 0,
-            pic_url: String::new(),
-            duration: 0,
-            song_url: String::new(),
-            copyright: ncm_api::SongCopyright::Unknown,
-        });
+        let si = player_controls.get_current_song().unwrap_or(crate::utils::empty_song_info());
 
         self.init_playlist_lyrics_page(sis, si.to_owned());
 

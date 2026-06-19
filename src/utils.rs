@@ -1,6 +1,7 @@
 use gettextrs::gettext;
 use glib::{timeout_add_seconds, SourceId};
 use gtk::glib;
+use ncm_api::{SongCopyright, SongInfo, SongQualityState};
 use std::sync::{Arc, Mutex};
 
 /// Like `gettext`, but replaces named variables with the given dictionary.
@@ -63,5 +64,20 @@ impl Debounce {
 impl Default for Debounce {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+pub fn empty_song_info() -> SongInfo {
+    SongInfo {
+        id: 0,
+        name: String::new(),
+        singer: String::new(),
+        album: String::new(),
+        album_id: 0,
+        pic_url: String::new(),
+        duration: 0,
+        song_url: String::new(),
+        quality: SongQualityState::default(),
+        copyright: SongCopyright::Unknown,
     }
 }
