@@ -171,7 +171,7 @@ mod imp {
             obj.setup_cache_clear();
             obj.set_accels_for_action("app.quit", &["<primary>q"]);
             obj.set_accels_for_action("win.search-button", &["<primary>f", "slash"]);
-            obj.set_accels_for_action("win.back-button", &["<primary>BackSpace"]);
+            obj.set_accels_for_action("win.back-button", &["<primary>BackSpace", "Escape"]);
         }
     }
 
