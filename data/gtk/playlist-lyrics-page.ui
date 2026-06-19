@@ -27,9 +27,10 @@
                         <child>
                             <object class="GtkScrolledWindow" id="scroll_lyrics_win">
                                 <property name="width-request">500</property>
+                                <property name="hscrollbar-policy">never</property>
                                 <child>
                                     <object class="GtkTextView" id="lyrics_text_view">
-                                        <property name="hscroll-policy">natural</property>
+                                        <property name="wrap-mode">word-char</property>
                                         <property name="vscroll-policy">natural</property>
                                         <property name="pixels-below-lines">1</property>
                                         <property name="editable">False</property>
@@ -46,8 +47,14 @@
                                                     <object class="GtkTextTagTable">
                                                         <child type="tag">
                                                             <object class="GtkTextTag"
+                                                                id="uttered_text_tag">
+                                                                <property name="foreground">#999999</property>
+                                                            </object>
+                                                        </child>
+                                                        <child type="tag">
+                                                            <object class="GtkTextTag"
                                                                 id="highlight_text_tag">
-                                                                <property name="foreground">red</property>
+                                                                <property name="foreground">#3584e4</property>
                                                                 <property name="weight">700</property>
                                                                 <property name="size">13312</property>
                                                             </object>

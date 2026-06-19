@@ -134,6 +134,7 @@ impl PlayListLyricsPage {
 
     fn set_lyrics_highlight(&self, line_start: i32, line_end: i32) -> Option<TextMark> {
         let highlight_text_tag = self.imp().highlight_text_tag.get();
+        let uttered_text_tag = self.imp().uttered_text_tag.get();
         let buffer = self.imp().buffer.get();
 
         let mut mark_to_return = None;
@@ -142,7 +143,24 @@ impl PlayListLyricsPage {
             &buffer.start_iter(),
             &buffer.end_iter(),
         );
+        buffer.remove_tag(
+            &uttered_text_tag,
+            &buffer.start_iter(),
+            &buffer.end_iter(),
+        );
         // gtk doesn't seem to be happy to apply tags to a multi-line TextIter region after an immediate `remove_tag``, so we apply tags line by line
+        for i in 0..line_start {
+            let start = buffer.iter_at_line(i);
+            if start.is_none() {
+                continue;
+            }
+            let start = start.unwrap();
+            let mut end = start;
+            if !start.ends_line() {
+                end.forward_to_line_end();
+            }
+            buffer.apply_tag(&uttered_text_tag, &start, &end);
+        }
         for i in line_start..=line_end {
             let start = buffer.iter_at_line(i);
             if start.is_none() {
@@ -192,6 +210,8 @@ mod imp {
         pub buffer: TemplateChild<TextBuffer>,
         #[template_child]
         pub highlight_text_tag: TemplateChild<TextTag>,
+        #[template_child]
+        pub uttered_text_tag: TemplateChild<TextTag>,
         pub(crate) scrolled: Arc<Mutex<usize>>,
         pub playlist: Rc<RefCell<Vec<SongInfo>>>,
         pub sender: OnceCell<Sender<Action>>,
