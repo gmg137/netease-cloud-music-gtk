@@ -1,0 +1,48 @@
+name: Create .rpm package
+description: Create an RPM package
+
+inputs:
+  build-dir:
+    description: Meson build directory
+    required: true
+  appdir:
+    description: Path to AppDir
+    required: true
+  version:
+    description: Package version
+    required: true
+  release:
+    description: RPM release number
+    required: false
+    default: '1'
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update && sudo apt-get install -y rpm
+        mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+        tar -C "${{ inputs.appdir }}" -czf ~/rpmbuild/SOURCES/netease-cloud-music-gtk4.tar.gz usr
+
+        cat > ~/rpmbuild/SPECS/netease-cloud-music-gtk4.spec << RPMSPEC
+        Name: netease-cloud-music-gtk4
+        Version: ${{ inputs.version }}
+        Release: ${{ inputs.release }}
+        Summary: Netease Cloud Music GTK4 Client
+        License: GPL-3.0
+        URL: https://github.com/gmg137/netease-cloud-music-gtk
+        Requires: gtk4 >= 4.0.0, libadwaita >= 1.5.0, gstreamer1 >= 1.16, openssl-libs
+        %description
+        Netease Cloud Music GTK4 Client
+        %install
+        tar -xzf %{_sourcedir}/netease-cloud-music-gtk4.tar.gz -C %{buildroot}
+        %files
+        /usr/bin/*
+        /usr/share/*
+        RPMSPEC
+
+        rpmbuild -bb ~/rpmbuild/SPECS/netease-cloud-music-gtk4.spec
+        mkdir -p "${{ inputs.build-dir }}/target/release/bundle"
+        cp ~/rpmbuild/RPMS/x86_64/*.rpm "${{ inputs.build-dir }}/target/release/bundle/"

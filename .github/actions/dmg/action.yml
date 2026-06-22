@@ -1,0 +1,24 @@
+name: Bundle macOS DMG
+description: Bundle the application as a macOS DMG
+
+inputs:
+  build-dir:
+    description: Meson build directory
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        brew install dylibbundler
+
+        BUNDLE_DIR="${{ inputs.build-dir }}/target/release/bundle/osx"
+        cd "$BUNDLE_DIR/netease-cloud-music-gtk4.app/Contents"
+        dylibbundler -od -b -x MacOS/netease-cloud-music-gtk4 -d Libraries -p @executable_path/../Libraries
+        cd "$BUNDLE_DIR"
+
+        hdiutil create -volname "NeteaseCloudMusicGtk4" \
+          -srcfolder netease-cloud-music-gtk4.app \
+          -ov -format UDZO \
+          "${{ inputs.build-dir }}/target/release/bundle/netease-cloud-music-gtk4.dmg"

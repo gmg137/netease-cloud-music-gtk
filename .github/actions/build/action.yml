@@ -1,0 +1,111 @@
+name: Build netease-cloud-music-gtk4
+description: Build the application for the current platform
+
+inputs:
+  prefix:
+    description: Install prefix for meson
+    required: false
+    default: /usr
+
+outputs:
+  build-dir:
+    description: Meson build directory (_build)
+    value: ${{ steps.strings.outputs.build-dir }}
+  appdir:
+    description: Path to clean AppDir
+    value: ${{ steps.strings.outputs.appdir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Cache Cargo registry
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          _build/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Set reusable strings
+      id: strings
+      shell: bash
+      run: |
+        echo "build-dir=${{ github.workspace }}/_build" >> "$GITHUB_OUTPUT"
+        echo "appdir=${{ github.workspace }}/AppDir" >> "$GITHUB_OUTPUT"
+
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update
+        sudo apt-get install -y \
+          appstream \
+          desktop-file-utils \
+          gettext \
+          libdbus-1-dev \
+          libglib2.0-bin \
+          meson \
+          ninja-build \
+          pkg-config
+
+        eval "$(${HOMEBREW_PREFIX:-/home/linuxbrew/.linuxbrew}/bin/brew shellenv)"
+        brew install gtk4 gstreamer libadwaita openssl@3
+
+    - name: Install macOS dependencies
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        set -euo pipefail
+        brew install cargo-bundle dbus gettext gstreamer libadwaita meson openssl@3
+
+    - name: Build on Linux
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        set -euo pipefail
+        eval "$(${HOMEBREW_PREFIX:-/home/linuxbrew/.linuxbrew}/bin/brew shellenv)"
+        export CARGO_TARGET_DIR=${{ github.workspace }}/_build/target
+        meson setup ${{ github.workspace }}/_build -Dprefix=${{ inputs.prefix }}
+        meson compile -C ${{ github.workspace }}/_build
+
+    - name: Build on macOS
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        set -euo pipefail
+        export PKG_CONFIG_PATH="${PKG_CONFIG_PATH:-}:/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:/Library/Frameworks/GStreamer.framework/Libraries/pkgconfig"
+        export MACOSX_DEPLOYMENT_TARGET=11.0
+        export CARGO_TARGET_DIR=${{ github.workspace }}/_build/target
+
+        VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)
+        cat > src/config.rs << EOF
+        pub static VERSION: &str = "${VERSION}";
+        pub static GETTEXT_PACKAGE: &str = "netease-cloud-music-gtk4";
+        pub static LOCALEDIR: &str = "${{ github.workspace }}/locale";
+        pub static PKGDATADIR: &str = "${{ github.workspace }}/share/netease-cloud-music-gtk4";
+        EOF
+
+        cargo bundle --release
+
+    - name: Install to AppDir
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        set -euo pipefail
+        eval "$(${HOMEBREW_PREFIX:-/home/linuxbrew/.linuxbrew}/bin/brew shellenv)"
+        DESTDIR=${{ github.workspace }}/AppDir meson install -C ${{ github.workspace }}/_build
+
+    - name: Restructure for AppDir prefix
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        set -euo pipefail
+        eval "$(${HOMEBREW_PREFIX:-/home/linuxbrew/.linuxbrew}/bin/brew shellenv)"
+        if [ -d "${{ github.workspace }}/AppDir/usr/local" ]; then
+          mv ${{ github.workspace }}/AppDir/usr/local/* ${{ github.workspace }}/AppDir/usr/
+          rm -rf ${{ github.workspace }}/AppDir/usr/local
+        fi

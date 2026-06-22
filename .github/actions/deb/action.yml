@@ -1,0 +1,42 @@
+name: Create .deb package
+description: Create a Debian package
+
+inputs:
+  build-dir:
+    description: Meson build directory
+    required: true
+  appdir:
+    description: Path to AppDir
+    required: true
+  version:
+    description: Package version
+    required: true
+  version-suffix:
+    description: Version suffix (e.g. ~nightly.20240101)
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+        APPDIR="${{ inputs.appdir }}"
+        BUILDDIR="${{ inputs.build-dir }}"
+        VERSION="${{ inputs.version }}${{ inputs.version-suffix }}"
+
+        mkdir -p pkg/DEBIAN
+        cat > pkg/DEBIAN/control << DEBCTRL
+        Package: netease-cloud-music-gtk4
+        Version: ${VERSION}
+        Architecture: amd64
+        Maintainer: gmg137
+        Depends: libgtk-4-1 (>= 4.0.0), libadwaita-1-0 (>= 1.5.0), libgstreamer1.0-0 (>= 1.16), libssl3, libdbus-1-3
+        Description: Netease Cloud Music GTK4 Client
+        DEBCTRL
+
+        cp -r "$APPDIR/usr" pkg/
+        mkdir -p "$BUILDDIR/target/release/bundle"
+        dpkg-deb -b pkg \
+          "$BUILDDIR/target/release/bundle/netease-cloud-music-gtk4_${VERSION}_amd64.deb"

@@ -1,0 +1,126 @@
+name: Bundle AppImage
+description: Bundle the application as an AppImage
+
+inputs:
+  build-dir:
+    description: Meson build directory
+    required: true
+  appdir:
+    description: Path to AppDir
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+        eval "$(${HOMEBREW_PREFIX:-/home/linuxbrew/.linuxbrew}/bin/brew shellenv)"
+        brew install shared-mime-info file
+
+        APPDIR="${{ inputs.appdir }}"
+        BUILDDIR="${{ inputs.build-dir }}"
+
+        export LD_LIBRARY_PATH="${HOMEBREW_PREFIX:-/home/linuxbrew/.linuxbrew}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+        # Download linuxdeploy (continuous is the recommended distribution)
+        curl -fL --retry 3 --retry-delay 2 -O "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+        chmod +x linuxdeploy-x86_64.AppImage
+        APPIMAGE_EXTRACT_AND_RUN=1 ./linuxdeploy-x86_64.AppImage --appimage-extract
+        mv squashfs-root linuxdeploy
+
+        # Download linuxdeploy-plugin-gtk (no stable release, use master)
+        mkdir -p linuxdeploy-plugin-gtk-dir
+        curl -fL --retry 3 --retry-delay 2 -o linuxdeploy-plugin-gtk-dir/linuxdeploy-plugin-gtk \
+          "https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh"
+        chmod +x linuxdeploy-plugin-gtk-dir/linuxdeploy-plugin-gtk
+
+        # Download appimagetool (continuous is the recommended distribution)
+        curl -fL --retry 3 --retry-delay 2 -O "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+        chmod +x appimagetool-x86_64.AppImage
+        APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool-x86_64.AppImage --appimage-extract
+        mv squashfs-root appimagetool
+
+        # Run linuxdeploy without --plugin (plugin discovery is broken in extracted mode)
+        ./linuxdeploy/AppRun \
+          --appdir "$APPDIR" \
+          --executable "$APPDIR/usr/bin/netease-cloud-music-gtk4" \
+          --desktop-file "$APPDIR/usr/share/applications/com.gitee.gmg137.NeteaseCloudMusicGtk4.desktop" \
+          --icon-file "$APPDIR/usr/share/icons/hicolor/scalable/apps/com.gitee.gmg137.NeteaseCloudMusicGtk4.svg"
+
+        # Run GTK plugin steps manually (plugin script fails with Homebrew Cellar paths)
+        export LINUXDEPLOY="$(pwd)/linuxdeploy/AppRun"
+        export DEPLOY_GTK_VERSION=4
+        export PKG_CONFIG_PATH="${HOMEBREW_PREFIX:-/home/linuxbrew/.linuxbrew}/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+
+        # Install AppRun hooks
+        HOOKSDIR="$APPDIR/apprun-hooks"
+        HOOKFILE="$HOOKSDIR/linuxdeploy-plugin-gtk.sh"
+        mkdir -p "$HOOKSDIR"
+        cat > "$HOOKFILE" <<'APPRUNEOF'
+        #! /usr/bin/env bash
+        export APPDIR="${APPDIR:-"$(dirname "$(realpath "$0")")"}"
+        export GTK_DATA_PREFIX="$APPDIR"
+        export GDK_BACKEND=x11
+        export XDG_DATA_DIRS="$APPDIR/usr/share:/usr/share:$XDG_DATA_DIRS"
+        APPRUNEOF
+
+        # Copy GLib schemas
+        GLIB_SCHEMAS_DIR=$(pkg-config --variable=schemasdir gio-2.0 2>/dev/null || echo "/usr/share/glib-2.0/schemas")
+        if [ -d "$GLIB_SCHEMAS_DIR" ]; then
+            mkdir -p "$APPDIR/$GLIB_SCHEMAS_DIR"
+            cp -r "$GLIB_SCHEMAS_DIR"/* "$APPDIR/$GLIB_SCHEMAS_DIR/" 2>/dev/null || true
+            glib-compile-schemas "$APPDIR/$GLIB_SCHEMAS_DIR" 2>/dev/null || true
+        fi
+
+        # Copy GIRepository Typelibs
+        GI_TYPELIB_DIR=$(pkg-config --variable=typelibdir gobject-introspection-1.0 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu/girepository-1.0")
+        if [ -d "$GI_TYPELIB_DIR" ]; then
+            mkdir -p "$APPDIR/usr/lib/girepository-1.0"
+            cp -r "$GI_TYPELIB_DIR"/* "$APPDIR/usr/lib/girepository-1.0/" 2>/dev/null || true
+        fi
+
+        # Copy GTK 4.0 modules (if available from Homebrew)
+        GTK4_PREFIX=$(pkg-config --variable=prefix gtk4 2>/dev/null)
+        GTK4_LIBDIR=$(pkg-config --variable=libdir gtk4 2>/dev/null)
+        if [ -n "$GTK4_LIBDIR" ] && [ -d "$GTK4_LIBDIR/gtk-4.0" ]; then
+            mkdir -p "$APPDIR/usr/lib/gtk-4.0"
+            cp -r "$GTK4_LIBDIR/gtk-4.0"/* "$APPDIR/usr/lib/gtk-4.0/" 2>/dev/null || true
+        fi
+
+        # Copy GDK PixBuf loaders
+        GDK_PIXBUF_BINARYDIR=$(pkg-config --variable=gdk_pixbuf_binarydir gdk-pixbuf-2.0 2>/dev/null)
+        GDK_PIXBUF_MODULEDIR=$(pkg-config --variable=gdk_pixbuf_moduledir gdk-pixbuf-2.0 2>/dev/null)
+        GDK_PIXBUF_CACHE_FILE=$(pkg-config --variable=gdk_pixbuf_cache_file gdk-pixbuf-2.0 2>/dev/null)
+        if [ -n "$GDK_PIXBUF_BINARYDIR" ] && [ -d "$GDK_PIXBUF_BINARYDIR" ]; then
+            GDK_DEST="$APPDIR/usr/lib/gdk-pixbuf-2.0/2.10.0"
+            mkdir -p "$GDK_DEST/loaders"
+            cp -r "$GDK_PIXBUF_BINARYDIR"/* "$GDK_DEST/" 2>/dev/null || true
+            # Fix loader paths in cache file
+            if [ -f "$GDK_DEST/loaders.cache" ]; then
+                sed -i "s|$GDK_PIXBUF_MODULEDIR/||g" "$GDK_DEST/loaders.cache" 2>/dev/null || true
+            fi
+        fi
+
+        mkdir -p "$APPDIR/usr/lib"
+        for libdir in /usr/lib/x86_64-linux-gnu /usr/lib /usr/lib64 /lib/x86_64-linux-gnu /lib /lib64; do
+          [ -d "$libdir" ] || continue
+          find "$libdir" -maxdepth 1 \( \
+            -name 'libc.so*' -o \
+            -name 'libm.so*' -o \
+            -name 'libpthread.so*' -o \
+            -name 'librt.so*' -o \
+            -name 'libdl.so*' -o \
+            -name 'libresolv.so*' -o \
+            -name 'libBrokenLocale.so*' -o \
+            -name 'libnss_*.so*' -o \
+            -name 'ld-linux*.so*' \
+          \) -exec cp -L {} "$APPDIR/usr/lib/" \; 2>/dev/null || true
+        done
+
+        ls -la "$APPDIR"
+
+        ARCH=x86_64 ./appimagetool/AppRun "$APPDIR"
+
+        mkdir -p "$BUILDDIR/target/release/bundle"
+        mv *.AppImage "$BUILDDIR/target/release/bundle/" 2>/dev/null || true

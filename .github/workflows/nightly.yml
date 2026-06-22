@@ -1,0 +1,164 @@
+
+name: Nightly Build
+
+on:
+  schedule:
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      has-changes: ${{ steps.check.outputs.has-changes }}
+      date: ${{ steps.date.outputs.date }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set date
+        id: date
+        run: |
+          set -euo pipefail
+          echo "date=$(date +'%Y%m%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Check for changes since last nightly
+        id: check
+        run: |
+          set -euo pipefail
+          LAST_TAG=$(git tag --list 'nightly-*' --sort=-v:refname | head -1)
+          if [ -z "$LAST_TAG" ]; then
+            echo "has-changes=true" >> "$GITHUB_OUTPUT"
+          else
+            COMMITS=$(git rev-list "$LAST_TAG..HEAD" --count 2>/dev/null || echo "1")
+            if [ "$COMMITS" -gt 0 ]; then
+              echo "has-changes=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "has-changes=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+  linux-build:
+    needs: check-changes
+    if: needs.check-changes.outputs.has-changes == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build application
+        id: build
+        uses: ./.github/actions/build
+
+      - name: Extract version from Cargo.toml
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "version=$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Create .deb package
+        uses: ./.github/actions/deb
+        with:
+          build-dir: ${{ steps.build.outputs.build-dir }}
+          appdir: ${{ steps.build.outputs.appdir }}
+          version: ${{ steps.version.outputs.version }}
+          version-suffix: '~nightly.${{ needs.check-changes.outputs.date }}'
+
+      - name: Create .rpm package
+        uses: ./.github/actions/rpm
+        with:
+          build-dir: ${{ steps.build.outputs.build-dir }}
+          appdir: ${{ steps.build.outputs.appdir }}
+          version: ${{ steps.version.outputs.version }}
+          release: '0.1.nightly.${{ needs.check-changes.outputs.date }}'
+
+      - name: Bundle AppImage
+        uses: ./.github/actions/appimage
+        with:
+          build-dir: ${{ steps.build.outputs.build-dir }}
+          appdir: ${{ steps.build.outputs.appdir }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightly-ubuntu-latest
+          path: ${{ steps.build.outputs.build-dir }}/target/release/bundle
+
+  macos-build:
+    needs: check-changes
+    if: needs.check-changes.outputs.has-changes == 'true'
+    strategy:
+      matrix:
+        include:
+          - runner: macos-15-intel
+            artifact-name: nightly-macos-15-intel
+          - runner: macos-latest
+            artifact-name: nightly-macos-latest
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build application
+        id: build
+        uses: ./.github/actions/build
+
+      - name: Bundle macOS dmg
+        uses: ./.github/actions/dmg
+        with:
+          build-dir: ${{ steps.build.outputs.build-dir }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ steps.build.outputs.build-dir }}/target/release/bundle
+
+  release:
+    needs: [check-changes, linux-build, macos-build]
+    if: needs.check-changes.outputs.has-changes == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v6
+
+      - name: Generate release notes
+        run: |
+          set -euo pipefail
+          LAST_TAG=$(git tag --list 'nightly-*' --sort=-v:refname | head -1)
+          if [ -z "$LAST_TAG" ]; then
+            echo "Initial nightly build" > release-notes.md
+          else
+            echo "## Changes since $LAST_TAG" > release-notes.md
+            echo "" >> release-notes.md
+            git log --oneline "$LAST_TAG..HEAD" >> release-notes.md
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly-${{ needs.check-changes.outputs.date }}
+          name: "Nightly Build ${{ needs.check-changes.outputs.date }}"
+          body_path: release-notes.md
+          prerelease: true
+          files: |
+            nightly-ubuntu-latest/*.AppImage
+            nightly-ubuntu-latest/*.deb
+            nightly-ubuntu-latest/*.rpm
+            nightly-macos-15-intel/*.dmg
+            nightly-macos-latest/*.dmg

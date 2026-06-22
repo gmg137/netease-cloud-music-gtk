@@ -1,0 +1,125 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  linux-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build application
+        id: build
+        uses: ./.github/actions/build
+
+      - name: Extract version from Cargo.toml
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "version=$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Create .deb package
+        uses: ./.github/actions/deb
+        with:
+          build-dir: ${{ steps.build.outputs.build-dir }}
+          appdir: ${{ steps.build.outputs.appdir }}
+          version: ${{ steps.version.outputs.version }}
+
+      - name: Create .rpm package
+        uses: ./.github/actions/rpm
+        with:
+          build-dir: ${{ steps.build.outputs.build-dir }}
+          appdir: ${{ steps.build.outputs.appdir }}
+          version: ${{ steps.version.outputs.version }}
+
+      - name: Bundle AppImage
+        uses: ./.github/actions/appimage
+        with:
+          build-dir: ${{ steps.build.outputs.build-dir }}
+          appdir: ${{ steps.build.outputs.appdir }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-ubuntu-latest
+          path: ${{ steps.build.outputs.build-dir }}/target/release/bundle
+
+  macos-build:
+    strategy:
+      matrix:
+        include:
+          - runner: macos-15-intel
+            artifact-name: release-macos-15-intel
+          - runner: macos-latest
+            artifact-name: release-macos-latest
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build application
+        id: build
+        uses: ./.github/actions/build
+
+      - name: Bundle macOS dmg
+        uses: ./.github/actions/dmg
+        with:
+          build-dir: ${{ steps.build.outputs.build-dir }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ steps.build.outputs.build-dir }}/target/release/bundle
+
+  release:
+    needs: [linux-build, macos-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v6
+
+      - name: Generate release notes
+        run: |
+          set -euo pipefail
+          VERSION="${{ github.ref_name }}"
+          echo "## Release $VERSION" > release-notes.md
+          echo "" >> release-notes.md
+          PREV_TAG=$(git tag --list --sort=-v:refname | grep -v nightly- | head -1 | grep -v "^$VERSION$" || true)
+          if [ -n "$PREV_TAG" ]; then
+            git log --oneline "$PREV_TAG..HEAD" >> release-notes.md
+          else
+            git log --oneline -20 >> release-notes.md
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          body_path: release-notes.md
+          prerelease: false
+          files: |
+            release-ubuntu-latest/*.AppImage
+            release-ubuntu-latest/*.deb
+            release-ubuntu-latest/*.rpm
+            release-macos-15-intel/*.dmg
+            release-macos-latest/*.dmg
