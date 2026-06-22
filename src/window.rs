@@ -83,6 +83,8 @@ mod imp {
         pub sender: OnceCell<Sender<Action>>,
         pub stack_child: Arc<Mutex<LinkedList<(String, String)>>>,
         pub page_stack: OnceCell<PageStack>,
+        pub tray_handle: RefCell<crate::gui::TrayHandle>,
+        pub graceful_quitting: Cell<bool>,
 
         search_type: Cell<SearchType>,
         toast: RefCell<Option<Toast>>,
@@ -142,9 +144,14 @@ mod imp {
             obj.setup_settings();
             obj.bind_settings();
 
-            // 窗口关闭时保存播放列表
+            // 窗口关闭时保存播放列表并清理系统托盘
             obj.connect_close_request(|window| {
-                window.imp().player_controls.save_current_state();
+                if !window.imp().graceful_quitting.get() {
+                    window.imp().player_controls.save_current_state();
+                    if !window.hides_on_close() {
+                        window.imp().tray_handle.borrow_mut().stop();
+                    }
+                }
                 glib::Propagation::Proceed
             });
         }
@@ -513,11 +520,7 @@ impl NeteaseCloudMusicGtk4Window {
         let player_controls = self.imp().player_controls.get();
         player_controls.set_property("like", self.imp().user_like_song_contains(&song_info.id));
         player_controls.play(song_info);
-        let player_revealer = self.imp().player_revealer.get();
-        if !player_revealer.reveals_child() {
-            player_revealer.set_visible(true);
-            player_revealer.set_reveal_child(true);
-        }
+        self.show_player_bar();
     }
 
     pub fn init_page_data(&self) {
@@ -556,6 +559,9 @@ impl NeteaseCloudMusicGtk4Window {
         let page_stack = imp.page_stack.get().unwrap();
         page_stack.set_transition_type(StackTransitionType::Crossfade);
         page_stack.set_transition_duration(100); // default 200
+
+        // 启动系统托盘
+        imp.tray_handle.borrow_mut().start(sender.clone());
     }
 
     pub fn init_toplist(&self, list: Vec<TopList>) {
@@ -781,6 +787,9 @@ impl NeteaseCloudMusicGtk4Window {
     }
     pub fn gst_state_changed(&self, state: gstreamer_play::PlayState) {
         self.imp().player_controls.get().gst_state_changed(state);
+        use gstreamer_play::PlayState;
+        let is_playing = matches!(state, PlayState::Playing);
+        self.update_tray_playing(is_playing);
     }
     pub fn gst_volume_changed(&self, volume: f64) {
         self.imp().player_controls.get().gst_volume_changed(volume);
@@ -799,6 +808,33 @@ impl NeteaseCloudMusicGtk4Window {
     }
     pub fn init_mpris(&self, mpris: MprisController) {
         self.imp().player_controls.get().init_mpris(mpris);
+    }
+
+    pub fn update_tray_playing(&self, playing: bool) {
+        self.imp().tray_handle.borrow().update_playing(playing);
+    }
+
+    pub fn update_tray_song_title(&self, title: String, artist: String, album_id: u64) {
+        self.imp()
+            .tray_handle
+            .borrow()
+            .update_song_title(title, artist, album_id);
+    }
+
+    pub fn show_player_bar(&self) {
+        let player_revealer = self.imp().player_revealer.get();
+        if !player_revealer.reveals_child() {
+            player_revealer.set_visible(true);
+            player_revealer.set_reveal_child(true);
+        }
+    }
+
+    pub fn toggle_play_pause(&self) {
+        self.imp().player_controls.get().toggle_play_pause();
+    }
+
+    pub fn play_prev(&self) {
+        self.imp().player_controls.get().prev_song();
     }
 
     pub async fn action_search(

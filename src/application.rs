@@ -50,8 +50,10 @@ pub enum Action {
     // play
     AddPlay(SongInfo),
     PlayNextSong,
+    PlayPreviousSong,
     Play(SongInfo),
     PlayStart(SongInfo),
+    TogglePlayPause,
     // (歌单, 是否立即播放)
     AddPlayList(Vec<SongInfo>, bool),
     PlayListStart,
@@ -124,6 +126,14 @@ pub enum Action {
     ScaleValueUpdate,
 
     InitMpris(MprisController),
+
+    Quit,
+
+    // system tray
+    UpdateTrayPlaying(bool),
+    UpdateTraySongTitle(String, String, u64),
+    ShowMainWindow,
+    ShowPlayerBar,
 }
 
 mod imp {
@@ -240,6 +250,15 @@ impl NeteaseCloudMusicGtk4Application {
         window
     }
 
+    pub fn graceful_quit(&self) {
+        if let Some(window) = self.imp().window.get().and_then(WeakRef::upgrade) {
+            window.imp().graceful_quitting.set(true);
+            window.imp().player_controls.save_current_state();
+            window.imp().tray_handle.borrow_mut().stop();
+        }
+        self.quit();
+    }
+
     fn init_ncmapi(&self, cli: NcmClient) -> NcmClient {
         let window = self.imp().window.get().unwrap().upgrade().unwrap();
         let mut ncmapi = cli;
@@ -252,6 +271,10 @@ impl NeteaseCloudMusicGtk4Application {
 
     fn process_action(&self, action: Action) -> glib::ControlFlow {
         let imp = self.imp();
+        if matches!(action, Action::Quit) {
+            self.graceful_quit();
+            return glib::ControlFlow::Continue;
+        }
         if self.active_window().is_none() {
             return glib::ControlFlow::Continue;
         }
@@ -668,6 +691,9 @@ impl NeteaseCloudMusicGtk4Application {
             Action::PlayNextSong => {
                 window.play_next();
             }
+            Action::PlayPreviousSong => {
+                window.play_prev();
+            }
             Action::Play(song_info) => {
                 let sender = imp.sender.clone();
                 let music_rate = song_info
@@ -740,6 +766,17 @@ impl NeteaseCloudMusicGtk4Application {
                         .unwrap();
                 };
                 debug!("播放歌曲: {:?}", song_info);
+
+                let sender = imp.sender.clone();
+                sender
+                    .send_blocking(Action::UpdateTraySongTitle(
+                        song_info.name.clone(),
+                        song_info.singer.clone(),
+                        song_info.album_id,
+                    ))
+                    .unwrap();
+                sender.send_blocking(Action::UpdateTrayPlaying(true)).unwrap();
+
                 window.play(song_info);
             }
             Action::ToSongListPage(songlist) => {
@@ -875,6 +912,9 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::PlayListStart => {
                 window.playlist_start();
+            }
+            Action::TogglePlayPause => {
+                window.toggle_play_pause();
             }
             Action::LikeSongList(id, is_like, callback) => {
                 let sender = imp.sender.clone();
@@ -1303,6 +1343,19 @@ impl NeteaseCloudMusicGtk4Application {
             Action::InitMpris(mpris) => {
                 window.init_mpris(mpris);
             }
+            Action::UpdateTrayPlaying(playing) => {
+                window.update_tray_playing(playing);
+            }
+            Action::UpdateTraySongTitle(title, artist, album_id) => {
+                window.update_tray_song_title(title, artist, album_id);
+            }
+            Action::ShowMainWindow => {
+                window.present();
+            }
+            Action::ShowPlayerBar => {
+                window.show_player_bar();
+            }
+            Action::Quit => unreachable!("quit is handled before window lookup"),
         }
         glib::ControlFlow::Continue
     }
@@ -1323,7 +1376,7 @@ impl NeteaseCloudMusicGtk4Application {
             #[weak(rename_to = app)]
             self,
             move |_, _| {
-                app.quit();
+                app.graceful_quit();
             }
         ));
         self.add_action(&quit_action);

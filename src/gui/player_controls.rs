@@ -188,6 +188,11 @@ impl PlayerControls {
         prev_button.emit_clicked();
     }
 
+    pub fn toggle_play_pause(&self) {
+        let play_button = self.imp().play_button.get();
+        play_button.emit_clicked();
+    }
+
     pub fn init_play_info(&self, song_info: SongInfo) {
         let imp = self.imp();
         let cover_image = imp.cover_image.get();

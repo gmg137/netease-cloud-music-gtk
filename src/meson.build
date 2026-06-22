@@ -45,6 +45,7 @@ rust_sources = files(
   'gui/songlist_page.rs',
   'gui/songlist_row.rs',
   'gui/songlist_view.rs',
+  'gui/system_tray.rs',
   'gui/theme_selector.rs',
   'gui/toplist.rs',
   'gui/user_menus.rs',

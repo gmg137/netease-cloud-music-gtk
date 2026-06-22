@@ -551,3 +551,27 @@ msgstr ""
 #: src/window.rs:668
 msgid "Play List&Lyrics"
 msgstr ""
+
+#: src/gui/system_tray.rs
+msgid "NetEase Cloud Music"
+msgstr ""
+
+#: src/gui/system_tray.rs
+msgid "Quit"
+msgstr ""
+
+#: src/gui/system_tray.rs
+msgid "Pause"
+msgstr ""
+
+#: src/gui/system_tray.rs
+msgid "Play"
+msgstr ""
+
+#: src/gui/system_tray.rs
+msgid "Previous"
+msgstr ""
+
+#: src/gui/system_tray.rs
+msgid "Next"
+msgstr ""

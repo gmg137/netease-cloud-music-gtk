@@ -13,3 +13,4 @@ data/gtk/songlist-row.ui
 data/gtk/toplist.ui
 data/gtk/my-page.ui
 data/gtk/playlist-lyrics-page.ui
+src/gui/system_tray.rs

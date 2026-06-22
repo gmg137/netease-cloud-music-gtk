@@ -558,9 +558,29 @@ msgstr "没有可播放歌曲!"
 msgid "Play List&Lyrics"
 msgstr "播放列表&歌词"
 
-#, fuzzy
-#~ msgid "NetEase Cloud Music"
-#~ msgstr "网易云音乐"
+#: src/gui/system_tray.rs
+msgid "NetEase Cloud Music"
+msgstr "网易云音乐"
+
+#: src/gui/system_tray.rs
+msgid "Quit"
+msgstr "退出"
+
+#: src/gui/system_tray.rs
+msgid "Pause"
+msgstr "暂停"
+
+#: src/gui/system_tray.rs
+msgid "Play"
+msgstr "播放"
+
+#: src/gui/system_tray.rs
+msgid "Previous"
+msgstr "上一首"
+
+#: src/gui/system_tray.rs
+msgid "Next"
+msgstr "下一首"
 
 #~ msgid "{} songs, {} favs"
 #~ msgstr "{} 首歌曲，{} 收藏"

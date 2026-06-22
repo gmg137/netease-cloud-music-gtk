@@ -6,6 +6,7 @@
 
 use adw::prelude::GtkWindowExt;
 use glib::clone;
+use gtk::prelude::Cast;
 use gtk::glib;
 use mpris_server::{zbus::Result, Time, TrackId, *};
 
@@ -14,6 +15,7 @@ use std::rc::Rc;
 
 use crate::gui::PlayerControls;
 use crate::window::NeteaseCloudMusicGtk4Window;
+use crate::application::NeteaseCloudMusicGtk4Application;
 
 use super::LoopsState;
 
@@ -143,7 +145,12 @@ impl MprisController {
         // mpris quit
         self.mpris_player.connect_quit(move |_| {
             let window = NeteaseCloudMusicGtk4Window::default();
-            window.destroy();
+            if let Some(app) = window
+                .application()
+                .and_then(|app| app.downcast::<NeteaseCloudMusicGtk4Application>().ok())
+            {
+                app.graceful_quit();
+            }
         });
 
         // mpris play / pause
