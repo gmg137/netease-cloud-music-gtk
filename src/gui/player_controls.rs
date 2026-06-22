@@ -88,8 +88,31 @@ impl PlayerControls {
         let imp = self.imp();
         imp.mpris.set(Rc::new(mpris)).unwrap();
 
-        if let Some(mpris) = self.imp().mpris.get() {
+        if let Some(mpris) = imp.mpris.get() {
             mpris.setup_signals(self);
+
+            // 如果有恢复的播放列表，同步状态到 MPRIS
+            if imp.restored.get() {
+                if let Some(song_info) = self.get_current_song() {
+                    let play_position = self.get_play_position();
+                    crate::MAINCONTEXT.spawn_local_with_priority(
+                        Priority::LOW,
+                        clone!(
+                            #[weak]
+                            mpris,
+                            async move {
+                                mpris.update_metadata(&song_info).await.ok();
+                                mpris
+                                    .set_playback_status(PlaybackStatus::Stopped)
+                                    .await
+                                    .ok();
+                                mpris.set_position(play_position as i64);
+                                mpris.seeked(play_position as i64).await.ok();
+                            }
+                        ),
+                    );
+                }
+            }
         }
     }
 
@@ -144,6 +167,13 @@ impl PlayerControls {
         player.set_uri(Some(&song_info.song_url));
         player.set_volume(self.property("volume"));
         player.play();
+
+        // 如果存在待执行的 seek 位置，在开始播放后立即定位
+        let pending = imp.pending_seek_position.get();
+        if pending > 0 {
+            imp.pending_seek_position.set(0);
+            player.seek(ClockTime::from_useconds(pending));
+        }
 
         self.init_play_info(song_info);
     }
@@ -302,6 +332,12 @@ impl PlayerControls {
         let duration = format!("{:0>2}:{:0>2}", sec / 60, sec % 60);
         imp.progress_time_label.get().set_label(&duration);
 
+        // 定期保存播放进度（每60秒保存一次）
+        if sec > 0 && sec % 60 == 0 {
+            self.set_play_position(msec);
+            self.save_playlist();
+        }
+
         if let Some(mpris) = self.imp().mpris.get() {
             mpris.set_position(msec as i64);
             crate::MAINCONTEXT.spawn_local_with_priority(
@@ -392,9 +428,25 @@ impl PlayerControls {
         let imp = self.imp();
         let play_button = imp.play_button.get();
         match state {
-            PlayState::Stopped => play_button.set_icon_name("media-playback-start-symbolic"),
-            PlayState::Paused => play_button.set_icon_name("media-playback-start-symbolic"),
-            PlayState::Playing => play_button.set_icon_name("media-playback-pause-symbolic"),
+            PlayState::Stopped => {
+                play_button.set_icon_name("media-playback-start-symbolic");
+                // 同步播放状态，确保保存时反映实际播放情况
+                if let Ok(mut playlist) = imp.playlist.lock() {
+                    playlist.set_play_state(false);
+                }
+            }
+            PlayState::Paused => {
+                play_button.set_icon_name("media-playback-start-symbolic");
+                if let Ok(mut playlist) = imp.playlist.lock() {
+                    playlist.set_play_state(false);
+                }
+            }
+            PlayState::Playing => {
+                play_button.set_icon_name("media-playback-pause-symbolic");
+                if let Ok(mut playlist) = imp.playlist.lock() {
+                    playlist.set_play_state(true);
+                }
+            }
             _ => (),
         }
     }
@@ -492,6 +544,7 @@ impl PlayerControls {
         if let Ok(mut playlist) = self.imp().playlist.lock() {
             playlist.add_song(song);
         }
+        self.save_playlist();
     }
 
     pub fn remove_song(&self, song: SongInfo) {
@@ -512,6 +565,7 @@ impl PlayerControls {
                         .unwrap();
                 }
             }
+            self.save_playlist();
         }
     }
 
@@ -529,11 +583,43 @@ impl PlayerControls {
         if let Ok(mut playlist) = self.imp().playlist.lock() {
             playlist.add_list(list);
         }
+        self.save_playlist();
     }
 
     pub fn set_song_url(&self, si: SongInfo) {
         if let Ok(mut playlist) = self.imp().playlist.lock() {
             playlist.set_song_url(si);
+        }
+    }
+
+    pub fn save_playlist(&self) {
+        if let Ok(playlist) = self.imp().playlist.lock() {
+            playlist.save_to_file();
+        }
+    }
+
+    // 保存当前播放状态（包括播放进度）
+    pub fn save_current_state(&self) {
+        // 先更新播放进度（如果 player 可用）
+        if let Some(player) = self.imp().player.get() {
+            if let Some(pos) = player.position() {
+                self.set_play_position(pos.useconds());
+            }
+        }
+        self.save_playlist();
+    }
+
+    pub fn set_play_position(&self, position: u64) {
+        if let Ok(mut playlist) = self.imp().playlist.lock() {
+            playlist.set_play_position(position);
+        }
+    }
+
+    pub fn get_play_position(&self) -> u64 {
+        if let Ok(playlist) = self.imp().playlist.lock() {
+            playlist.get_play_position()
+        } else {
+            0
         }
     }
 
@@ -558,8 +644,75 @@ impl PlayerControls {
         None
     }
 
+    pub fn has_playlist(&self) -> bool {
+        if let Ok(playlist) = self.imp().playlist.lock() {
+            return !playlist.is_empty();
+        }
+        false
+    }
+
+    pub fn restore_playlist_ui(&self) -> bool {
+        if let Some(song_info) = self.get_current_song() {
+            self.imp().restored.set(true);
+            self.init_play_info(song_info.clone());
+
+            // 设置进度条范围和时长标签（使用保存的 duration，毫秒→微秒）
+            if song_info.duration > 0 {
+                let duration_usec = song_info.duration * 1000;
+                self.imp().seek_scale.set_range(0.0, duration_usec as f64);
+                let sec = duration_usec / 10u64.pow(6);
+                let duration = format!("{:0>2}:{:0>2}", sec / 60, sec % 60);
+                self.imp().duration_label.get().set_label(&duration);
+                self.set_property("duration", sec);
+            }
+
+            let play_position = self.get_play_position();
+            if play_position > 0 {
+                // 直接更新UI，不调用 scale_seek_update（避免触发歌词更新、MPRIS通知等副作用）
+                self.imp().seek_scale.set_value(play_position as f64);
+                let sec = play_position / 10u64.pow(6);
+                let duration = format!("{:0>2}:{:0>2}", sec / 60, sec % 60);
+                self.imp().progress_time_label.get().set_label(&duration);
+
+                // 保存待执行的seek位置（播放时再执行）
+                self.imp().pending_seek_position.set(play_position);
+            }
+
+            return true;
+        }
+        false
+    }
+
+    // 尝试播放恢复的歌曲（URL已过期，需要重新获取）
+    // 返回 true 表示已处理恢复情况，调用方应直接返回
+    pub fn try_play_restored_song(&self) -> bool {
+        let imp = self.imp();
+        if imp.restored.replace(false) {
+            if let Some(sender) = imp.sender.get() {
+                if let Ok(playlist) = imp.playlist.lock() {
+                    if let Some(song_info) = playlist.current_song() {
+                        imp.play_button
+                            .get()
+                            .set_icon_name("media-playback-pause-symbolic");
+                        sender
+                            .send_blocking(Action::Play(song_info.to_owned()))
+                            .unwrap();
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
     pub fn switch_play(&self) {
         let imp = self.imp();
+
+        // 从文件恢复的播放列表，URL已过期，需要重新获取
+        if self.try_play_restored_song() {
+            return;
+        }
+
         let player = imp.player.get().unwrap();
         player.play();
 
@@ -852,6 +1005,12 @@ mod imp {
 
         // 播放条拖动结束时的值
         scale_value: Cell<f64>,
+
+        // 是否从文件恢复播放列表（URL可能已过期），恢复后首次播放需重新获取URL
+        pub restored: Cell<bool>,
+
+        // 恢复时保存的播放位置（微秒），等播放开始后再执行 seek
+        pub pending_seek_position: Cell<u64>,
     }
 
     #[glib::object_subclass]
@@ -901,6 +1060,10 @@ mod imp {
                 .unwrap()
                 .eq("media-playback-start-symbolic")
             {
+                // 从文件恢复的播放列表，URL已过期，需要重新获取
+                if self.obj().try_play_restored_song() {
+                    return;
+                }
                 player.play();
                 button.set_icon_name("media-playback-pause-symbolic");
                 if let Some(mpris) = self.mpris.get() {
@@ -1058,7 +1221,8 @@ mod imp {
         fn constructed(&self) {
             let obj = self.obj();
             self.parent_constructed();
-            *self.playlist.lock().unwrap() = PlayList::new();
+            // 尝试从文件加载保存的播放列表（若无文件则创建空列表）
+            *self.playlist.lock().unwrap() = PlayList::load_from_file();
 
             obj.setup_player();
             obj.setup_settings();
@@ -1121,7 +1285,7 @@ mod imp {
                     self.like.replace(like);
                 }
                 "scale-value" => {
-                    let scale_value = value.get().expect("The value needs to be of type `bool`.");
+                    let scale_value = value.get().expect("The value needs to be of type `f64`.");
                     self.scale_value.replace(scale_value);
                 }
                 n => unimplemented!("{}", n),
@@ -1145,6 +1309,8 @@ mod imp {
             obj.settings()
                 .set_double("volume", obj.property("volume"))
                 .unwrap();
+            // 程序退出时保存当前播放状态（包括播放进度）
+            obj.save_current_state();
         }
     }
     impl WidgetImpl for PlayerControls {}

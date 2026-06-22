@@ -141,6 +141,12 @@ mod imp {
 
             obj.setup_settings();
             obj.bind_settings();
+
+            // 窗口关闭时保存播放列表
+            obj.connect_close_request(|window| {
+                window.imp().player_controls.save_current_state();
+                glib::Propagation::Proceed
+            });
         }
 
         fn properties() -> &'static [ParamSpec] {
@@ -526,6 +532,13 @@ impl NeteaseCloudMusicGtk4Window {
         let player_controls = imp.player_controls.get();
         player_controls.set_sender(sender.clone());
 
+        // 恢复播放列表UI（如果有保存的播放列表）
+        if player_controls.restore_playlist_ui() {
+            let player_revealer = imp.player_revealer.get();
+            player_revealer.set_visible(true);
+            player_revealer.set_reveal_child(true);
+        }
+
         // 初始化发现页
         let discover = imp.discover.get();
         discover.set_sender(sender.clone());
@@ -729,14 +742,14 @@ impl NeteaseCloudMusicGtk4Window {
         self.page_new(page, &gettext("Play List&Lyrics"), "Play List&Lyrics");
     }
 
-    /// 更新歌词内容，不调整位置
+    // 更新歌词内容，不调整位置
     pub fn update_lyrics(&self, lrc: Vec<(u64, String)>) {
         let imp = self.imp();
         let page = imp.playlist_lyrics_page.get().unwrap();
         page.update_lyrics(lrc);
     }
 
-    /// 强行更新歌词区文字，用于显示歌词加载提示
+    // 强行更新歌词区文字，用于显示歌词加载提示
     pub fn update_lyrics_text(&self, text: &str) {
         let imp = self.imp();
         let page = imp.playlist_lyrics_page.get().unwrap();
