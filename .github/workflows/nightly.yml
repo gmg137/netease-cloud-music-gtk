@@ -150,7 +150,7 @@ jobs:
           fi
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: nightly-${{ needs.check-changes.outputs.date }}
           name: "Nightly Build ${{ needs.check-changes.outputs.date }}"
