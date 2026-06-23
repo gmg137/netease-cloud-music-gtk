@@ -86,7 +86,7 @@ jobs:
           appdir: ${{ steps.build.outputs.appdir }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: nightly-ubuntu-latest
           path: ${{ steps.build.outputs.build-dir }}/target/release/bundle
@@ -117,7 +117,7 @@ jobs:
           build-dir: ${{ steps.build.outputs.build-dir }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact-name }}
           path: ${{ steps.build.outputs.build-dir }}/target/release/bundle
