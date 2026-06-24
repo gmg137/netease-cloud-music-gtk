@@ -28,6 +28,9 @@ runs:
         chmod +x linuxdeploy-x86_64.AppImage
         APPIMAGE_EXTRACT_AND_RUN=1 ./linuxdeploy-x86_64.AppImage --appimage-extract
         mv squashfs-root linuxdeploy
+        # The tool is run via the extracted AppRun below; drop the AppImage so it
+        # can never be swept up by the *.AppImage bundle move at the end.
+        rm -f linuxdeploy-x86_64.AppImage
 
         # Download linuxdeploy-plugin-gtk (no stable release, use master)
         mkdir -p linuxdeploy-plugin-gtk-dir
@@ -40,6 +43,9 @@ runs:
         chmod +x appimagetool-x86_64.AppImage
         APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool-x86_64.AppImage --appimage-extract
         mv squashfs-root appimagetool
+        # The tool is run via the extracted AppRun below; drop the AppImage so it
+        # can never be swept up by the *.AppImage bundle move at the end.
+        rm -f appimagetool-x86_64.AppImage
 
         # Run linuxdeploy without --plugin (plugin discovery is broken in extracted mode)
         ./linuxdeploy/AppRun \
@@ -122,6 +128,11 @@ runs:
 
         ARCH=x86_64 ./appimagetool/AppRun "$APPDIR"
 
-        rm -f linuxdeploy-x86_64.AppImage appimagetool-x86_64.AppImage
         mkdir -p "$BUILDDIR/target/release/bundle"
-        mv *.AppImage "$BUILDDIR/target/release/bundle/" 2>/dev/null || true
+        # The bundle directory may be restored from the build cache and still
+        # hold tool AppImages left over from an earlier run, so scrub any
+        # *-x86_64.AppImage that is not our product before moving the build.
+        rm -f "$BUILDDIR/target/release/bundle/linuxdeploy-x86_64.AppImage" \
+              "$BUILDDIR/target/release/bundle/appimagetool-x86_64.AppImage"
+        mv NetEase_Cloud_Music_Gtk4-x86_64.AppImage "$BUILDDIR/target/release/bundle/" 2>/dev/null || \
+          mv *.AppImage "$BUILDDIR/target/release/bundle/" 2>/dev/null || true
