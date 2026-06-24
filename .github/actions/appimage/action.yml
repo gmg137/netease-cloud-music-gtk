@@ -8,6 +8,10 @@ inputs:
   appdir:
     description: Path to AppDir
     required: true
+  version:
+    description: Version string embedded in the AppImage file name
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -134,5 +138,13 @@ runs:
         # *-x86_64.AppImage that is not our product before moving the build.
         rm -f "$BUILDDIR/target/release/bundle/linuxdeploy-x86_64.AppImage" \
               "$BUILDDIR/target/release/bundle/appimagetool-x86_64.AppImage"
-        mv NetEase_Cloud_Music_Gtk4-x86_64.AppImage "$BUILDDIR/target/release/bundle/" 2>/dev/null || \
+
+        VERSION="${{ inputs.version }}"
+        # Rename the output to include the version, e.g.
+        #   NetEase_Cloud_Music_Gtk4-2.5.3-x86_64.AppImage
+        if [ -n "$VERSION" ]; then
+          mv NetEase_Cloud_Music_Gtk4-x86_64.AppImage \
+             "NetEase_Cloud_Music_Gtk4-${VERSION}-x86_64.AppImage"
+        fi
+        mv NetEase_Cloud_Music_Gtk4*.AppImage "$BUILDDIR/target/release/bundle/" 2>/dev/null || \
           mv *.AppImage "$BUILDDIR/target/release/bundle/" 2>/dev/null || true

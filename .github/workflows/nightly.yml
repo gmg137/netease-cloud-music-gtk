@@ -84,6 +84,7 @@ jobs:
         with:
           build-dir: ${{ steps.build.outputs.build-dir }}
           appdir: ${{ steps.build.outputs.appdir }}
+          version: ${{ steps.version.outputs.version }}-nightly.${{ needs.check-changes.outputs.date }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
@@ -111,10 +112,18 @@ jobs:
         id: build
         uses: ./.github/actions/build
 
+      - name: Extract version from Cargo.toml
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "version=$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
+
       - name: Bundle macOS dmg
         uses: ./.github/actions/dmg
         with:
           build-dir: ${{ steps.build.outputs.build-dir }}
+          version: ${{ steps.version.outputs.version }}-nightly.${{ needs.check-changes.outputs.date }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
