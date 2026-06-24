@@ -41,3 +41,11 @@ runs:
           -srcfolder netease-cloud-music-gtk4.app \
           -ov -format UDZO \
           "${{ inputs.build-dir }}/target/release/bundle/${DMG_NAME}"
+
+        # Remove the generic dmg that cargo-bundle generated automatically,
+        # as well as any stale ones left over from a previous cached build,
+        # so that only our versioned product survives in the bundle directory.
+        rm -f "${{ inputs.build-dir }}/target/release/bundle/dmg/netease-cloud-music-gtk4.dmg" \
+              "${{ inputs.build-dir }}/target/release/bundle/netease-cloud-music-gtk4.dmg" \
+              "${{ inputs.build-dir }}/target/release/bundle/netease-cloud-music-gtk4-arm64.dmg" \
+              "${{ inputs.build-dir }}/target/release/bundle/netease-cloud-music-gtk4-x86_64.dmg"
