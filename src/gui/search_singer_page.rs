@@ -62,10 +62,8 @@ impl SearchSingerPage {
             let avatar = adw::Avatar::new(140, Some(&si.name), true);
 
             if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
-                let image = Image::from_pixbuf(Some(&pixbuf));
-                if let Some(paintable) = image.paintable() {
-                    avatar.set_custom_image(Some(&paintable));
-                }
+                let paintable = gtk::gdk::Texture::for_pixbuf(&pixbuf);
+                avatar.set_custom_image(Some(&paintable));
             } else {
                 // 加载图片
                 avatar.set_from_net(si.pic_url.to_owned(), path, (140, 140), sender);

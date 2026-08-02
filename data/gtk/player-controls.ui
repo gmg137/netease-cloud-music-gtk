@@ -168,10 +168,10 @@
                     </object>
                 </child>
                 <child>
-                    <object class="GtkVolumeButton" id="volume_button">
+                    <object class="GtkScaleButton" id="volume_button">
                         <property name="halign">fill</property>
                         <property name="valign">center</property>
-                        <property name="adjustment">volume_adjustment</property>
+<property name="adjustment">volume_adjustment</property>
                     </object>
                 </child>
                 <child>

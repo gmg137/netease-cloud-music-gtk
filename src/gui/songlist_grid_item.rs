@@ -135,6 +135,7 @@ impl SongListGridItem {
         let factory = SignalListItemFactory::new();
 
         factory.connect_setup(move |_, list_item| {
+            let list_item = list_item.downcast_ref::<ListItem>().unwrap();
             let (boxs, _, label, label_author) = Self::create(pic_size);
             if show_author {
                 label.set_lines(1);
@@ -143,6 +144,7 @@ impl SongListGridItem {
             list_item.set_child(Some(&boxs));
         });
         factory.connect_bind(move |_, list_item| {
+            let list_item = list_item.downcast_ref::<ListItem>().unwrap();
             let songlist_object = list_item
                 .item()
                 .unwrap()

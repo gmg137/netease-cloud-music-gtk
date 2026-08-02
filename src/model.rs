@@ -248,7 +248,7 @@ impl ImageDownloadImpl for Picture {
                         )
                         .unwrap();
                     if let Some(picture) = picture.upgrade() {
-                        picture.set_pixbuf(Some(&image));
+                        picture.set_paintable(Some(&gtk::gdk::Texture::for_pixbuf(&image)));
                     }
                 })),
             ))
@@ -267,11 +267,9 @@ impl ImageDownloadImpl for adw::Avatar {
                 height,
                 Some(Arc::new(move |_| {
                     if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file(&path) {
-                        let image = Image::from_pixbuf(Some(&pixbuf));
-                        if let Some(paintable) = image.paintable() {
-                            if let Some(avatar) = avatar.upgrade() {
-                                avatar.set_custom_image(Some(&paintable));
-                            }
+                        let paintable = gtk::gdk::Texture::for_pixbuf(&pixbuf);
+                        if let Some(avatar) = avatar.upgrade() {
+                            avatar.set_custom_image(Some(&paintable));
                         }
                     }
                 })),

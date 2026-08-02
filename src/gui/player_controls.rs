@@ -50,6 +50,15 @@ impl PlayerControls {
         let settings = Settings::new(crate::APP_ID);
 
         self.imp()
+            .volume_button
+            .set_icons(&[
+                "audio-volume-muted-symbolic",
+                "audio-volume-high-symbolic",
+                "audio-volume-low-symbolic",
+                "audio-volume-medium-symbolic",
+            ]);
+
+        self.imp()
             .settings
             .set(settings)
             .expect("Could not set `Settings`.");
@@ -978,7 +987,7 @@ mod imp {
         #[template_child]
         pub duration_label: TemplateChild<Label>,
         #[template_child]
-        pub volume_button: TemplateChild<VolumeButton>,
+        pub volume_button: TemplateChild<ScaleButton>,
 
         #[template_child]
         pub repeat_menu_button: TemplateChild<MenuButton>,
