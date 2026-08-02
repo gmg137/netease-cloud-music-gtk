@@ -53,6 +53,7 @@ runs:
           pkg-config
 
         eval "$(${HOMEBREW_PREFIX:-/home/linuxbrew/.linuxbrew}/bin/brew shellenv)"
+        brew update
         brew install gtk4 gstreamer libadwaita openssl@3
 
     - name: Install macOS dependencies
