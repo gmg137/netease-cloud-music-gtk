@@ -135,6 +135,7 @@ impl SonglistRow {
                 name: si.album,
                 cover_img_url: si.pic_url,
                 author: String::new(),
+                special_type: 0,
             };
             sender.send_blocking(Action::ToAlbumPage(songlist)).unwrap();
         } else {

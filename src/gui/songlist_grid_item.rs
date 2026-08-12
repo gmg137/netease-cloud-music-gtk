@@ -23,6 +23,7 @@ impl From<SongListGridItem> for SongList {
             name: item.property::<String>("name"),
             cover_img_url: item.property::<String>("pic-url"),
             author: item.property::<String>("author"),
+            special_type: 0,
         }
     }
 }
