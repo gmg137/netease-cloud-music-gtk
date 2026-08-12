@@ -9,8 +9,14 @@ use ncm_api::{
     AlbumDetailDynamic, BannersInfo, CookieJar, LoginInfo, PlayListDetailDynamic, SingerInfo,
     SongInfo, SongList, TargetType, TopList,
 };
-use once_cell::sync::OnceCell;
-use std::{cell::RefCell, fs, path::PathBuf, sync::Arc, time::Duration};
+use once_cell::sync::{Lazy, OnceCell};
+use std::{
+    cell::RefCell,
+    fs,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use crate::{
     MAINCONTEXT, NeteaseCloudMusicGtk4Window, audio::MprisController, config::VERSION,
@@ -33,6 +39,11 @@ impl<Targ> std::fmt::Debug for dyn ActionCallbackTr<Targ> {
 //   unique id for sender object, and store a map
 //   sender object create new (sender, receiver) and attach, then action send back
 pub type ActionCallback<Targ = ()> = Arc<dyn ActionCallbackTr<Targ>>;
+
+// uid -> 我喜欢的音乐歌单 id 缓存，避免每次点击心动模式都重新拉取歌单
+static FAVORITE_PLAYLIST_ID: Lazy<Mutex<Option<(u64, u64)>>> = Lazy::new(|| Mutex::new(None));
+// 心动模式开启状态，true 表示已开启，再次点击则关闭
+static HEARTBEAT_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
 #[derive(Debug, Clone)]
 pub enum Action {
@@ -658,6 +669,7 @@ impl NeteaseCloudMusicGtk4Application {
                                             name: album.name.to_owned(),
                                             cover_img_url: album.pic_url.to_owned(),
                                             author: album.artist_name.to_owned(),
+                                            special_type: 0,
                                         },
                                         true,
                                     );
@@ -1007,16 +1019,81 @@ impl NeteaseCloudMusicGtk4Application {
             Action::Moved(si) => {
                 let sender = imp.sender.clone();
                 MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    // toggle：已开启则直接关闭，不再拉取/追加
+                    let is_active = { *HEARTBEAT_ACTIVE.lock().unwrap() };
+                    if is_active {
+                        *HEARTBEAT_ACTIVE.lock().unwrap() = false;
+                        sender
+                            .send(Action::AddToast(gettext("Intelligent Mode Off")))
+                            .await
+                            .unwrap();
+                        return;
+                    }
+
+                    let uid = window.get_uid();
+                    if uid == 0 {
+                        sender
+                            .send(Action::AddToast(gettext("Please log in first!")))
+                            .await
+                            .unwrap();
+                        return;
+                    }
+
+                    let playlist_id = {
+                        let cache = FAVORITE_PLAYLIST_ID.lock().unwrap();
+                        if let Some((cached_uid, pid)) = *cache {
+                            if cached_uid == uid {
+                                Some(pid)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    };
+
+                    let playlist_id = match playlist_id {
+                        Some(pid) => pid,
+                        None => match ncmapi.client.user_song_list(uid, 0, 100).await {
+                            Ok(sls) => match sls.into_iter().find(|sl| sl.special_type == 5) {
+                                Some(sl) => {
+                                    *FAVORITE_PLAYLIST_ID.lock().unwrap() = Some((uid, sl.id));
+                                    sl.id
+                                }
+                                None => {
+                                    error!("未找到我喜欢的音乐歌单: uid={}", uid);
+                                    sender
+                                        .send(Action::AddToast(gettext(
+                                            "No Favorite Songs playlist found!",
+                                        )))
+                                        .await
+                                        .unwrap();
+                                    return;
+                                }
+                            },
+                            Err(err) => {
+                                error!("获取用户歌单失败: {:?}", err);
+                                sender
+                                    .send(Action::AddToast(gettext(
+                                        "Request for interface failed, please try again!",
+                                    )))
+                                    .await
+                                    .unwrap();
+                                return;
+                            }
+                        },
+                    };
+
                     match ncmapi
                         .client
-                        .playmode_intelligence_list(si.id, si.album_id)
+                        .playmode_intelligence_list(si.id, playlist_id)
                         .await
                     {
                         Ok(mut pl) => {
                             debug!("获取心动歌曲：{:?}", pl);
+                            *HEARTBEAT_ACTIVE.lock().unwrap() = true;
                             let mut pla = vec![si];
                             pla.append(&mut pl);
-
                             sender.send(Action::AddPlayList(pla, false)).await.unwrap();
                             sender
                                 .send(Action::AddToast(gettext("Intelligent Mode")))
@@ -1025,6 +1102,7 @@ impl NeteaseCloudMusicGtk4Application {
                         }
                         Err(err) => {
                             error!("获取心动歌曲 {} 失败! {:?}", si.name, err);
+                            *HEARTBEAT_ACTIVE.lock().unwrap() = false;
                             sender
                                 .send(Action::AddToast(gettext("Intelligent mode failed!")))
                                 .await

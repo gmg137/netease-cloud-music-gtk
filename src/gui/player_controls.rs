@@ -924,6 +924,7 @@ impl PlayerControls {
                     name: songinfo.album,
                     cover_img_url: songinfo.pic_url,
                     author: String::new(),
+                    special_type: 0,
                 };
                 sender.send_blocking(Action::ToAlbumPage(songlist)).unwrap();
             } else {

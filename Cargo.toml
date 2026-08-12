@@ -8,8 +8,9 @@ gettext-rs = { version = "~0.7", features = ["gettext-system"] }
 gtk = { version = "~0.11", package = "gtk4", features = ["gnome_46"] }
 once_cell = "~1.21"
 qrcode-generator = "~5.0"
-# ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", branch = "dev", package = "netease-cloud-music-api" }
-ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", tag = "2.0.0", package = "netease-cloud-music-api" }
+# ncm-api 依赖包含 special_type 字段（见 netease-cloud-music-api PR #19），
+# 合并后 master 分支可用；本地开发可用 path 依赖替代
+ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", package = "netease-cloud-music-api" }
 anyhow = "~1.0"
 gstreamer = "~0.25"
 gstreamer-play = "~0.25"
