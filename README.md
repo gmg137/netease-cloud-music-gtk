@@ -74,11 +74,6 @@ sudo apt install netease-cloud-music-gtk
     <img width='240' alt='Download on Flathub' src='https://flathub.org/api/badge?locale=zh-Hans'/>
 </a>
 
-#### 离线安装
-```bash
-sudo flatpak install com.gitee.gmg137.NeteaseCloudMusicGtk4-*.flatpak
-```
-
 ### Nix
 ```bash
 nix-env -iA nixpkgs.netease-cloud-music-gtk
@@ -116,9 +111,9 @@ sudo ninja install
 
 ## FAQ
 1. 为什么后台运行时没有托盘图标?
-> 由于 GTK3 开始取消了托盘接口，所以目前不打算实现托盘功能。<br>
+> GNOME 桌面环境下可以安装[插件](https://extensions.gnome.org/extension/9164/status-tray/)以显示托盘图标。<br>
 > **替代方案:**
-> - Mpris 插件: GNOME 推荐 [Media Controls](https://extensions.gnome.org/extension/4470/media-controls/)，其它桌面可查找相应 Mpris 插件。
+> - 安装支持 Mpris 协议的插件。
 > - 直接点击启动图标，亦可唤醒程序。
 2. 使用 osdlyrics 时没有正确匹配歌词?
 > 打开 osdlyrics 的[首选项]-[歌词位置]-[文件名]，添加匹配规则: %t-%p-%a。
@@ -126,8 +121,10 @@ sudo ninja install
 > 缓存位于用户主目录下 .cache/netease-cloud-music-gtk4 文件夹内。
 4. 如何分享音乐?
 > 点击播放栏的歌曲名称，便会复制歌曲链接等信息到剪贴板。
-5. 如何查看日志
+5. 如何查看日志?
 > 从终端启动程序，添加环境变量 RUST_LOG=debug 或 RUST_LOG=netease_cloud_music_gtk4。
+6. 心动模式规则?
+> 当开启心动模式时，在[关闭循环]和[列表循环]模式下，播放完最后一首歌曲时会自动追加推荐的心动歌曲。
 
 ## 截图
 ![](./screenshots/discover.png)
