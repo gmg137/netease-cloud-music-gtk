@@ -499,6 +499,35 @@ impl NeteaseCloudMusicGtk4Window {
         }
     }
 
+    // 追加歌曲到播放列表末尾，返回实际追加的歌曲（已过滤灰歌/去重）
+    pub fn append_playlist(&self, list: &mut Vec<SongInfo>) -> Vec<SongInfo> {
+        let player_controls = self.imp().player_controls.get();
+        player_controls.append_list(list)
+    }
+
+    // 心动模式开启/关闭时同步按钮状态
+    pub fn set_heartbeat_active(&self, active: bool) {
+        let player_controls = self.imp().player_controls.get();
+        player_controls.set_heartbeat_active(active);
+    }
+
+    // 根据 song_id 定位播放位置（心动模式追加续播前使用）
+    pub fn sync_playlist_position(&self, song_id: u64) {
+        let player_controls = self.imp().player_controls.get();
+        player_controls.sync_playlist_position(song_id);
+    }
+
+    pub fn playlist_position(&self) -> usize {
+        let player_controls = self.imp().player_controls.get();
+        player_controls.playlist_position()
+    }
+
+    // 从头播放列表第一首（心动模式列表循环追加失败时的回退）
+    pub fn playlist_first_restart(&self) -> Option<SongInfo> {
+        let player_controls = self.imp().player_controls.get();
+        player_controls.playlist_first_restart()
+    }
+
     pub fn playlist_start(&self) {
         let sender = self.imp().sender.get().unwrap();
         let player_controls = self.imp().player_controls.get();

@@ -43,7 +43,54 @@ pub type ActionCallback<Targ = ()> = Arc<dyn ActionCallbackTr<Targ>>;
 // uid -> 我喜欢的音乐歌单 id 缓存，避免每次点击心动模式都重新拉取歌单
 static FAVORITE_PLAYLIST_ID: Lazy<Mutex<Option<(u64, u64)>>> = Lazy::new(|| Mutex::new(None));
 // 心动模式开启状态，true 表示已开启，再次点击则关闭
-static HEARTBEAT_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+pub(crate) static HEARTBEAT_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+
+// 心动模式追加推荐的来源：列表循环（播完最后一首）或列表播完（不循环模式）
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeartbeatExtendMode {
+    // 列表循环模式播到最后一首
+    ListLoop,
+    // 不循环模式播完列表
+    ListEnd,
+}
+
+// 获取「我喜欢的音乐」歌单 ID（uid 级缓存），失败时返回错误 toast 文案
+async fn favorite_playlist_id(ncmapi: &NcmClient, uid: u64) -> Result<u64, &'static str> {
+    {
+        let cache = *FAVORITE_PLAYLIST_ID.lock().unwrap();
+        if let Some(pid) = cache
+            .filter(|(cached_uid, _)| *cached_uid == uid)
+            .map(|(_, pid)| pid)
+        {
+            return Ok(pid);
+        }
+    }
+    match ncmapi.client.user_song_list(uid, 0, 100).await {
+        Ok(sls) => match sls.into_iter().find(|sl| sl.special_type == 5) {
+            Some(sl) => {
+                *FAVORITE_PLAYLIST_ID.lock().unwrap() = Some((uid, sl.id));
+                Ok(sl.id)
+            }
+            None => {
+                error!("未找到我喜欢的音乐歌单: uid={}", uid);
+                Err("No Favorite Songs playlist found!")
+            }
+        },
+        Err(err) => {
+            error!("获取用户歌单失败: {:?}", err);
+            Err("Request for interface failed, please try again!")
+        }
+    }
+}
+
+// 列表循环模式追加失败/为空时：从头播放列表第一首
+async fn playlist_restart(window: &NeteaseCloudMusicGtk4Window, sender: &Sender<Action>) {
+    if let Some(first) = window.playlist_first_restart() {
+        let index = window.playlist_position();
+        sender.send(Action::Play(first.to_owned())).await.unwrap();
+        sender.send(Action::UpdatePlayListStatus(index)).await.unwrap();
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Action {
@@ -57,6 +104,8 @@ pub enum Action {
     LikeAlbum(u64, bool, Option<ActionCallback>),
     LikeSong(u64, bool, Option<ActionCallback>),
     Moved(SongInfo),
+    // 心动模式播放完时扩展推荐（参考歌曲，追加来源）
+    HeartbeatExtend(SongInfo, HeartbeatExtendMode),
 
     // play
     AddPlay(SongInfo),
@@ -1023,6 +1072,7 @@ impl NeteaseCloudMusicGtk4Application {
                     let is_active = { *HEARTBEAT_ACTIVE.lock().unwrap() };
                     if is_active {
                         *HEARTBEAT_ACTIVE.lock().unwrap() = false;
+                        window.set_heartbeat_active(false);
                         sender
                             .send(Action::AddToast(gettext("Intelligent Mode Off")))
                             .await
@@ -1039,49 +1089,15 @@ impl NeteaseCloudMusicGtk4Application {
                         return;
                     }
 
-                    let playlist_id = {
-                        let cache = FAVORITE_PLAYLIST_ID.lock().unwrap();
-                        if let Some((cached_uid, pid)) = *cache {
-                            if cached_uid == uid {
-                                Some(pid)
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
+                    let playlist_id = match favorite_playlist_id(&ncmapi, uid).await {
+                        Ok(pid) => pid,
+                        Err(toast) => {
+                            sender
+                                .send(Action::AddToast(gettext(toast)))
+                                .await
+                                .unwrap();
+                            return;
                         }
-                    };
-
-                    let playlist_id = match playlist_id {
-                        Some(pid) => pid,
-                        None => match ncmapi.client.user_song_list(uid, 0, 100).await {
-                            Ok(sls) => match sls.into_iter().find(|sl| sl.special_type == 5) {
-                                Some(sl) => {
-                                    *FAVORITE_PLAYLIST_ID.lock().unwrap() = Some((uid, sl.id));
-                                    sl.id
-                                }
-                                None => {
-                                    error!("未找到我喜欢的音乐歌单: uid={}", uid);
-                                    sender
-                                        .send(Action::AddToast(gettext(
-                                            "No Favorite Songs playlist found!",
-                                        )))
-                                        .await
-                                        .unwrap();
-                                    return;
-                                }
-                            },
-                            Err(err) => {
-                                error!("获取用户歌单失败: {:?}", err);
-                                sender
-                                    .send(Action::AddToast(gettext(
-                                        "Request for interface failed, please try again!",
-                                    )))
-                                    .await
-                                    .unwrap();
-                                return;
-                            }
-                        },
                     };
 
                     match ncmapi
@@ -1092,6 +1108,7 @@ impl NeteaseCloudMusicGtk4Application {
                         Ok(mut pl) => {
                             debug!("获取心动歌曲：{:?}", pl);
                             *HEARTBEAT_ACTIVE.lock().unwrap() = true;
+                            window.set_heartbeat_active(true);
                             let mut pla = vec![si];
                             pla.append(&mut pl);
                             sender.send(Action::AddPlayList(pla, false)).await.unwrap();
@@ -1103,10 +1120,57 @@ impl NeteaseCloudMusicGtk4Application {
                         Err(err) => {
                             error!("获取心动歌曲 {} 失败! {:?}", si.name, err);
                             *HEARTBEAT_ACTIVE.lock().unwrap() = false;
+                            window.set_heartbeat_active(false);
                             sender
                                 .send(Action::AddToast(gettext("Intelligent mode failed!")))
                                 .await
                                 .unwrap();
+                        }
+                    }
+                });
+            }
+            Action::HeartbeatExtend(si, ext_mode) => {
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    if !*HEARTBEAT_ACTIVE.lock().unwrap() {
+                        return;
+                    }
+                    let uid = window.get_uid();
+                    if uid == 0 {
+                        return;
+                    }
+                    let playlist_id = match favorite_playlist_id(&ncmapi, uid).await {
+                        Ok(pid) => pid,
+                        Err(toast) => {
+                            sender
+                                .send(Action::AddToast(gettext(toast)))
+                                .await
+                                .unwrap();
+                            return;
+                        }
+                    };
+                    match ncmapi.client.playmode_intelligence_list(si.id, playlist_id).await {
+                        Ok(pl) => {
+                            debug!("追加心动歌曲：{:?}", pl);
+                            let mut new_list = pl;
+                            let appended = window.append_playlist(&mut new_list);
+                            if let Some(song) = appended.first() {
+                                // 追加成功：自动播放追加的第一首并同步播放位置
+                                window.sync_playlist_position(song.id);
+                                let index = window.playlist_position();
+                                sender.send(Action::Play(song.to_owned())).await.unwrap();
+                                sender.send(Action::UpdatePlayListStatus(index)).await.unwrap();
+                            } else if ext_mode == HeartbeatExtendMode::ListLoop {
+                                // 追加为空（全部重复）：列表循环恢复从头播放
+                                playlist_restart(&window, &sender).await;
+                            }
+                        }
+                        Err(err) => {
+                            error!("获取心动歌曲失败! {:?}", err);
+                            if ext_mode == HeartbeatExtendMode::ListLoop {
+                                // 追加失败：列表循环恢复从头播放
+                                playlist_restart(&window, &sender).await;
+                            }
                         }
                     }
                 });

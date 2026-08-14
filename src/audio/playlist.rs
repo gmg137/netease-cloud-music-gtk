@@ -284,6 +284,24 @@ impl PlayList {
         self.position = 0;
     }
 
+    // 追加歌曲列表到队尾（已存在的歌曲自动跳过），返回实际追加的歌曲
+    pub fn append_list(&mut self, mut list: Vec<SongInfo>) -> Vec<SongInfo> {
+        let old_len = self.list.len();
+        list.retain(|si| !self.list.iter().any(|s| s.id == si.id));
+        if !list.is_empty() {
+            let appended = list.clone();
+            self.list.append(&mut list);
+            if let LoopsState::Shuffle = self.loops {
+                let mut list = self.list[old_len..].to_vec();
+                fastrand::shuffle(&mut list);
+                self.shuffle.append(&mut list);
+            }
+            appended
+        } else {
+            vec![]
+        }
+    }
+
     pub fn set_song_url(&mut self, si: SongInfo) {
         if let Some(si_old) = self.list.iter_mut().find(|s| s.id == si.id) {
             si_old.song_url = si.song_url.clone();
@@ -305,6 +323,10 @@ impl PlayList {
     // 获取播放状态（true=正在播放）
     pub fn get_play_state(&self) -> bool {
         self.play_state
+    }
+
+    pub fn get_loops(&self) -> LoopsState {
+        self.loops
     }
 
     pub fn set_loops(&mut self, loops: LoopsState) {

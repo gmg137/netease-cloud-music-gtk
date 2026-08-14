@@ -18,7 +18,13 @@ use mpris_server::PlaybackStatus;
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::*;
 
-use crate::{application::Action, audio::*, model::ImageDownloadImpl, path::CACHE, utils::*};
+use crate::{
+    application::{Action, HEARTBEAT_ACTIVE, HeartbeatExtendMode},
+    audio::*,
+    model::ImageDownloadImpl,
+    path::CACHE,
+    utils::*,
+};
 use std::{
     cell::Cell,
     fs, path,
@@ -604,6 +610,64 @@ impl PlayerControls {
         self.save_playlist();
     }
 
+    // 心动模式开启/关闭时更新按钮状态（开启红心高亮）
+    pub fn set_heartbeat_active(&self, active: bool) {
+        if active {
+            self.imp().moved_button.get().add_css_class("heartbeat-active");
+        } else {
+            self.imp()
+                .moved_button
+                .get()
+                .remove_css_class("heartbeat-active");
+        }
+    }
+
+    // 追加歌曲到播放列表末尾（过滤灰歌，去重），返回实际追加的歌曲
+    pub fn append_list(&self, list: &mut Vec<SongInfo>) -> Vec<SongInfo> {
+        let not_ignore_grey: bool = self.settings().get("not-ignore-grey");
+        if !not_ignore_grey {
+            list.retain(|si| si.copyright.playable());
+        }
+        let appending = std::mem::take(list);
+        let appended = if let Ok(mut playlist) = self.imp().playlist.lock() {
+            playlist.append_list(appending)
+        } else {
+            vec![]
+        };
+        self.save_playlist();
+        appended
+    }
+
+    // 根据 song_id 定位播放位置（心动模式追加续播前使用）
+    pub fn sync_playlist_position(&self, song_id: u64) {
+        if let Ok(mut playlist) = self.imp().playlist.lock() {
+            playlist.sync_position_with_song_id(song_id);
+        }
+    }
+
+    pub fn playlist_position(&self) -> usize {
+        if let Ok(playlist) = self.imp().playlist.lock() {
+            playlist.get_position()
+        } else {
+            0
+        }
+    }
+
+    // 从头播放列表第一首（心动模式列表循环追加失败时的回退）
+    pub fn playlist_first_restart(&self) -> Option<SongInfo> {
+        let first = if let Ok(playlist) = self.imp().playlist.lock() {
+            playlist.get_list().first().cloned()
+        } else {
+            None
+        };
+        if let Some(first) = first {
+            self.sync_playlist_position(first.id);
+            Some(first)
+        } else {
+            None
+        }
+    }
+
     pub fn set_song_url(&self, si: SongInfo) {
         if let Ok(mut playlist) = self.imp().playlist.lock() {
             playlist.set_song_url(si);
@@ -1126,6 +1190,31 @@ mod imp {
         #[template_callback]
         fn next_button_clicked_cb(&self) {
             let sender = self.sender.get().unwrap().clone();
+            let (loops, pos_before, len) = if let Ok(playlist) = self.playlist.lock() {
+                (playlist.get_loops(), playlist.get_position(), playlist.len())
+            } else {
+                (LoopsState::None, 0, 0)
+            };
+            // 心动模式 + 列表循环播到最后一首：不回绕，追加新的心动歌曲后继续播放
+            if *HEARTBEAT_ACTIVE.lock().unwrap()
+                && loops == LoopsState::Playlist
+                && len > 0
+                && pos_before + 1 == len
+            {
+                let si = {
+                    if let Ok(playlist) = self.playlist.lock() {
+                        playlist.current_song().map(|s| s.to_owned())
+                    } else {
+                        None
+                    }
+                };
+                if let Some(si) = si {
+                    sender
+                        .send_blocking(Action::HeartbeatExtend(si, HeartbeatExtendMode::ListLoop))
+                        .unwrap();
+                    return;
+                }
+            }
             if let Ok(mut playlist) = self.playlist.lock() {
                 if let Some(song_info) = playlist.next_song() {
                     let song_info = song_info.to_owned();
@@ -1136,6 +1225,15 @@ mod imp {
                         .send_blocking(Action::UpdatePlayListStatus(playlist.get_position()))
                         .unwrap();
                     return;
+                }
+                if loops == LoopsState::None {
+                    if let Some(si) = playlist.current_song().map(|s| s.to_owned()) {
+                        // 不循环模式播完：追加心动歌曲并自动续播
+                        sender
+                            .send_blocking(Action::HeartbeatExtend(si, HeartbeatExtendMode::ListEnd))
+                            .unwrap();
+                        return;
+                    }
                 }
             }
             sender
@@ -1253,6 +1351,10 @@ mod imp {
             obj.load_settings();
             obj.bind_shortcut();
 
+            load_css();
+            // 恢复心动模式按钮状态
+            obj.set_heartbeat_active(*HEARTBEAT_ACTIVE.lock().unwrap());
+
             obj.bind_property("like", &self.like_button.get(), "icon_name")
                 .transform_to(|_, v: bool| {
                     Some(
@@ -1334,4 +1436,17 @@ mod imp {
     }
     impl WidgetImpl for PlayerControls {}
     impl BoxImpl for PlayerControls {}
+}
+
+fn load_css() {
+    // Load the CSS file and add it to the provider
+    let provider = CssProvider::new();
+    provider.load_from_resource("/com/gitee/gmg137/NeteaseCloudMusicGtk4/themes/heartbeat.css");
+
+    // Add the provider to the default screen
+    style_context_add_provider_for_display(
+        &gdk::Display::default().expect("Could not connect to a display."),
+        &provider,
+        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
 }

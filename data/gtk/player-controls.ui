@@ -147,7 +147,7 @@
                     <object class="GtkButton" id="moved_button">
                         <property name="halign">fill</property>
                         <property name="valign">center</property>
-                        <property name="tooltip-text" translatable="yes">Moved</property>
+                        <property name="tooltip-text" translatable="yes">Intelligent Mode</property>
                         <property name="icon-name">emote-love-symbolic</property>
                         <signal name="clicked" handler="moved_button_cb" swapped="true" />
                         <style>

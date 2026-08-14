@@ -294,10 +294,6 @@ msgstr ""
 msgid "View Album"
 msgstr ""
 
-#: data/gtk/player-controls.ui:150
-msgid "Moved"
-msgstr ""
-
 #: data/gtk/player-controls.ui:162
 msgid "Like"
 msgstr ""
@@ -472,6 +468,10 @@ msgstr ""
 
 #: src/application.rs:940
 msgid "Intelligent mode failed!"
+msgstr ""
+
+#: src/application.rs:1027
+msgid "Intelligent Mode Off"
 msgstr ""
 
 #: src/application.rs:825 src/application.rs:869 src/application.rs:896 src/application.rs:938 src/application.rs:965 src/window.rs:807
