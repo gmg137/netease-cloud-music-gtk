@@ -1,56 +1,56 @@
 {
-    "app-id" : "com.gitee.gmg137.NeteaseCloudMusicGtk4",
-    "runtime" : "org.gnome.Platform",
-    "runtime-version" : "45",
-    "sdk" : "org.gnome.Sdk",
-    "sdk-extensions" : [
-        "org.freedesktop.Sdk.Extension.rust-stable"
+  "app-id": "com.gitee.gmg137.NeteaseCloudMusicGtk4",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "45",
+  "sdk": "org.gnome.Sdk",
+  "sdk-extensions": [
+    "org.freedesktop.Sdk.Extension.rust-stable"
+  ],
+  "command": "netease-cloud-music-gtk4",
+  "finish-args": [
+    "--share=network",
+    "--share=ipc",
+    "--socket=fallback-x11",
+    "--device=dri",
+    "--socket=wayland",
+    "--socket=pulseaudio",
+    "--filesystem=~/.lyrics",
+    "--own-name=org.mpris.MediaPlayer2.NeteaseCloudMusicGtk4"
+  ],
+  "build-options": {
+    "append-path": "/usr/lib/sdk/rust-stable/bin",
+    "build-args": [
+      "--share=network"
     ],
-    "command" : "netease-cloud-music-gtk4",
-    "finish-args" : [
-        "--share=network",
-        "--share=ipc",
-        "--socket=fallback-x11",
-        "--device=dri",
-        "--socket=wayland",
-        "--socket=pulseaudio",
-        "--filesystem=~/.lyrics",
-        "--own-name=org.mpris.MediaPlayer2.NeteaseCloudMusicGtk4"
-    ],
-    "build-options" : {
-        "append-path" : "/usr/lib/sdk/rust-stable/bin",
-        "build-args" : [
-            "--share=network"
-        ],
-        "env" : {
-            "RUST_BACKTRACE" : "1",
-            "RUST_LOG" : "netease-cloud-music-gtk4=debug"
-        }
-    },
-    "cleanup" : [
-        "/include",
-        "/lib/pkgconfig",
-        "/man",
-        "/share/doc",
-        "/share/gtk-doc",
-        "/share/man",
-        "/share/pkgconfig",
-        "*.la",
-        "*.a"
-    ],
-    "modules" : [
+    "env": {
+      "RUST_BACKTRACE": "1",
+      "RUST_LOG": "netease-cloud-music-gtk4=debug"
+    }
+  },
+  "cleanup": [
+    "/include",
+    "/lib/pkgconfig",
+    "/man",
+    "/share/doc",
+    "/share/gtk-doc",
+    "/share/man",
+    "/share/pkgconfig",
+    "*.la",
+    "*.a"
+  ],
+  "modules": [
+    {
+      "name": "netease-cloud-music-gtk4",
+      "builddir": true,
+      "buildsystem": "meson",
+      "sources": [
         {
-            "name" : "netease-cloud-music-gtk4",
-            "builddir" : true,
-            "buildsystem" : "meson",
-            "sources" : [
-                {
-                    "type" : "git",
-                    "url" : "https://github.com/gmg137/netease-cloud-music-gtk.git",
-                    "tag" : "2.5.3"
-                }
-            ],
-            "config-opts" : []
+          "type": "git",
+          "url": "https://github.com/gmg137/netease-cloud-music-gtk.git",
+          "tag": "2.5.4"
         }
-    ]
+      ],
+      "config-opts": []
+    }
+  ]
 }

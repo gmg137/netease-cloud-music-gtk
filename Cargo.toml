@@ -1,6 +1,6 @@
 [package]
 name = "netease-cloud-music-gtk4"
-version = "2.5.3"
+version = "2.5.4"
 edition = "2024"
 
 [dependencies]
