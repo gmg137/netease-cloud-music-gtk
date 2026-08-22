@@ -51,7 +51,7 @@ paru -S netease-cloud-music-gtk4
 sudo pacman -Syu netease-cloud-music-gtk4
 ```
 
-### Ubuntu(24.10/24.04/22.04)
+### Ubuntu(26.04)
 ```
 # 添加 PPA 源
 sudo add-apt-repository ppa:gmg137/ncm
