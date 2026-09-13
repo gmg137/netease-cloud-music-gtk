@@ -903,7 +903,7 @@ impl PlayerControls {
         match name {
             "volume" => {
                 let value = self.property::<f64>("volume");
-                self.imp().volume_button.get().set_value(value);
+                self.imp().volume_button.get().set_value(value * 10.0);
                 if let Some(mpris) = imp.mpris.get() {
                     crate::MAINCONTEXT.spawn_local_with_priority(
                         Priority::LOW,
@@ -969,7 +969,7 @@ impl Default for PlayerControls {
 impl PlayerControls {
     #[template_callback]
     fn volume_cb(&self, adj: Adjustment) {
-        self.set_volume(adj.value());
+        self.set_volume(adj.value() / 10.0);
     }
 
     #[template_callback]
