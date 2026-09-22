@@ -47,8 +47,6 @@ sudo zypper in netease-cloud-music-gtk
 ```bash
 # AUR
 paru -S netease-cloud-music-gtk4
-# archlinuxcn repo
-sudo pacman -Syu netease-cloud-music-gtk4
 ```
 
 ### Ubuntu(26.04)
