@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="netease-cloud-music-gtk4">
     <schema id="com.gitee.gmg137.NeteaseCloudMusicGtk4" path="/com/gitee/gmg137/NeteaseCloudMusicGtk4/">
+        <key name="application-font-family" type="s">
+            <default>''</default>
+            <summary>Application font family</summary>
+            <description>An empty string uses the system default font.</description>
+        </key>
         <key name="style-variant" type="s">
             <choices>
                 <choice value='system' />
