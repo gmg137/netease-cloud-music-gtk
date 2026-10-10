@@ -22,15 +22,26 @@ glib::wrapper! {
 }
 
 impl SonglistRow {
-    pub fn new(sender: Sender<Action>, si: &SongInfo) -> Self {
+    pub fn new(sender: Sender<Action>) -> Self {
         let obj: Self = glib::Object::new();
         let imp = obj.imp();
         if imp.sender.get().is_none() {
             imp.sender.set(sender).unwrap();
         }
-        obj.set_from_song_info(si);
         obj.setup_tooltips();
         obj
+    }
+
+    pub fn bind_like_state(&self, state: SongLikeState) {
+        if let Some(binding) = self.imp().like_binding.take() {
+            binding.unbind();
+        }
+        let binding = state
+            .bind_property("liked", self, "like")
+            .sync_create()
+            .build();
+        self.imp().like_binding.replace(Some(binding));
+        self.imp().like_state.replace(Some(state));
     }
 
     pub fn set_from_song_info(&self, si: &SongInfo) {
@@ -108,24 +119,20 @@ impl SonglistRow {
 #[gtk::template_callbacks]
 impl SonglistRow {
     #[template_callback]
-    fn on_click(&self) {
-        self.emit_activate();
-    }
-
-    #[template_callback]
     fn like_button_clicked_cb(&self) {
         let imp = self.imp();
         let sender = imp.sender.get().unwrap();
         let si = { imp.song_info.borrow().clone().unwrap() };
-        let s_send = SendWeakRef::from(self.downgrade());
         let like = imp.like.get();
+        let state = SendWeakRef::from(imp.like_state.borrow().as_ref().unwrap().downgrade());
         sender
             .send_blocking(Action::LikeSong(
                 si.id,
                 !like,
                 Some(Arc::new(move |_| {
-                    if let Some(s) = s_send.upgrade() {
-                        s.set_property("like", !like);
+                    // Update the model, including any different row now bound to it.
+                    if let Some(state) = state.upgrade() {
+                        state.set_liked(!like);
                     }
                 })),
             ))
@@ -192,6 +199,8 @@ mod imp {
         pub song_info: RefCell<Option<SongInfo>>,
 
         pub like: Cell<bool>,
+        pub like_state: RefCell<Option<SongLikeState>>,
+        pub like_binding: RefCell<Option<glib::Binding>>,
         pub not_ignore_grey: Cell<bool>,
     }
 
@@ -264,4 +273,36 @@ mod imp {
     }
     impl WidgetImpl for SonglistRow {}
     impl ListBoxRowImpl for SonglistRow {}
+}
+
+// Observable per-song state survives recycling without capturing a row in an
+// asynchronous like request.
+glib::wrapper! {
+    pub struct SongLikeState(ObjectSubclass<like_state::SongLikeState>);
+}
+
+impl SongLikeState {
+    pub fn new(liked: bool) -> Self {
+        glib::Object::builder().property("liked", liked).build()
+    }
+}
+
+mod like_state {
+    use super::*;
+
+    #[derive(Default, glib::Properties)]
+    #[properties(wrapper_type = super::SongLikeState)]
+    pub struct SongLikeState {
+        #[property(get, set)]
+        liked: Cell<bool>,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for SongLikeState {
+        const NAME: &'static str = "SongLikeState";
+        type Type = super::SongLikeState;
+    }
+
+    #[glib::derived_properties]
+    impl ObjectImpl for SongLikeState {}
 }
