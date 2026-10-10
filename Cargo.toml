@@ -8,8 +8,8 @@ gettext-rs = { version = "~0.7", features = ["gettext-system"] }
 gtk = { version = "~0.11", package = "gtk4", features = ["gnome_46"] }
 once_cell = "~1.21"
 qrcode-generator = "~5.0"
-# ncm-api 2.1.0 已包含 special_type 字段（PR #19）
-ncm-api = { git = "https://github.com/Muleizhang/netease-cloud-music-api.git", rev = "3d32fe5a9f1542287cd27fb588ccc23719827931", package = "netease-cloud-music-api" }
+# ncm-api 2.2.1 已包含完整歌单加载修复（PR #20）
+ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", tag = "2.2.1", package = "netease-cloud-music-api" }
 anyhow = "~1.0"
 gstreamer = "~0.25"
 gstreamer-play = "~0.25"
