@@ -246,6 +246,47 @@ impl PlayList {
         }
     }
 
+    pub fn insert_next(&mut self, song: SongInfo) {
+        if self.list.is_empty() {
+            if let LoopsState::Shuffle = self.loops {
+                self.shuffle.push(song.clone());
+            }
+            self.list.push(song);
+            return;
+        }
+        if self.current_song().is_some_and(|s| s.id == song.id) {
+            return;
+        }
+        if !self.list.contains(&song) {
+            if let LoopsState::Shuffle = self.loops {
+                self.shuffle.insert(self.position + 1, song.clone())
+            }
+            self.list.insert(self.position + 1, song);
+        } else if let LoopsState::Shuffle = self.loops {
+            for (i, v) in self.shuffle.iter().enumerate() {
+                if v.id == song.id {
+                    let song = self.shuffle.remove(i);
+                    if i < self.position {
+                        self.position -= 1;
+                    }
+                    self.shuffle.insert(self.position + 1, song.clone());
+                    break;
+                }
+            }
+        } else {
+            for (i, v) in self.list.iter().enumerate() {
+                if v.id == song.id {
+                    let song = self.list.remove(i);
+                    if i < self.position {
+                        self.position -= 1;
+                    }
+                    self.list.insert(self.position + 1, song.clone());
+                    break;
+                }
+            }
+        }
+    }
+
     #[must_use]
     pub fn len(&self) -> usize {
         match self.loops {
