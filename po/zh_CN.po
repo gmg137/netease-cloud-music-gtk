@@ -134,6 +134,22 @@ msgstr "歌单"
 msgid "Preferences"
 msgstr "首选项"
 
+#: data/gtk/preferences.ui src/gui/preferences.rs
+msgid "Application Font"
+msgstr "应用字体"
+
+#: data/gtk/preferences.ui
+msgid "Choose…"
+msgstr "选择…"
+
+#: data/gtk/preferences.ui
+msgid "Restore System Default"
+msgstr "恢复系统默认"
+
+#: src/gui/preferences.rs
+msgid "System Default"
+msgstr "系统默认"
+
 #: data/gtk/preferences.ui:12
 msgid "General"
 msgstr "通用"
