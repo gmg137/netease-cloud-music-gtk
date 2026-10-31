@@ -335,6 +335,10 @@ msgstr "收藏歌单"
 msgid "Like song"
 msgstr "收藏歌曲"
 
+#: data/gtk/songlist-row.ui
+msgid "Queue next"
+msgstr "下一首播放"
+
 #: data/gtk/songlist-row.ui:114
 msgid "View album"
 msgstr "查看专辑"

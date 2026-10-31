@@ -486,6 +486,11 @@ impl NeteaseCloudMusicGtk4Window {
         player_controls.add_song(song_info);
     }
 
+    pub fn queue_next(&self, song_info: SongInfo) {
+        let player_controls = self.imp().player_controls.get();
+        player_controls.queue_next(song_info);
+    }
+
     pub fn remove_from_playlist(&self, song_info: SongInfo) {
         let player_controls = self.imp().player_controls.get();
         player_controls.remove_song(song_info);

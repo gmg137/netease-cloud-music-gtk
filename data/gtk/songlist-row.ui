@@ -105,6 +105,18 @@
                             </object>
                         </child>
                         <child>
+                            <object class="GtkButton" id="queue_next_button">
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
+                                <property name="icon-name">list-add-symbolic</property>
+                                <property name="tooltip-text" translatable="yes">Queue next</property>
+                                <signal name="clicked" handler="queue_next_button_clicked_cb" swapped="true" />
+                                <style>
+                                    <class name="flat" />
+                                </style>
+                            </object>
+                        </child>
+                        <child>
                             <object class="GtkButton" id="album_button">
                                 <property name="halign">end</property>
                                 <property name="valign">center</property>
