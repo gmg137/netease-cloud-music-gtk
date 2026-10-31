@@ -33,4 +33,6 @@ features = ["v1_6"]
 
 [package.metadata.bundle]
 icon = ["data/icons/hicolor/512x512@2x.png"]
-osx_minimum_system_version = "11.0"
+
+[package.metadata.bundle.osx]
+minimum_system_version = "11.0"
