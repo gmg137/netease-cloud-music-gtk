@@ -173,6 +173,51 @@ impl NcmClient {
         }
     }
 
+    /// 由 (name, value) 列表构造 cookie jar，供网页登录/cookie 导入使用
+    pub fn cookie_jar_from_pairs<I>(pairs: I) -> CookieJar
+    where
+        I: IntoIterator<Item = (String, String)>,
+    {
+        let cookie_jar = CookieJar::default();
+        let url = BASE_URL_LIST[0].parse().unwrap();
+        for (name, value) in pairs {
+            if name.is_empty() || value.is_empty() {
+                continue;
+            }
+            if let Ok(cookie) = CookieBuilder::new(&name, &value)
+                .domain("music.163.com")
+                .path("/")
+                .build()
+            {
+                if let Err(err) = cookie_jar.set(cookie, &url) {
+                    error!("设置 cookie 失败: {:?}", err);
+                }
+            }
+        }
+        cookie_jar
+    }
+
+    /// 解析用户粘贴的内容：
+    /// - 完整 cookie 串（`MUSIC_U=xxx; __csrf=yyy`）
+    /// - 只粘贴 MUSIC_U 的值
+    pub fn parse_cookie_string(text: &str) -> CookieJar {
+        let text = text.trim().trim_start_matches("Cookie:").trim();
+        let mut pairs: Vec<(String, String)> = Vec::new();
+        for part in text.split(';') {
+            let part = part.trim();
+            if part.is_empty() {
+                continue;
+            }
+            match part.split_once('=') {
+                Some((name, value)) => {
+                    pairs.push((name.trim().to_string(), value.trim().to_string()))
+                }
+                None => pairs.push(("MUSIC_U".to_string(), part.to_string())),
+            }
+        }
+        Self::cookie_jar_from_pairs(pairs)
+    }
+
     pub fn clean_cookie_file() {
         if let Err(err) = fs::remove_file(crate::path::DATA.clone().join(COOKIE_FILE)) {
             match err.kind() {

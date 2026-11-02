@@ -1,0 +1,6 @@
+option(
+  'webview',
+  type: 'feature',
+  value: 'auto',
+  description: 'Build with an embedded WebKitGTK view for the official web login page',
+)

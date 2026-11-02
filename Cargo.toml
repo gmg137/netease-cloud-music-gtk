@@ -25,6 +25,11 @@ ksni = "~0.2"
 serde = { version = "~1.0", features = ["derive"] }
 serde_json = "~1.0"
 
+[features]
+default = []
+# 内嵌 WebKitGTK 显示网易云官方网页登录页，用于自动取回登录凭据
+webview = ["dep:webkit6"]
+
 [dependencies.adw]
 package = "libadwaita"
 version = "~0.9"
@@ -36,3 +41,8 @@ icon = ["data/icons/hicolor/512x512@2x.png"]
 
 [package.metadata.bundle.osx]
 minimum_system_version = "11.0"
+
+[dependencies.webkit6]
+version = "~0.6"
+optional = true
+features = ["v2_42"]

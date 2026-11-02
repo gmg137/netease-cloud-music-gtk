@@ -27,6 +27,13 @@ dependency('gstreamer-plugins-base-1.0', version: '>= 1.16')
 dependency('gstreamer-plugins-bad-1.0', version: '>= 1.16')
 dependency('gstreamer-bad-audio-1.0', version: '>= 1.16')
 
+# 内嵌官方网页登录页需要 WebKitGTK 6.0（GTK4 版本），缺失时仅保留粘贴 cookie 的兜底
+webkit = dependency('webkitgtk-6.0', version: '>= 2.40', required: get_option('webview'))
+cargo_features = []
+if webkit.found()
+  cargo_features += 'webview'
+endif
+
 cargo_sources = files(
   'Cargo.toml',
 )

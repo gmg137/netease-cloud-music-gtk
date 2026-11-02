@@ -20,6 +20,7 @@ mod system_tray;
 mod theme_selector;
 mod toplist;
 mod user_menus;
+mod web_login;
 
 pub use discover::*;
 pub use my_page::*;
@@ -35,3 +36,4 @@ pub use system_tray::*;
 pub use theme_selector::*;
 pub use toplist::*;
 pub use user_menus::*;
+pub use web_login::*;

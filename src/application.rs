@@ -128,6 +128,8 @@ pub enum Action {
     SwitchUserMenuToUser(LoginInfo, UserMenuChild),
     GetCaptcha(String, String),
     CaptchaLogin(String, String, String),
+    // 官方网页登录 / cookie 导入
+    OpenWebLogin,
 
     // Qr
     TryUpdateQrCode,
@@ -595,6 +597,10 @@ impl NeteaseCloudMusicGtk4Application {
                 });
             }
 
+            Action::OpenWebLogin => {
+                debug!("打开网页登录窗口");
+                crate::gui::show_login_window(window.upcast_ref::<gtk::Window>(), imp.sender.clone());
+            }
             Action::SwitchUserMenuToUser(login_info, menu) => {
                 window.switch_user_menu_to_user(login_info.clone(), menu);
                 let avatar_url = login_info.avatar_url;
