@@ -16,6 +16,8 @@
 use async_channel::Sender;
 use gettextrs::gettext;
 use gtk::{gio, prelude::*};
+#[cfg(feature = "webview")]
+use gtk::gdk;
 use log::warn;
 
 use crate::{application::Action, model::UserMenuChild, ncmapi::NcmClient};
@@ -159,31 +161,60 @@ fn show_webview_window(parent: &gtk::Window, sender: Sender<Action>) {
              Chrome/120.0.0.0 Safari/537.36",
         ));
     }
+    // 弹窗（target=_blank / window.open）直接在本视图里打开，避免点了没反应
+    let webview_weak = webview.downgrade();
+    webview.connect_create(move |_, _action| {
+        webview_weak
+            .upgrade()
+            .map(|view| view.upcast::<gtk::Widget>())
+    });
 
-    let hint = gtk::Label::builder()
-        .label(gettext("You will be signed in automatically once the web page logs in."))
+    let status = gtk::Label::builder()
+        .label(gettext("Waiting for login on the page above..."))
         .css_classes(["caption", "dim-label"])
         .margin_top(6)
         .margin_bottom(6)
+        .wrap(true)
         .build();
 
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     content.append(&webview);
-    content.append(&hint);
+    content.append(&status);
 
-    // 页面渲染异常时的第二条兜底：外部浏览器登录后粘贴 cookie
     let header = adw::HeaderBar::new();
+    let zoom_out = gtk::Button::builder()
+        .icon_name("zoom-out-symbolic")
+        .tooltip_text(gettext("Zoom Out"))
+        .css_classes(["flat"])
+        .build();
+    let zoom_in = gtk::Button::builder()
+        .icon_name("zoom-in-symbolic")
+        .tooltip_text(gettext("Zoom In"))
+        .css_classes(["flat"])
+        .build();
     let browser_button = gtk::Button::builder()
         .label(gettext("Open in Browser"))
         .css_classes(["flat"])
         .build();
-    browser_button.connect_clicked(|_| open_in_browser());
     let paste_button = gtk::Button::builder()
         .label(gettext("Paste Cookie"))
         .css_classes(["flat"])
         .build();
+    let done_button = gtk::Button::builder()
+        .label(gettext("I Have Logged In"))
+        .css_classes(["suggested-action"])
+        .build();
+    let close_button = gtk::Button::builder()
+        .icon_name("window-close-symbolic")
+        .tooltip_text(gettext("Cancel"))
+        .css_classes(["flat"])
+        .build();
+    header.pack_start(&zoom_out);
+    header.pack_start(&zoom_in);
     header.pack_start(&browser_button);
     header.pack_start(&paste_button);
+    header.pack_end(&close_button);
+    header.pack_end(&done_button);
 
     // AdwWindow 不支持 set_titlebar，用 AdwToolbarView 承载标题栏
     let toolbar_view = adw::ToolbarView::new();
@@ -192,12 +223,46 @@ fn show_webview_window(parent: &gtk::Window, sender: Sender<Action>) {
 
     let dialog = adw::Window::builder()
         .title(gettext("Web Login"))
-        .default_width(520)
-        .default_height(680)
+        // 官方登录框固定 536px 宽，窗口必须给足，否则二维码会被裁掉
+        .default_width(700)
+        .default_height(820)
         .content(&toolbar_view)
         .build();
     dialog.set_transient_for(Some(parent));
     dialog.set_modal(true);
+
+    let dialog_weak = dialog.downgrade();
+    close_button.connect_clicked(move |_| {
+        if let Some(dialog) = dialog_weak.upgrade() {
+            dialog.close();
+        }
+    });
+    // Esc 关闭，避免卡在窗口里没有出口
+    let key_controller = gtk::EventControllerKey::new();
+    let dialog_weak = dialog.downgrade();
+    key_controller.connect_key_pressed(move |_, key, _, _| {
+        if key == gdk::Key::Escape {
+            if let Some(dialog) = dialog_weak.upgrade() {
+                dialog.close();
+            }
+            return glib::Propagation::Stop;
+        }
+        glib::Propagation::Proceed
+    });
+    dialog.add_controller(key_controller);
+
+    let webview_weak = webview.downgrade();
+    zoom_out.connect_clicked(move |_| {
+        if let Some(view) = webview_weak.upgrade() {
+            view.set_zoom_level((view.zoom_level() - 0.1).max(0.5));
+        }
+    });
+    let webview_weak = webview.downgrade();
+    zoom_in.connect_clicked(move |_| {
+        if let Some(view) = webview_weak.upgrade() {
+            view.set_zoom_level((view.zoom_level() + 0.1).min(2.0));
+        }
+    });
 
     let sender_for_paste = sender.clone();
     let dialog_weak_for_paste = dialog.downgrade();
@@ -206,63 +271,123 @@ fn show_webview_window(parent: &gtk::Window, sender: Sender<Action>) {
             show_cookie_dialog(dialog.upcast_ref::<gtk::Window>(), sender_for_paste.clone());
         }
     });
+    // 外部浏览器登录后无法直接拿到 cookie，直接引导到粘贴
+    let sender_for_browser = sender.clone();
+    let dialog_weak_for_browser = dialog.downgrade();
+    browser_button.connect_clicked(move |_| {
+        open_in_browser();
+        if let Some(dialog) = dialog_weak_for_browser.upgrade() {
+            show_cookie_dialog(dialog.upcast_ref::<gtk::Window>(), sender_for_browser.clone());
+        }
+    });
 
     webview.load_uri(LOGIN_URL);
 
+    let webview_weak = webview.downgrade();
+    webview.connect_load_changed(move |_, event| {
+        if let Some(view) = webview_weak.upgrade() {
+            debug!("webview load-changed: {:?} {}", event, view.uri().unwrap_or_default());
+        }
+    });
 
-    // 轮询页面 cookie，出现 MUSIC_U 即视为登录成功
     // WebKitGTK 6 起 cookie 归属 NetworkSession
     let cookie_manager = WebViewExt::network_session(&webview)
         .and_then(|session| session.cookie_manager());
-    let dialog_weak = dialog.downgrade();
-    let polling = std::rc::Rc::new(std::cell::Cell::new(true));
-    let polling_clone = polling.clone();
+    let Some(cookie_manager) = cookie_manager else {
+        warn!("无法获取 WebKit NetworkSession 的 cookie 管理器");
+        status.set_text(&gettext("Unable to read cookies from the embedded browser."));
+        dialog.present();
+        return;
+    };
 
-    glib::timeout_add_seconds_local(1, move || {
-        if !polling_clone.get() {
-            return glib::ControlFlow::Break;
-        }
-        let Some(cookie_manager) = cookie_manager.clone() else {
-            return glib::ControlFlow::Break;
-        };
+    let done = std::rc::Rc::new(std::cell::Cell::new(false));
+    // 轮询每秒一次，只在 cookie 集合变化时打日志
+    let last_seen = std::rc::Rc::new(std::cell::RefCell::new(String::new()));
+
+    // 手动触发一次（「已登录」按钮，以及自动轮询共用）
+    let try_finish = {
+        let cookie_manager = cookie_manager.clone();
         let sender = sender.clone();
-        let dialog_weak = dialog_weak.clone();
-        let polling = polling_clone.clone();
-        glib::spawn_future_local(async move {
-            let cookies = match cookie_manager.all_cookies_future().await {
-                Ok(cookies) => cookies,
-                Err(err) => {
-                    debug!("读取页面 cookie 失败: {:?}", err);
+        let dialog_weak = dialog.downgrade();
+        let status = status.clone();
+        let done = done.clone();
+        let last_seen = last_seen.clone();
+        move |manual: bool| {
+            let cookie_manager = cookie_manager.clone();
+            let sender = sender.clone();
+            let dialog_weak = dialog_weak.clone();
+            let status = status.clone();
+            let done = done.clone();
+            let last_seen = last_seen.clone();
+            glib::spawn_future_local(async move {
+                if done.get() {
                     return;
                 }
-            };
-            let picked: Vec<(String, String)> = cookies
-                .into_iter()
-                .filter_map(|mut c| {
-                    let name = c.name()?.to_string();
-                    let value = c.value()?.to_string();
-                    WANTED_COOKIES
-                        .contains(&name.as_str())
-                        .then_some((name, value))
-                })
-                .collect();
-            if !picked
-                .iter()
-                .any(|(name, value)| name == "MUSIC_U" && !value.is_empty())
-            {
-                return;
-            }
-            let names: Vec<&str> = picked.iter().map(|(n, _)| n.as_str()).collect();
-            debug!("网页登录成功，取回 cookie: {:?}", names);
-            polling.set(false);
-            let cookie_jar = NcmClient::cookie_jar_from_pairs(picked);
-            let _ = sender
-                .send(Action::CheckLogin(UserMenuChild::Qr, cookie_jar))
-                .await;
-            if let Some(dialog) = dialog_weak.upgrade() {
-                dialog.close();
-            }
-        });
+                let cookies = match cookie_manager.all_cookies_future().await {
+                    Ok(cookies) => cookies,
+                    Err(err) => {
+                        warn!("读取页面 cookie 失败: {:?}", err);
+                        return;
+                    }
+                };
+                let picked: Vec<(String, String)> = cookies
+                    .into_iter()
+                    .filter_map(|mut c| {
+                        let name = c.name()?.to_string();
+                        let value = c.value()?.to_string();
+                        WANTED_COOKIES
+                            .contains(&name.as_str())
+                            .then_some((name, value))
+                    })
+                    .collect();
+                let music_u = picked
+                    .iter()
+                    .find(|(name, _)| name == "MUSIC_U")
+                    .map(|(_, value)| value.clone())
+                    .filter(|value| !value.is_empty());
+                match music_u {
+                    Some(_) => {
+                        let names: Vec<&str> = picked.iter().map(|(n, _)| n.as_str()).collect();
+                        debug!("网页登录成功，取回 cookie: {:?}", names);
+                        done.set(true);
+                        let cookie_jar = NcmClient::cookie_jar_from_pairs(picked);
+                        let _ = sender
+                            .send(Action::CheckLogin(UserMenuChild::Qr, cookie_jar))
+                            .await;
+                        if let Some(dialog) = dialog_weak.upgrade() {
+                            dialog.close();
+                        }
+                    }
+                    None => {
+                        let names: Vec<&str> = picked.iter().map(|(n, _)| n.as_str()).collect();
+                        let joined = names.join(",");
+                        let changed = *last_seen.borrow() != joined;
+                        if changed {
+                            *last_seen.borrow_mut() = joined.clone();
+                            debug!("尚未检测到 MUSIC_U，当前 cookie: [{:?}]", names);
+                        }
+                        if manual {
+                            status.set_text(&gettext(
+                                "Not signed in yet: no MUSIC_U cookie found on this page.",
+                            ));
+                        }
+                    }
+                }
+            });
+        }
+    };
+
+    {
+        let try_finish = try_finish.clone();
+        done_button.connect_clicked(move |_| try_finish(true));
+    }
+
+    let try_finish_poll = try_finish.clone();
+    glib::timeout_add_seconds_local(1, move || {
+        if done.get() {
+            return glib::ControlFlow::Break;
+        }
+        try_finish_poll(false);
         glib::ControlFlow::Continue
     });
 
