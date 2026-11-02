@@ -4,9 +4,11 @@
 // Distributed under terms of the GPL-3.0-or-later license.
 //
 
+use adw::prelude::ActionRowExt;
+use gettextrs::gettext;
 use gio::Settings;
 use gtk::gio::SettingsBindFlags;
-use gtk::{glib, prelude::*, subclass::prelude::*, CompositeTemplate, *};
+use gtk::{CompositeTemplate, glib, prelude::*, subclass::prelude::*, *};
 use once_cell::sync::OnceCell;
 
 glib::wrapper! {
@@ -76,6 +78,73 @@ impl NeteaseCloudMusicGtk4Preferences {
             .build();
     }
 
+    fn setup_font(&self) {
+        self.settings().connect_changed(
+            Some("application-font-family"),
+            glib::clone!(
+                #[weak(rename_to = preferences)]
+                self,
+                move |_, _| preferences.update_font_row()
+            ),
+        );
+        self.update_font_row();
+
+        self.imp().choose_font.connect_clicked(glib::clone!(
+            #[weak(rename_to = preferences)]
+            self,
+            move |_| preferences.choose_font()
+        ));
+        self.imp().reset_font.connect_clicked(glib::clone!(
+            #[weak(rename_to = preferences)]
+            self,
+            move |_| preferences.settings().reset("application-font-family")
+        ));
+    }
+
+    fn update_font_row(&self) {
+        let family = self.settings().string("application-font-family");
+        let subtitle = if family.is_empty() {
+            gettext("System Default")
+        } else {
+            family.to_string()
+        };
+        self.imp().application_font.set_subtitle(&subtitle);
+        self.imp().reset_font.set_sensitive(!family.is_empty());
+    }
+
+    fn choose_font(&self) {
+        let Some(parent) = self.root().and_downcast::<Window>() else {
+            return;
+        };
+        let settings = self.settings().clone();
+        let family = settings.string("application-font-family");
+        let initial_family = self
+            .pango_context()
+            .font_map()
+            .and_then(|font_map| font_map.family(&family));
+        let dialog = FontDialog::builder()
+            .title(gettext("Application Font"))
+            .modal(true)
+            .build();
+        dialog.choose_family(
+            Some(&parent),
+            initial_family.as_ref(),
+            None::<&gio::Cancellable>,
+            move |result| match result {
+                Ok(family) => {
+                    if let Err(err) = settings.set_string("application-font-family", &family.name())
+                    {
+                        log::warn!("Could not save application font: {err}");
+                    }
+                }
+                Err(err)
+                    if err.matches(DialogError::Dismissed)
+                        || err.matches(DialogError::Cancelled) => {}
+                Err(err) => log::warn!("Could not choose application font: {err}"),
+            },
+        );
+    }
+
     pub fn set_cache_size_label(&self, size: f64, unit: String) {
         self.imp()
             .cache_clear
@@ -100,6 +169,12 @@ mod imp {
     #[template(resource = "/com/gitee/gmg137/NeteaseCloudMusicGtk4/gtk/preferences.ui")]
     pub struct NeteaseCloudMusicGtk4Preferences {
         pub settings: OnceCell<Settings>,
+        #[template_child]
+        pub application_font: TemplateChild<adw::ActionRow>,
+        #[template_child]
+        pub choose_font: TemplateChild<Button>,
+        #[template_child]
+        pub reset_font: TemplateChild<Button>,
         #[template_child]
         pub exit_switch: TemplateChild<Switch>,
         #[template_child]
@@ -138,6 +213,7 @@ mod imp {
 
             obj.setup_settings();
             obj.bind_settings();
+            obj.setup_font();
         }
     }
     impl WidgetImpl for NeteaseCloudMusicGtk4Preferences {}

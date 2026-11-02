@@ -205,6 +205,8 @@ mod imp {
         pub receiver: RefCell<Option<Receiver<Action>>>,
         pub unikey: Arc<RwLock<String>>,
         pub ncmapi: RefCell<Option<NcmClient>>,
+        pub font_settings: OnceCell<Settings>,
+        pub font_provider: OnceCell<gtk::CssProvider>,
     }
 
     #[glib::object_subclass]
@@ -225,6 +227,8 @@ mod imp {
                 receiver,
                 unikey,
                 ncmapi,
+                font_settings: OnceCell::new(),
+                font_provider: OnceCell::new(),
             }
         }
     }
@@ -243,6 +247,11 @@ mod imp {
     }
 
     impl ApplicationImpl for NeteaseCloudMusicGtk4Application {
+        fn startup(&self) {
+            self.parent_startup();
+            self.obj().setup_application_font();
+        }
+
         // We connect to the activate callback to create a window when the application
         // has been launched. Additionally, this callback notifies us when the user
         // tries to launch a "second instance" of the application. When they try
@@ -297,6 +306,40 @@ impl NeteaseCloudMusicGtk4Application {
             .property("application-id", application_id)
             .property("flags", flags)
             .build()
+    }
+
+    fn setup_application_font(&self) {
+        let settings = Settings::new(crate::APP_ID);
+        let provider = gtk::CssProvider::new();
+        gtk::style_context_add_provider_for_display(
+            &gtk::gdk::Display::default().expect("Could not connect to a display."),
+            &provider,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+        self.imp().font_provider.set(provider).unwrap();
+        self.imp().font_settings.set(settings.clone()).unwrap();
+        settings.connect_changed(
+            Some("application-font-family"),
+            clone!(
+                #[weak(rename_to = app)]
+                self,
+                move |_, _| app.update_application_font()
+            ),
+        );
+        self.update_application_font();
+    }
+
+    fn update_application_font(&self) {
+        let imp = self.imp();
+        let family = imp
+            .font_settings
+            .get()
+            .unwrap()
+            .string("application-font-family");
+        imp.font_provider
+            .get()
+            .unwrap()
+            .load_from_string(&application_font_css(&family));
     }
 
     fn create_window(&self) -> NeteaseCloudMusicGtk4Window {
@@ -1659,6 +1702,29 @@ impl Default for NeteaseCloudMusicGtk4Application {
             .downcast()
             .unwrap()
     }
+}
+
+// Serialize the family as a CSS string, never as a font description or CSS syntax.
+fn application_font_css(family: &str) -> String {
+    use std::fmt::Write;
+
+    if family.is_empty() {
+        return String::new();
+    }
+    let mut css = String::from("* { font-family: \"");
+    for ch in family.chars() {
+        match ch {
+            '\0' => css.push('\u{fffd}'),
+            '\u{1}'..='\u{1f}' | '\u{7f}' => write!(css, "\\{:x} ", ch as u32).unwrap(),
+            '"' | '\\' => {
+                css.push('\\');
+                css.push(ch);
+            }
+            _ => css.push(ch),
+        }
+    }
+    css.push_str("\"; }");
+    css
 }
 
 fn remove_all_file(path: PathBuf) -> anyhow::Result<()> {

@@ -9,6 +9,30 @@
                     <object class="AdwPreferencesGroup">
                         <property name="title" translatable="yes">General</property>
                         <child>
+                            <object class="AdwActionRow" id="application_font">
+                                <property name="title" translatable="yes">Application Font</property>
+                                <property name="use-markup">False</property>
+                                <property name="activatable-widget">choose_font</property>
+                                <child>
+                                    <object class="GtkButton" id="choose_font">
+                                        <property name="label" translatable="yes">Choose…</property>
+                                        <property name="valign">center</property>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="GtkButton" id="reset_font">
+                                        <property name="icon-name">edit-undo-symbolic</property>
+                                        <property name="tooltip-text" translatable="yes">Restore System Default</property>
+                                        <property name="valign">center</property>
+                                        <property name="sensitive">False</property>
+                                        <accessibility>
+                                            <property name="label" translatable="yes">Restore System Default</property>
+                                        </accessibility>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                        <child>
                             <object class="AdwActionRow">
                                 <property name="title" translatable="yes">Exit to the background</property>
                                 <property name="subtitle" translatable="yes">Set the main window close button behavior</property>
