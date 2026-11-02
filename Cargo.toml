@@ -9,7 +9,8 @@ gtk = { version = "~0.11", package = "gtk4", features = ["gnome_46"] }
 once_cell = "~1.21"
 qrcode-generator = "~5.0"
 # ncm-api 2.1.0 已包含 special_type 字段（PR #19）
-ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", tag = "2.2.2", package = "netease-cloud-music-api" }
+# 穿戴端短信登录与错误文案透传随 api #21 合并进 master，出 tag 后可改回 tag
+ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", rev = "bcf36ff3a5467658d3ffcf4995be23c625166cc5", package = "netease-cloud-music-api" }
 anyhow = "~1.0"
 gstreamer = "~0.25"
 gstreamer-play = "~0.25"
