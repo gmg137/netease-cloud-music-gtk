@@ -133,6 +133,20 @@ impl SonglistRow {
     }
 
     #[template_callback]
+    fn queue_next_button_clicked_cb(&self) {
+        let imp = self.imp();
+        if let Some(si) = self.get_song_info() {
+            if si.copyright.playable() || self.not_ignore_grey() {
+                imp.sender
+                    .get()
+                    .unwrap()
+                    .send_blocking(Action::QueueNext(si))
+                    .unwrap();
+            }
+        }
+    }
+
+    #[template_callback]
     fn album_button_clicked_cb(&self) {
         let imp = self.imp();
         let sender = imp.sender.get().unwrap();

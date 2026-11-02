@@ -569,6 +569,13 @@ impl PlayerControls {
         self.save_playlist();
     }
 
+    pub fn queue_next(&self, song: SongInfo) {
+        if let Ok(mut playlist) = self.imp().playlist.lock() {
+            playlist.insert_next(song);
+        }
+        self.save_playlist();
+    }
+
     pub fn remove_song(&self, song: SongInfo) {
         if let Some(songinfo) = self.get_current_song() {
             if songinfo.id == song.id {

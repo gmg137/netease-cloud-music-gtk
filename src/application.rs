@@ -112,6 +112,7 @@ pub enum Action {
     Play(SongInfo),
     PlayStart(SongInfo),
     TogglePlayPause,
+    QueueNext(SongInfo),
     // (歌单, 是否立即播放)
     AddPlayList(Vec<SongInfo>, bool),
     PlayListStart,
@@ -838,6 +839,9 @@ impl NeteaseCloudMusicGtk4Application {
                     .unwrap();
 
                 window.play(song_info);
+            }
+            Action::QueueNext(song_info) => {
+                window.queue_next(song_info);
             }
             Action::ToSongListPage(songlist) => {
                 let page = window.init_songlist_page(&songlist, false);
