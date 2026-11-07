@@ -96,6 +96,7 @@ impl SongListView {
         let no_act_remove = self.property::<bool>("no-act-remove");
         let block_remove = self.property::<bool>("block-remove");
         let playing_id = imp.playing_id.get();
+        let replace_on_activate = self.property::<bool>("replace-on-activate");
         sis.iter().zip(likes.iter()).for_each(|(si, like)| {
             let sender = sender.clone();
 
@@ -114,7 +115,17 @@ impl SongListView {
                 move |row| {
                     if row.is_activatable() || row.not_ignore_grey() {
                         row.switch_image(true);
-                        sender.send_blocking(Action::AddPlay(si.clone())).unwrap();
+                        if replace_on_activate {
+                            // 连续播放：用当前列表（含搜索过滤）替换队列，从点击的这首开始
+                            let list = s.play_list_from(row);
+                            if list.is_empty() {
+                                sender.send_blocking(Action::AddPlay(si.clone())).unwrap();
+                            } else {
+                                sender.send_blocking(Action::AddPlayList(list, true)).unwrap();
+                            }
+                        } else {
+                            sender.send_blocking(Action::AddPlay(si.clone())).unwrap();
+                        }
                         s.emit_row_activated(row);
                     }
                 }
@@ -173,6 +184,27 @@ impl SongListView {
         }
     }
 
+    // 以当前列表顺序构造播放队列，从被点击的行开始（连续播放用）
+    fn play_list_from(&self, clicked: &SonglistRow) -> Vec<SongInfo> {
+        let listbox = self.list_box();
+        let mut songs: Vec<SongInfo> = Vec::new();
+        let mut child = listbox.first_child();
+        while let Some(node) = child {
+            if let Ok(row) = node.clone().downcast::<SonglistRow>() {
+                if let Some(si) = row.get_song_info() {
+                    songs.push(si);
+                }
+            }
+            child = node.next_sibling();
+        }
+        if let Some(si) = clicked.get_song_info() {
+            if let Some(pos) = songs.iter().position(|song| song.id == si.id) {
+                songs.rotate_left(pos);
+            }
+        }
+        songs
+    }
+
     pub fn emit_row_activated(&self, row: &SonglistRow) {
         self.emit_by_name::<()>("row-activated", &[&row]);
     }
@@ -211,6 +243,8 @@ mod imp {
         block_remove: Cell<bool>,
         // 当前播放歌曲 id：分片渲染新插入的行也要带上播放指示
         pub playing_id: Cell<u64>,
+        // 点击行时用「整个当前列表」替换播放队列并从该行开始（连续播放）
+        replace_on_activate: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -273,6 +307,7 @@ mod imp {
                     ParamSpecBoolean::builder("no-act-album").build(),
                     ParamSpecBoolean::builder("no-act-remove").build(),
                     ParamSpecBoolean::builder("block-remove").build(),
+                    ParamSpecBoolean::builder("replace-on-activate").build(),
                     ParamSpecInt::builder("clamp-margin-top").build(),
                     ParamSpecInt::builder("clamp-margin-bottom").build(),
                     ParamSpecInt::builder("clamp-maximum-size").build(),
@@ -300,6 +335,10 @@ mod imp {
                     let val = value.get().unwrap();
                     self.block_remove.replace(val);
                 }
+                "replace-on-activate" => {
+                    let val = value.get().unwrap();
+                    self.replace_on_activate.replace(val);
+                }
                 "clamp-margin-top" => {
                     let val = value.get().unwrap();
                     self.adw_clamp.set_margin_top(val);
@@ -326,6 +365,7 @@ mod imp {
                 "no-act-album" => self.no_act_album.get().to_value(),
                 "no-act-remove" => self.no_act_remove.get().to_value(),
                 "block-remove" => self.block_remove.get().to_value(),
+                "replace-on-activate" => self.replace_on_activate.get().to_value(),
                 "clamp-margin-top" => self.adw_clamp.margin_top().to_value(),
                 "clamp-margin-bottom" => self.adw_clamp.margin_bottom().to_value(),
                 "clamp-maximum-size" => self.adw_clamp.maximum_size().to_value(),

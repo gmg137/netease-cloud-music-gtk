@@ -238,6 +238,20 @@ impl NeteaseCloudMusicGtk4Window {
         window.setup_widget();
         window.setup_action();
         window.setup_drag_drop();
+        // 老用户升级：曲库索引为空时用播放列表里的本地歌播种一次
+        if crate::local_music::library().is_empty() {
+            let local: Vec<SongInfo> = window
+                .imp()
+                .player_controls
+                .get()
+                .get_list()
+                .into_iter()
+                .filter(|song| crate::local_music::is_local(&song.song_url))
+                .collect();
+            if !local.is_empty() {
+                crate::local_music::merge_library(&local);
+            }
+        }
         window.init_page_data();
         window
     }
@@ -608,15 +622,21 @@ impl NeteaseCloudMusicGtk4Window {
         }
     }
 
-    // 播放列表里的本地歌曲
+    // 本地曲库（索引 ∪ 播放列表里的本地歌，按 id 去重）
     pub fn local_songs(&self) -> Vec<SongInfo> {
-        self.imp()
+        let mut songs = crate::local_music::library();
+        let known: std::collections::HashSet<u64> = songs.iter().map(|song| song.id).collect();
+        let mut extra: Vec<SongInfo> = self
+            .imp()
             .player_controls
             .get()
             .get_list()
             .into_iter()
             .filter(|song| crate::local_music::is_local(&song.song_url))
-            .collect()
+            .filter(|song| !known.contains(&song.id))
+            .collect();
+        songs.append(&mut extra);
+        songs
     }
 
     // 打开「播放列表/歌词」页面（播放栏按钮与 win.open-playlist 共用）
@@ -705,6 +725,8 @@ impl NeteaseCloudMusicGtk4Window {
             })
             .map(|song| song.id)
             .collect();
+        crate::local_music::merge_library(&songs);
+        crate::local_music::prune_library();
         let removed = player_controls.remove_songs(&stale);
         let mut list = songs;
         let added = player_controls.append_list(&mut list).len();
@@ -717,6 +739,7 @@ impl NeteaseCloudMusicGtk4Window {
 
     // 移除播放列表里的全部本地歌曲，并忘记已记住的目录
     pub fn clear_local(&self) -> usize {
+        crate::local_music::clear_library();
         let player_controls = self.imp().player_controls.get();
         let ids: Vec<u64> = player_controls
             .get_list()

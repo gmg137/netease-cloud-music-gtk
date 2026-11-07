@@ -384,3 +384,101 @@ mod tests {
         assert_eq!(lines[2].0, 5_000_000);
     }
 }
+
+/// 本地曲库索引（`local_library.json`）：记录扫描到的全部本地歌曲，
+/// 与播放队列解耦——从「收藏/推荐/最近播放」连续播放时队列会被替换，
+/// 但曲库仍然是完整的。
+static LIBRARY_CACHE: OnceLock<Mutex<Option<Vec<SongInfo>>>> = OnceLock::new();
+
+fn library_cache() -> &'static Mutex<Option<Vec<SongInfo>>> {
+    LIBRARY_CACHE.get_or_init(|| Mutex::new(None))
+}
+
+pub fn library() -> Vec<SongInfo> {
+    let cache = library_cache();
+    let mut guard = cache.lock().unwrap();
+    if guard.is_none() {
+        let list = std::fs::read_to_string(library_file())
+            .ok()
+            .and_then(|json| serde_json::from_str::<Vec<SongInfo>>(&json).ok())
+            .unwrap_or_default();
+        *guard = Some(list);
+    }
+    guard.clone().unwrap_or_default()
+}
+
+/// 把扫描到的歌曲并入曲库索引（按 id 去重），返回曲库总数
+pub fn merge_library(songs: &[SongInfo]) -> usize {
+    let cache = library_cache();
+    let mut guard = cache.lock().unwrap();
+    if guard.is_none() {
+        *guard = Some(
+            std::fs::read_to_string(library_file())
+                .ok()
+                .and_then(|json| serde_json::from_str::<Vec<SongInfo>>(&json).ok())
+                .unwrap_or_default(),
+        );
+    }
+    let list = guard.as_mut().unwrap();
+    let mut added = 0;
+    for song in songs {
+        if !list.iter().any(|item| item.id == song.id) {
+            list.push(song.clone());
+            added += 1;
+        }
+    }
+    let total = list.len();
+    if added > 0 {
+        save_library(list);
+    }
+    total
+}
+
+/// 丢掉曲库里文件已不存在的条目（重扫后调用）
+pub fn prune_library() -> usize {
+    let cache = library_cache();
+    let mut guard = cache.lock().unwrap();
+    if guard.is_none() {
+        return 0;
+    }
+    let list = guard.as_mut().unwrap();
+    let before = list.len();
+    list.retain(|song| {
+        local_file_of(&song.song_url)
+            .map(|path| path.is_file())
+            .unwrap_or(false)
+    });
+    let removed = before - list.len();
+    if removed > 0 {
+        save_library(list);
+    }
+    removed
+}
+
+/// 清空曲库索引
+pub fn clear_library() {
+    let cache = library_cache();
+    if let Ok(mut guard) = cache.lock() {
+        if let Some(list) = guard.as_mut() {
+            list.clear();
+        }
+    }
+    let _ = std::fs::remove_file(library_file());
+}
+
+fn library_file() -> PathBuf {
+    crate::path::CONFIG.join("local_library.json")
+}
+
+fn save_library(list: &[SongInfo]) {
+    match serde_json::to_string(list) {
+        Ok(json) => {
+            let path = library_file();
+            let tmp = path.with_extension("json.tmp");
+            if std::fs::write(&tmp, json).is_err() || std::fs::rename(&tmp, &path).is_err() {
+                log::debug!("保存本地曲库索引失败");
+            }
+        }
+        Err(err) => log::debug!("序列化本地曲库索引失败: {:?}", err),
+    }
+}

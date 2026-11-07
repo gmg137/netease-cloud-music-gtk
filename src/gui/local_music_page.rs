@@ -175,6 +175,9 @@ impl LocalMusicPage {
             .collect();
         let songs_list = imp.songs_list.get();
         songs_list.set_property("block-remove", view == LocalView::Recommend);
+        // 「收藏 / 喜爱推荐 / 最近播放」点任意一首即按该列表顺序连续播放；
+        // 「全部」本身就是播放列表，保持原来的单曲加入行为
+        songs_list.set_property("replace-on-activate", view != LocalView::All);
         songs_list.cancel_render();
         songs_list.clear_list();
         songs_list.init_new_list(&filtered, &likes);

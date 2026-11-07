@@ -1207,6 +1207,7 @@ impl NeteaseCloudMusicGtk4Application {
                             .unwrap();
                     });
                 } else {
+                    crate::local_music::merge_library(&songs);
                     let window = window.clone();
                     MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                         let added = window.append_local(songs, play);
