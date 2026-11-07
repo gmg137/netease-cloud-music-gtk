@@ -355,6 +355,19 @@ impl PlayerControls {
 
     pub fn init_play_info(&self, song_info: SongInfo) {
         let imp = self.imp();
+        // 本地歌曲：计入播放次数与最近播放
+        if crate::local_music::is_local(&song_info.song_url) {
+            let path = crate::local_music::local_file_of(&song_info.song_url)
+                .map(|path| path.to_string_lossy().to_string())
+                .unwrap_or_default();
+            crate::local_stats::record_play(song_info.id, &path);
+            imp.play_stat_id.set(song_info.id);
+        } else {
+            imp.play_stat_id.set(0);
+        }
+        imp.play_stat_msec.set(0);
+        imp.play_stat_pending.set(0);
+
         let cover_image = imp.cover_image.get();
         let mut path_cover = CACHE.clone();
         path_cover.push(format!("{}-songlist.jpg", song_info.album_id));
@@ -495,6 +508,23 @@ impl PlayerControls {
     // msec -> microseconds
     pub fn scale_seek_update(&self, msec: u64) {
         let imp = self.imp();
+
+        // 累计本地歌曲收听时长（拖动进度条时的大幅跳变不计入）
+        let stat_id = imp.play_stat_id.get();
+        if stat_id != 0 {
+            let last = imp.play_stat_msec.get();
+            if msec > last && msec - last <= 5_000_000 {
+                imp.play_stat_pending
+                    .set(imp.play_stat_pending.get() + (msec - last));
+                if imp.play_stat_pending.get() >= 15_000_000 {
+                    let secs = imp.play_stat_pending.get() / 1_000_000;
+                    imp.play_stat_pending
+                        .set(imp.play_stat_pending.get() % 1_000_000);
+                    crate::local_stats::record_listen(stat_id, secs);
+                }
+            }
+            imp.play_stat_msec.set(msec);
+        }
 
         let seek_scale = imp.seek_scale.get();
         seek_scale.set_value(msec as f64);
@@ -1298,6 +1328,10 @@ mod imp {
 
         // 恢复时保存的播放位置（微秒），等播放开始后再执行 seek
         pub pending_seek_position: Cell<u64>,
+        // 本地歌曲收听统计：当前歌曲 id、上次进度(µs)、未落盘累计(µs)
+        pub play_stat_id: Cell<u64>,
+        pub play_stat_msec: Cell<u64>,
+        pub play_stat_pending: Cell<u64>,
     }
 
     #[glib::object_subclass]

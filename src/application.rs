@@ -202,6 +202,12 @@ pub enum Action {
     ApplyRescan(Vec<SongInfo>),
     // 清空播放列表中的本地歌曲并忘记目录
     ClearLocal,
+    // 本地歌曲收藏切换
+    ToggleLocalFav(SongInfo),
+    // 从喜爱推荐里移除
+    BlockRecommend(SongInfo),
+    // 本地音乐页刷新（收藏/推荐变化后）
+    RefreshLocalPage,
     PlayStart(SongInfo),
     TogglePlayPause,
     // (歌单, 是否立即播放)
@@ -1267,6 +1273,42 @@ impl NeteaseCloudMusicGtk4Application {
                         .await
                         .unwrap();
                 });
+            }
+            Action::ToggleLocalFav(song_info) => {
+                let path = crate::local_music::local_file_of(&song_info.song_url)
+                    .map(|path| path.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let fav = crate::local_stats::toggle_fav(song_info.id, &path);
+                window.refresh_local_page();
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    let msg = if fav {
+                        gettext_f("Added to local favorites: {name}", &[("name", &song_info.name)])
+                    } else {
+                        gettext_f(
+                            "Removed from local favorites: {name}",
+                            &[("name", &song_info.name)],
+                        )
+                    };
+                    sender.send(Action::AddToast(msg)).await.unwrap();
+                });
+            }
+            Action::BlockRecommend(song_info) => {
+                crate::local_stats::block_recommend(song_info.id);
+                window.refresh_local_page();
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    sender
+                        .send(Action::AddToast(gettext_f(
+                            "Won't recommend again: {name}",
+                            &[("name", &song_info.name)],
+                        )))
+                        .await
+                        .unwrap();
+                });
+            }
+            Action::RefreshLocalPage => {
+                window.refresh_local_page();
             }
             Action::PlayListStart => {
                 window.playlist_start();

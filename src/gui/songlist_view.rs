@@ -94,6 +94,8 @@ impl SongListView {
         let no_act_like = self.property::<bool>("no-act-like");
         let no_act_album = self.property::<bool>("no-act-album");
         let no_act_remove = self.property::<bool>("no-act-remove");
+        let block_remove = self.property::<bool>("block-remove");
+        let playing_id = imp.playing_id.get();
         sis.iter().zip(likes.iter()).for_each(|(si, like)| {
             let sender = sender.clone();
 
@@ -102,6 +104,8 @@ impl SongListView {
             row.set_like_button_visible(!no_act_like);
             row.set_album_button_visible(!no_act_album);
             row.set_remove_button_visible(!no_act_remove);
+            row.set_block_remove(block_remove);
+            row.switch_image(si.id == playing_id);
 
             let si = si.clone();
             row.connect_activate(clone!(
@@ -155,6 +159,7 @@ impl SongListView {
 
     // 根据当前播放歌曲 id 更新指示符，使 ▶️ 始终指向正在播放的曲目。
     pub fn update_playing_song(&self, song_id: u64) {
+        self.imp().playing_id.set(song_id);
         let listbox = self.list_box();
         let mut child = listbox.first_child();
         while let Some(row) = child {
@@ -202,6 +207,10 @@ mod imp {
         no_act_like: Cell<bool>,
         no_act_album: Cell<bool>,
         no_act_remove: Cell<bool>,
+        // 垃圾桶按钮语义改为「不再推荐」
+        block_remove: Cell<bool>,
+        // 当前播放歌曲 id：分片渲染新插入的行也要带上播放指示
+        pub playing_id: Cell<u64>,
     }
 
     #[glib::object_subclass]
@@ -263,6 +272,7 @@ mod imp {
                     ParamSpecBoolean::builder("no-act-like").build(),
                     ParamSpecBoolean::builder("no-act-album").build(),
                     ParamSpecBoolean::builder("no-act-remove").build(),
+                    ParamSpecBoolean::builder("block-remove").build(),
                     ParamSpecInt::builder("clamp-margin-top").build(),
                     ParamSpecInt::builder("clamp-margin-bottom").build(),
                     ParamSpecInt::builder("clamp-maximum-size").build(),
@@ -285,6 +295,10 @@ mod imp {
                 "no-act-remove" => {
                     let val = value.get().unwrap();
                     self.no_act_remove.replace(val);
+                }
+                "block-remove" => {
+                    let val = value.get().unwrap();
+                    self.block_remove.replace(val);
                 }
                 "clamp-margin-top" => {
                     let val = value.get().unwrap();
@@ -311,6 +325,7 @@ mod imp {
                 "no-act-like" => self.no_act_like.get().to_value(),
                 "no-act-album" => self.no_act_album.get().to_value(),
                 "no-act-remove" => self.no_act_remove.get().to_value(),
+                "block-remove" => self.block_remove.get().to_value(),
                 "clamp-margin-top" => self.adw_clamp.margin_top().to_value(),
                 "clamp-margin-bottom" => self.adw_clamp.margin_bottom().to_value(),
                 "clamp-maximum-size" => self.adw_clamp.maximum_size().to_value(),

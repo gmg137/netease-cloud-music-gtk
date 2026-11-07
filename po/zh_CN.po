@@ -774,6 +774,50 @@ msgstr "重新扫描"
 msgid "Rescan remembered local music folders"
 msgstr "重新扫描已记住的本地音乐目录"
 
+#: src/gui/local_music_page.rs
+msgid "All"
+msgstr "全部"
+
+#: src/gui/local_music_page.rs
+msgid "Favorites"
+msgstr "收藏"
+
+#: src/gui/local_music_page.rs
+msgid "For You"
+msgstr "喜爱推荐"
+
+#: src/gui/local_music_page.rs
+msgid "Recent"
+msgstr "最近播放"
+
+#: src/gui/local_music_page.rs
+msgid "Picked from your local favorites and listening time"
+msgstr "根据你的本地收藏和收听时长挑选"
+
+#: src/gui/local_music_page.rs
+msgid "No favorites yet — tap the star on a local song."
+msgstr "还没有收藏——点本地歌曲行上的星标即可收藏。"
+
+#: src/gui/local_music_page.rs
+msgid "Nothing to recommend yet. Play some local songs or star your favorites; use the trash button to drop a bad suggestion."
+msgstr "暂时没有推荐内容：播放一些本地歌曲，或给喜欢的歌点星标；不想要的推荐可以点垃圾桶移除。"
+
+#: src/gui/local_music_page.rs
+msgid "No local song has been played yet."
+msgstr "还没有播放过本地歌曲。"
+
+#: src/gui/local_music_page.rs
+msgid "Added to local favorites: {name}"
+msgstr "已加入本地收藏：{name}"
+
+#: src/gui/local_music_page.rs
+msgid "Removed from local favorites: {name}"
+msgstr "已取消收藏：{name}"
+
+#: src/gui/local_music_page.rs
+msgid "Won't recommend again: {name}"
+msgstr "不再推荐：{name}"
+
 
 #~ msgid "{} songs, {} favs"
 #~ msgstr "{} 首歌曲，{} 收藏"

@@ -72,6 +72,11 @@ impl SonglistRow {
         imp.remove_button.set_visible(visible);
     }
 
+    /// true：垃圾桶按钮改为「不再推荐」
+    pub fn set_block_remove(&self, block: bool) {
+        self.imp().block_remove.set(block);
+    }
+
     fn set_name(&self, label: &str) {
         let imp = self.imp();
         imp.title_label.set_label(label);
@@ -117,8 +122,16 @@ impl SonglistRow {
         let imp = self.imp();
         let sender = imp.sender.get().unwrap();
         let si = { imp.song_info.borrow().clone().unwrap() };
-        let s_send = SendWeakRef::from(self.downgrade());
         let like = imp.like.get();
+        // 本地歌曲走本地收藏（不请求账号接口）
+        if crate::local_music::is_local_id(si.id) {
+            sender
+                .send_blocking(Action::ToggleLocalFav(si))
+                .unwrap();
+            self.set_property("like", !like);
+            return;
+        }
+        let s_send = SendWeakRef::from(self.downgrade());
         sender
             .send_blocking(Action::LikeSong(
                 si.id,
@@ -158,6 +171,11 @@ impl SonglistRow {
         let imp = self.imp();
         let sender = imp.sender.get().unwrap();
         let si = { imp.song_info.borrow().clone().unwrap() };
+        // 喜爱推荐里垃圾桶 = 「不再推荐」，不动播放列表
+        if imp.block_remove.get() {
+            sender.send_blocking(Action::BlockRecommend(si)).unwrap();
+            return;
+        }
         sender
             .send_blocking(Action::RemoveFromPlayList(si))
             .unwrap();
@@ -190,6 +208,8 @@ mod imp {
 
         pub sender: OnceCell<Sender<Action>>,
         pub song_info: RefCell<Option<SongInfo>>,
+        // 垃圾桶按钮语义：true = 从喜爱推荐移除（不删播放列表）
+        pub block_remove: Cell<bool>,
 
         pub like: Cell<bool>,
         pub not_ignore_grey: Cell<bool>,

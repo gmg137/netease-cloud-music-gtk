@@ -35,6 +35,51 @@
                     </object>
                 </child>
                 <child>
+                    <object class="GtkBox">
+                        <property name="spacing">0</property>
+                        <property name="halign">start</property>
+                        <style>
+                            <class name="linked" />
+                        </style>
+                        <child>
+                            <object class="GtkToggleButton" id="mode_all">
+                                <property name="label" translatable="yes">All</property>
+                                <property name="active">true</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkToggleButton" id="mode_fav">
+                                <property name="label" translatable="yes">Favorites</property>
+                                <property name="group">mode_all</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkToggleButton" id="mode_recommend">
+                                <property name="label" translatable="yes">For You</property>
+                                <property name="group">mode_all</property>
+                                <property name="tooltip-text" translatable="yes">Picked from your local favorites and listening time</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkToggleButton" id="mode_recent">
+                                <property name="label" translatable="yes">Recent</property>
+                                <property name="group">mode_all</property>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkLabel" id="hint_label">
+                        <property name="visible">false</property>
+                        <property name="xalign">0</property>
+                        <property name="wrap">true</property>
+                        <style>
+                            <class name="dim-label" />
+                            <class name="caption" />
+                        </style>
+                    </object>
+                </child>
+                <child>
                     <object class="SongListView" id="songs_list">
                         <property name="vexpand">true</property>
                         <property name="width-request">500</property>

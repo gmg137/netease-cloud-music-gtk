@@ -596,8 +596,16 @@ impl NeteaseCloudMusicGtk4Window {
             .get_or_init(crate::gui::LocalMusicPage::new)
             .clone();
         page.set_sender(sender);
+        page.set_window(self);
         page.set_songs(songs);
         self.page_new(&page, &gettext("Local Music"), "Local Music");
+    }
+
+    // 本地音乐页刷新（收藏/推荐/最近播放变化后）；「全部」视图不重排整表
+    pub fn refresh_local_page(&self) {
+        if let Some(page) = self.imp().local_music_page.get() {
+            page.update_cache(self.local_songs());
+        }
     }
 
     // 播放列表里的本地歌曲
