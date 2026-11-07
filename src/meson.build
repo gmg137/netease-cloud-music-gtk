@@ -49,6 +49,7 @@ rust_sources = files(
   'gui/theme_selector.rs',
   'gui/toplist.rs',
   'gui/user_menus.rs',
+  'gui/web_login.rs',
 )
 
 sources = [cargo_sources, rust_sources]
@@ -69,5 +70,6 @@ cargo_release = custom_target(
     '@OUTPUT@',
     get_option('buildtype'),
     meson.project_name(),
+    ','.join(cargo_features),
   ]
 )

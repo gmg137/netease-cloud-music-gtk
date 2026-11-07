@@ -128,6 +128,8 @@ pub enum Action {
     SwitchUserMenuToUser(LoginInfo, UserMenuChild),
     GetCaptcha(String, String),
     CaptchaLogin(String, String, String),
+    // 官方网页登录 / cookie 导入
+    OpenWebLogin,
 
     // Qr
     TryUpdateQrCode,
@@ -516,7 +518,12 @@ impl NeteaseCloudMusicGtk4Application {
             Action::GetCaptcha(ctcode, phone) => {
                 let sender = imp.sender.clone();
                 MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
-                    match ncmapi.client.captcha(ctcode, phone).await {
+                    // PC 端接口被风控时（-462 要求人机验证）改走穿戴端网关，它不做该拦截
+                    let result = match ncmapi.client.captcha(ctcode.clone(), phone.clone()).await {
+                        Ok(_) => Ok(()),
+                        Err(_) => ncmapi.client.captcha_wearable(ctcode, phone).await,
+                    };
+                    match result {
                         Ok(..) => {
                             debug!("发送获取验证码请求...");
                             sender
@@ -527,12 +534,14 @@ impl NeteaseCloudMusicGtk4Application {
                         }
                         Err(err) => {
                             warn!("获取验证码失败! {:?}", err);
+                            // 透传服务端文案：400 手机号码不符合规范 / 405 发送验证码间隔过短
                             sender
-                                .send(Action::AddToast(gettext(
-                                    "Failed to get verification code!",
-                                )))
-                                .await
-                                .unwrap();
+                            .send(Action::AddToast(gettext_f(
+                                "Failed to get verification code: {}",
+                                &[("message", &err.to_string())],
+                            )))
+                            .await
+                            .unwrap();
                         }
                     }
                 });
@@ -541,25 +550,56 @@ impl NeteaseCloudMusicGtk4Application {
                 let sender = imp.sender.clone();
                 MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     debug!("使用验证码登录：{}", captcha);
-                    if let Ok(_login_info) =
-                        ncmapi.client.login_cellphone(ctcode, phone, captcha).await
-                    {
-                        let cookie_jar = ncmapi.client.cookie_jar().cloned().unwrap_or_else(|| {
-                            error!("No login cookie found");
-                            CookieJar::new()
-                        });
-                        sender
-                            .send(Action::CheckLogin(UserMenuChild::Phone, cookie_jar))
+                    // -462 表示网易要求先完成人机验证，PC 端接口此时无法登录；
+                    // 穿戴端网关仍会正常校验验证码，因此非 200 时回退到它
+                    let mut login_info = ncmapi
+                        .client
+                        .login_cellphone(ctcode.clone(), phone.clone(), captcha.clone())
+                        .await
+                        .ok();
+                    if !matches!(&login_info, Some(info) if info.code == 200) {
+                        login_info = ncmapi
+                            .client
+                            .login_cellphone_wearable(ctcode, phone, captcha)
                             .await
-                            .unwrap();
-                    } else {
-                        error!("登录失败！");
-                        sender
-                            .send(Action::AddToast(gettext("Login failed!")))
-                            .await
-                            .unwrap();
+                            .ok();
+                    }
+                    match login_info {
+                        Some(info) if info.code == 200 => {
+                            let cookie_jar =
+                                ncmapi.client.cookie_jar().cloned().unwrap_or_else(|| {
+                                    error!("No login cookie found");
+                                    CookieJar::new()
+                                });
+                            sender
+                                .send(Action::CheckLogin(UserMenuChild::Phone, cookie_jar))
+                                .await
+                                .unwrap();
+                        }
+                        Some(info) => {
+                            error!("登录失败：{} {}", info.code, info.msg);
+                            sender
+                                .send(Action::AddToast(gettext_f(
+                                    "Login failed: {}",
+                                    &[("message", &info.msg)],
+                                )))
+                                .await
+                                .unwrap();
+                        }
+                        None => {
+                            error!("登录失败！");
+                            sender
+                                .send(Action::AddToast(gettext("Login failed!")))
+                                .await
+                                .unwrap();
+                        }
                     }
                 });
+            }
+
+            Action::OpenWebLogin => {
+                debug!("打开网页登录窗口");
+                crate::gui::show_login_window(window.upcast_ref::<gtk::Window>(), imp.sender.clone());
             }
             Action::SwitchUserMenuToUser(login_info, menu) => {
                 window.switch_user_menu_to_user(login_info.clone(), menu);

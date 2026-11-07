@@ -31,6 +31,8 @@ pub struct UserMenus {
     pub captcha_button: Button,
     pub login_button: Button,
     pub back_button: Button,
+    pub web_login_button: Button,
+    pub web_login_phone_button: Button,
 
     pub userbox: Box,
     pub avatar: Avatar,
@@ -57,6 +59,8 @@ impl UserMenus {
         let captcha_button: Button = builder.object("captcha_button").unwrap();
         let login_button: Button = builder.object("login_button").unwrap();
         let back_button: Button = builder.object("back_button").unwrap();
+        let web_login_button: Button = builder.object("web_login_button").unwrap();
+        let web_login_phone_button: Button = builder.object("web_login_phone_button").unwrap();
 
         let userbox: Box = builder.object("userbox").unwrap();
         let avatar: Avatar = builder.object("avatar").unwrap();
@@ -81,6 +85,8 @@ impl UserMenus {
             captcha_button,
             login_button,
             back_button,
+            web_login_button,
+            web_login_phone_button,
 
             userbox,
             avatar,
@@ -156,6 +162,17 @@ impl UserMenus {
                 }
             }
         ));
+
+        // 网页登录：短信登录被风控拦截（-462）时的兜底
+        let sender = self.sender.get().unwrap().clone();
+        self.web_login_button.connect_clicked(move |_| {
+            sender.send_blocking(Action::OpenWebLogin).unwrap();
+        });
+
+        let sender = self.sender.get().unwrap().clone();
+        self.web_login_phone_button.connect_clicked(move |_| {
+            sender.send_blocking(Action::OpenWebLogin).unwrap();
+        });
 
         let sender = self.sender.get().unwrap().clone();
         self.logout_button.connect_clicked(move |_| {

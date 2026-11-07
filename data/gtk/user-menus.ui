@@ -47,6 +47,18 @@
                 </style>
             </object>
         </child>
+        <child>
+            <object class="GtkButton" id="web_login_button">
+                <property name="valign">fill</property>
+                <property name="label" translatable="yes">Web Login</property>
+                <property name="tooltip-text" translatable="yes">Sign in on the official web page</property>
+                <style>
+                    <class name="flat" />
+                    <class name="caption" />
+                    <class name="pill" />
+                </style>
+            </object>
+        </child>
     </object>
     <object class="GtkBox" id="phonebox">
         <property name="halign">fill</property>
@@ -127,6 +139,17 @@
                         <property name="margin-top">3</property>
                         <style>
                             <class name="suggested-action" />
+                        </style>
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkButton" id="web_login_phone_button">
+                        <property name="label" translatable="yes">Web Login</property>
+                        <property name="tooltip-text" translatable="yes">Sign in on the official web page</property>
+                        <property name="margin-top">3</property>
+                        <style>
+                            <class name="flat" />
+                            <class name="caption" />
                         </style>
                     </object>
                 </child>
