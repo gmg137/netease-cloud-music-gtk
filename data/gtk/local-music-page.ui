@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <requires lib="gtk" version="4.0" />
+    <requires lib="libadwaita" version="1.0" />
+    <template class="LocalMusicPage" parent="AdwBin">
+        <property name="child">
+            <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <property name="spacing">6</property>
+                <property name="margin-top">6</property>
+                <property name="margin-bottom">6</property>
+                <property name="margin-start">12</property>
+                <property name="margin-end">12</property>
+                <child>
+                    <object class="GtkBox">
+                        <property name="spacing">6</property>
+                        <child>
+                            <object class="GtkSearchEntry" id="filter_entry">
+                                <property name="placeholder-text" translatable="yes">Search local music</property>
+                                <property name="hexpand">true</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkButton" id="play_all_button">
+                                <property name="label" translatable="yes">Play All</property>
+                                <property name="tooltip-text" translatable="yes">Play all local songs in the list</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkButton" id="rescan_button">
+                                <property name="label" translatable="yes">Rescan</property>
+                                <property name="tooltip-text" translatable="yes">Rescan remembered local music folders</property>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+                <child>
+                    <object class="SongListView" id="songs_list">
+                        <property name="vexpand">true</property>
+                        <property name="width-request">500</property>
+                        <property name="clamp-maximum-size">1000</property>
+                        <property name="clamp-tightening-threshold">730</property>
+                    </object>
+                </child>
+            </object>
+        </property>
+    </template>
+</interface>

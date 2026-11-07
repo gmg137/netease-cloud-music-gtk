@@ -750,6 +750,30 @@ msgstr "本地文件不存在：{name}"
 msgid "Search in playlist"
 msgstr "在播放列表中搜索"
 
+#: data/gtk/window.ui
+msgid "Local Music"
+msgstr "本地音乐"
+
+#: data/gtk/local-music-page.ui
+msgid "Search local music"
+msgstr "搜索本地音乐"
+
+#: data/gtk/local-music-page.ui
+msgid "Play All"
+msgstr "全部播放"
+
+#: data/gtk/local-music-page.ui
+msgid "Play all local songs in the list"
+msgstr "播放列表中的全部本地歌曲"
+
+#: data/gtk/local-music-page.ui
+msgid "Rescan"
+msgstr "重新扫描"
+
+#: data/gtk/local-music-page.ui
+msgid "Rescan remembered local music folders"
+msgstr "重新扫描已记住的本地音乐目录"
+
 
 #~ msgid "{} songs, {} favs"
 #~ msgstr "{} 首歌曲，{} 收藏"

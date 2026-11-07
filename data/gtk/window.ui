@@ -264,6 +264,10 @@
                 <attribute name="action">win.play-from-taste</attribute>
             </item>
             <item>
+                <attribute name="label" translatable="yes">Local Music</attribute>
+                <attribute name="action">win.open-local-music</attribute>
+            </item>
+            <item>
                 <attribute name="label" translatable="yes">Open Local Files…</attribute>
                 <attribute name="action">win.open-local-files</attribute>
             </item>

@@ -17,6 +17,7 @@
         <file compressed="true">gtk/search-songlist-page.ui</file>
         <file compressed="true">gtk/search-singer-page.ui</file>
         <file compressed="true">gtk/playlist-lyrics-page.ui</file>
+        <file compressed="true">gtk/local-music-page.ui</file>
         <file compressed="true">gtk/lyrics-page.ui</file>
         <file compressed="true">themes/themesselector.css</file>
         <file compressed="true">themes/discover.css</file>

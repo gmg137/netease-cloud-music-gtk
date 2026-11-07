@@ -78,6 +78,8 @@ mod imp {
 
         pub playlist_lyrics_page: OnceCell<PlayListLyricsPage>,
         pub lyrics_page: OnceCell<LyricsPage>,
+        // 本地音乐页（重扫后原地刷新）
+        pub local_music_page: OnceCell<crate::gui::LocalMusicPage>,
 
         pub user_menus: OnceCell<UserMenus>,
         pub popover_menu: OnceCell<PopoverMenu>,
@@ -402,6 +404,14 @@ impl NeteaseCloudMusicGtk4Window {
         action_playlist.connect_activate(move |_, _| {
             player_controls.open_playlist_page();
         });
+
+        // 打开「本地音乐」页面
+        let action_local_page = SimpleAction::new("open-local-music", None);
+        self.add_action(&action_local_page);
+        let window = self.clone();
+        action_local_page.connect_activate(move |_, _| {
+            window.open_local_music_page();
+        });
     }
 
     fn bind_settings(&self) {
@@ -576,6 +586,36 @@ impl NeteaseCloudMusicGtk4Window {
         player_controls.add_song(song_info);
     }
 
+    // 打开独立的「本地音乐」页面（本地歌曲列表 + 搜索 + 全部播放 + 重新扫描）
+    pub fn open_local_music_page(&self) {
+        let songs = self.local_songs();
+        let sender = self.imp().sender.get().unwrap().clone();
+        let page = self
+            .imp()
+            .local_music_page
+            .get_or_init(crate::gui::LocalMusicPage::new)
+            .clone();
+        page.set_sender(sender);
+        page.set_songs(songs);
+        self.page_new(&page, &gettext("Local Music"), "Local Music");
+    }
+
+    // 播放列表里的本地歌曲
+    pub fn local_songs(&self) -> Vec<SongInfo> {
+        self.imp()
+            .player_controls
+            .get()
+            .get_list()
+            .into_iter()
+            .filter(|song| crate::local_music::is_local(&song.song_url))
+            .collect()
+    }
+
+    // 打开「播放列表/歌词」页面（播放栏按钮与 win.open-playlist 共用）
+    pub fn open_playlist_page(&self) {
+        self.imp().player_controls.get().open_playlist_page();
+    }
+
     pub fn remove_from_playlist(&self, song_info: SongInfo) {
         let player_controls = self.imp().player_controls.get();
         player_controls.remove_song(song_info);
@@ -660,6 +700,10 @@ impl NeteaseCloudMusicGtk4Window {
         let removed = player_controls.remove_songs(&stale);
         let mut list = songs;
         let added = player_controls.append_list(&mut list).len();
+        // 本地音乐页开着就原地刷新（页面上的「重新扫描」按钮会直接看到结果）
+        if let Some(page) = self.imp().local_music_page.get() {
+            page.set_songs(self.local_songs());
+        }
         (added, removed, player_controls.get_list().len())
     }
 
