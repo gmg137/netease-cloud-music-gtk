@@ -933,6 +933,20 @@ impl NeteaseCloudMusicGtk4Application {
                                         {
                                             song_info.quality.available.push(song_url.quality);
                                         }
+                                        // 服务端降级（多为账号没有对应音质权益）时说明原因
+                                        let requested = NcmClient::get_quality(music_rate);
+                                        if NcmClient::get_quality_index(song_url.quality)
+                                            < NcmClient::get_quality_index(requested)
+                                        {
+                                            let toast = gettext_f(
+                                                "Quality limited to {actual} (no {requested} entitlement)",
+                                                &[
+                                                    ("actual", &quality_name(song_url.quality)),
+                                                    ("requested", &quality_name(requested)),
+                                                ],
+                                            );
+                                            sender.send(Action::AddToast(toast)).await.unwrap();
+                                        }
                                         sender.send(Action::PlayStart(song_info)).await.unwrap();
                                     }
                                     _ => {
