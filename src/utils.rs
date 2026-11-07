@@ -1,8 +1,37 @@
 use gettextrs::gettext;
 use glib::{SourceId, timeout_add_seconds};
 use gtk::{Label, glib, prelude::*};
-use ncm_api::{SongCopyright, SongInfo, SongQualityState};
+use ncm_api::{SongCopyright, SongInfo, SongQuality, SongQualityState};
 use std::sync::{Arc, Mutex};
+
+/// 音质的可读名称
+pub fn quality_name(quality: SongQuality) -> String {
+    match quality {
+        SongQuality::Standard => gettext("Standard"),
+        SongQuality::Higher => gettext("Higher"),
+        SongQuality::Extreme => gettext("Extreme"),
+        SongQuality::Lossless => gettext("Lossless"),
+        SongQuality::HiRes => gettext("Hi-Res"),
+        SongQuality::Surround => gettext("Surround"),
+        SongQuality::AudioVivid => gettext("Audio Vivid"),
+        SongQuality::Master => gettext("Master"),
+    }
+}
+
+/// 歌曲当前实际音质（没取到实际值时退回到选中音质）
+pub fn current_quality(quality: &SongQualityState) -> Option<SongQuality> {
+    quality.actual.or(quality.selected)
+}
+
+/// 可用音质列表文本，如 `Standard / Higher / Extreme`
+pub fn quality_list_text(quality: &SongQualityState) -> String {
+    quality
+        .available
+        .iter()
+        .map(|q| quality_name(*q))
+        .collect::<Vec<String>>()
+        .join(" / ")
+}
 
 /// Like `gettext`, but replaces named variables with the given dictionary.
 ///

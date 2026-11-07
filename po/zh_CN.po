@@ -621,5 +621,53 @@ msgstr "暂无歌词"
 msgid "No song playing"
 msgstr "当前没有播放中的歌曲"
 
+#: src/utils.rs
+msgid "Standard"
+msgstr "标准"
+
+#: src/utils.rs
+msgid "Higher"
+msgstr "较高"
+
+#: src/utils.rs
+msgid "Extreme"
+msgstr "极高"
+
+#: src/utils.rs
+msgid "Lossless"
+msgstr "无损"
+
+#: src/utils.rs
+msgid "Hi-Res"
+msgstr "Hi-Res"
+
+#: src/utils.rs
+msgid "Surround"
+msgstr "沉浸声"
+
+#: src/utils.rs
+msgid "Audio Vivid"
+msgstr "臻音"
+
+#: src/utils.rs
+msgid "Master"
+msgstr "母带"
+
+#: src/gui/player_controls.rs
+msgid ""
+"专辑: {album}\n"
+"时长: {duration}\n"
+"音质: {quality}\n"
+"可用音质: {available}"
+msgstr ""
+"专辑：{album}\n"
+"时长：{duration}\n"
+"音质：{quality}\n"
+"可用音质：{available}"
+#: src/gui/player_controls.rs
+msgid "{quality} (按设置)"
+msgstr "{quality}（按设置）"
+
+
 #~ msgid "{} songs, {} favs"
 #~ msgstr "{} 首歌曲，{} 收藏"

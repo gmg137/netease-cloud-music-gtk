@@ -15,13 +15,14 @@ use gstreamer_play::{prelude::ElementExt, *};
 use gtk::{CompositeTemplate, GestureClick, glib, prelude::*, subclass::prelude::*, *};
 use log::*;
 use mpris_server::PlaybackStatus;
-use ncm_api::SongInfo;
+use ncm_api::{SongInfo, SongQuality};
 use once_cell::sync::*;
 
 use crate::{
     application::{Action, HEARTBEAT_ACTIVE, HeartbeatExtendMode, PERSONAL_RADIO_ACTIVE},
     audio::*,
     model::ImageDownloadImpl,
+    ncmapi::NcmClient,
     path::CACHE,
     utils::*,
 };
@@ -208,6 +209,61 @@ impl PlayerControls {
         play_button.emit_clicked();
     }
 
+    /// 更新播放栏的音质徽标与详情 tooltip
+    fn update_quality_info(&self, song_info: &SongInfo) {
+        let label = self.imp().quality_label.get();
+        let state = &song_info.quality;
+
+        // 优先实际音质，其次已选音质，最后回退到设置里请求的码率
+        let (quality, from_setting) = match current_quality(state) {
+            Some(quality) => (quality, false),
+            None => (
+                NcmClient::get_quality(self.settings().uint("music-rate")),
+                true,
+            ),
+        };
+        if song_info.id == 0 {
+            label.set_visible(false);
+            label.set_tooltip_text(None);
+            return;
+        }
+
+        label.set_label(&quality_name(quality));
+        label.remove_css_class("quality-hires");
+        label.remove_css_class("quality-unknown");
+        if from_setting {
+            label.add_css_class("quality-unknown");
+        } else if matches!(
+            quality,
+            SongQuality::Lossless
+                | SongQuality::HiRes
+                | SongQuality::Surround
+                | SongQuality::AudioVivid
+                | SongQuality::Master
+        ) {
+            label.add_css_class("quality-hires");
+        }
+        label.set_visible(true);
+
+        let sec = song_info.duration / 1000;
+        let duration = format!("{:02}:{:02}", sec / 60, sec % 60);
+        let quality_text = if from_setting {
+            gettext_f("{quality} (按设置)", &[("quality", &quality_name(quality))])
+        } else {
+            quality_name(quality)
+        };
+        let tooltip = gettext_f(
+            "专辑: {album}\n时长: {duration}\n音质: {quality}\n可用音质: {available}",
+            &[
+                ("album", &song_info.album),
+                ("duration", &duration),
+                ("quality", &quality_text),
+                ("available", &quality_list_text(state)),
+            ],
+        );
+        label.set_tooltip_text(Some(&tooltip));
+    }
+
     pub fn init_play_info(&self, song_info: SongInfo) {
         let imp = self.imp();
         let cover_image = imp.cover_image.get();
@@ -232,6 +288,8 @@ impl PlayerControls {
 
         let artist_label = imp.artist_label.get();
         artist_label.set_label(&song_info.singer);
+
+        self.update_quality_info(&song_info);
 
         let volume = self.property("volume");
         if let Some(mpris) = imp.mpris.get() {
@@ -1053,6 +1111,8 @@ mod imp {
         #[template_child]
         pub artist_label: TemplateChild<Label>,
         #[template_child]
+        pub quality_label: TemplateChild<Label>,
+        #[template_child]
         pub seek_scale: TemplateChild<Scale>,
         #[template_child]
         pub progress_time_label: TemplateChild<Label>,
@@ -1467,6 +1527,15 @@ fn load_css() {
     provider.load_from_resource("/com/gitee/gmg137/NeteaseCloudMusicGtk4/themes/heartbeat.css");
 
     // Add the provider to the default screen
+    style_context_add_provider_for_display(
+        &gdk::Display::default().expect("Could not connect to a display."),
+        &provider,
+        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
+
+    // 播放栏（音质徽标等）
+    let provider = CssProvider::new();
+    provider.load_from_resource("/com/gitee/gmg137/NeteaseCloudMusicGtk4/themes/player-controls.css");
     style_context_add_provider_for_display(
         &gdk::Display::default().expect("Could not connect to a display."),
         &provider,

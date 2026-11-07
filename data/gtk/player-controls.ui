@@ -90,12 +90,28 @@
                     </object>
                 </child>
                 <child>
-                    <object class="GtkLabel" id="artist_label">
-                        <property name="halign">start</property>
-                        <property name="valign">fill</property>
-                        <property name="label">歌手名</property>
-                        <property name="max-width-chars">12</property>
-                        <property name="ellipsize">middle</property>
+                    <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">6</property>
+                        <child>
+                            <object class="GtkLabel" id="artist_label">
+                                <property name="halign">start</property>
+                                <property name="valign">fill</property>
+                                <property name="label">歌手名</property>
+                                <property name="max-width-chars">12</property>
+                                <property name="ellipsize">middle</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkLabel" id="quality_label">
+                                <property name="halign">start</property>
+                                <property name="valign">center</property>
+                                <property name="visible">false</property>
+                                <style>
+                                    <class name="quality-badge" />
+                                </style>
+                            </object>
+                        </child>
                     </object>
                 </child>
             </object>
