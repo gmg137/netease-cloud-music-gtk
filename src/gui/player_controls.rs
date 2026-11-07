@@ -211,8 +211,16 @@ impl PlayerControls {
 
     /// 更新播放栏的音质徽标与详情 tooltip
     fn update_quality_info(&self, song_info: &SongInfo) {
-        let label = self.imp().quality_label.get();
+        let imp = self.imp();
+        let label = imp.quality_label.get();
+        let button = imp.quality_button.get();
         let state = &song_info.quality;
+
+        if song_info.id == 0 {
+            button.set_visible(false);
+            button.set_tooltip_text(None);
+            return;
+        }
 
         // 优先实际音质，其次已选音质，最后回退到设置里请求的码率
         let (quality, from_setting) = match current_quality(state) {
@@ -222,11 +230,6 @@ impl PlayerControls {
                 true,
             ),
         };
-        if song_info.id == 0 {
-            label.set_visible(false);
-            label.set_tooltip_text(None);
-            return;
-        }
 
         label.set_label(&quality_name(quality));
         label.remove_css_class("quality-hires");
@@ -243,7 +246,6 @@ impl PlayerControls {
         ) {
             label.add_css_class("quality-hires");
         }
-        label.set_visible(true);
 
         let sec = song_info.duration / 1000;
         let duration = format!("{:02}:{:02}", sec / 60, sec % 60);
@@ -261,7 +263,68 @@ impl PlayerControls {
                 ("available", &quality_list_text(state)),
             ],
         );
-        label.set_tooltip_text(Some(&tooltip));
+        button.set_tooltip_text(Some(&tooltip));
+        button.set_visible(true);
+
+        self.setup_quality_menu(song_info, quality);
+    }
+
+    /// 构建点击音质徽标后弹出的音质切换菜单
+    fn setup_quality_menu(&self, song_info: &SongInfo, current: SongQuality) {
+        let popover = gtk::Popover::builder().autohide(true).build();
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 2);
+        vbox.add_css_class("quality-menu");
+        vbox.set_margin_top(6);
+        vbox.set_margin_bottom(6);
+        vbox.set_margin_start(6);
+        vbox.set_margin_end(6);
+
+        // 固定列出全部音质档位：接口给的 available 常常只有一项（不一定准），
+        // 所以不在可用列表里的只做弱化显示，仍可点击尝试
+        let available = &song_info.quality.available;
+        let current_index = NcmClient::get_quality_index(current);
+        for index in 0..=7u32 {
+            let quality = NcmClient::get_quality(index);
+            let row = gtk::Button::builder()
+                .has_frame(false)
+                .css_classes(["quality-item"])
+                .build();
+            let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+            let check = gtk::Image::from_icon_name("object-select-symbolic");
+            check.set_width_request(16);
+            check.set_opacity(if index == current_index { 1.0 } else { 0.0 });
+            let name = gtk::Label::new(Some(&quality_name(quality)));
+            name.set_xalign(0.0);
+            name.set_hexpand(true);
+            if !available.is_empty() && !available.contains(&quality) {
+                name.set_opacity(0.5);
+            }
+            hbox.append(&check);
+            hbox.append(&name);
+            row.set_child(Some(&hbox));
+
+            let this = self.clone();
+            let popover = popover.clone();
+            row.connect_clicked(move |_| {
+                popover.popdown();
+                this.change_quality(index);
+            });
+            vbox.append(&row);
+        }
+
+        popover.set_child(Some(&vbox));
+        self.imp().quality_button.get().set_popover(Some(&popover));
+    }
+
+    /// 切换音质：更新设置，并按新音质重新拉流（保持当前进度）
+    fn change_quality(&self, index: u32) {
+        let sender = self.imp().sender.get().unwrap();
+        let _ = sender.send_blocking(Action::ChangeQuality(index));
+    }
+
+    /// 记录待执行的 seek 位置（微秒），播放时应用
+    pub fn set_pending_seek(&self, usec: u64) {
+        self.imp().pending_seek_position.set(usec);
     }
 
     pub fn init_play_info(&self, song_info: SongInfo) {
@@ -1112,6 +1175,8 @@ mod imp {
         pub artist_label: TemplateChild<Label>,
         #[template_child]
         pub quality_label: TemplateChild<Label>,
+        #[template_child]
+        pub quality_button: TemplateChild<MenuButton>,
         #[template_child]
         pub seek_scale: TemplateChild<Scale>,
         #[template_child]

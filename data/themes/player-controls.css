@@ -21,3 +21,18 @@
   border: 1px solid alpha(currentColor, 0.35);
   color: alpha(currentColor, 0.6);
 }
+
+/* 音质切换菜单 */
+.quality-menu {
+  min-width: 148px;
+}
+
+.quality-item {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.92rem;
+}
+
+menuButton.flat:focus:focus-visible > .quality-badge {
+  outline: none;
+}

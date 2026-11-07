@@ -668,6 +668,10 @@ msgstr ""
 msgid "{quality} (按设置)"
 msgstr "{quality}（按设置）"
 
+#: src/application.rs
+msgid "This quality is not available, keep the current one."
+msgstr "该音质不可用，保持当前音质"
+
 
 #~ msgid "{} songs, {} favs"
 #~ msgstr "{} 首歌曲，{} 收藏"

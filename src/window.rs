@@ -848,6 +848,17 @@ impl NeteaseCloudMusicGtk4Window {
         self.imp().player_controls.get().seek_to(usec);
     }
 
+    // 切换音质前准备：返回当前歌曲，并记下进度以便换流后继续
+    pub fn prepare_quality_change(&self) -> Option<SongInfo> {
+        let player_controls = self.imp().player_controls.get();
+        let song_info = player_controls.get_current_song()?;
+        let position = player_controls.property::<f64>("scale-value");
+        if position > 0.0 {
+            player_controls.set_pending_seek((position * 1_000_000.0) as u64);
+        }
+        Some(song_info)
+    }
+
     // 更新歌词内容，不调整位置
     pub fn update_lyrics(&self, lrc: Vec<(u64, String)>) {
         let imp = self.imp();

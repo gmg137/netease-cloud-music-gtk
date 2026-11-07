@@ -173,6 +173,7 @@ pub enum Action {
     PlayNextSong,
     PlayPreviousSong,
     Play(SongInfo),
+    ChangeQuality(u32),
     PlayStart(SongInfo),
     TogglePlayPause,
     // (歌单, 是否立即播放)
@@ -912,6 +913,45 @@ impl NeteaseCloudMusicGtk4Application {
                     .unwrap();
 
                 window.play(song_info);
+            }
+            Action::ChangeQuality(music_rate) => {
+                window.settings().set_uint("music-rate", music_rate).ok();
+                if let Some(mut song_info) = window.prepare_quality_change() {
+                    if song_info.id != 0 {
+                        let sender = imp.sender.clone();
+                        MAINCONTEXT.spawn_local_with_priority(
+                            Priority::DEFAULT_IDLE,
+                            async move {
+                                match ncmapi.songs_url(&[song_info.id], music_rate).await {
+                                    Ok(song_url) if !song_url.is_empty() => {
+                                        let song_url = &song_url[0];
+                                        debug!("切换音质获取播放链接: {:?}", song_url);
+                                        song_info.song_url = song_url.url.to_owned();
+                                        song_info.quality.actual = Some(song_url.quality);
+                                        song_info.quality.selected = Some(song_url.quality);
+                                        if !song_info.quality.available.contains(&song_url.quality)
+                                        {
+                                            song_info.quality.available.push(song_url.quality);
+                                        }
+                                        sender.send(Action::PlayStart(song_info)).await.unwrap();
+                                    }
+                                    _ => {
+                                        error!(
+                                            "切换音质获取播放链接失败: {:?}",
+                                            &[song_info.id]
+                                        );
+                                        sender
+                                            .send(Action::AddToast(gettext(
+                                                "This quality is not available, keep the current one.",
+                                            )))
+                                            .await
+                                            .unwrap();
+                                    }
+                                }
+                            },
+                        );
+                    }
+                }
             }
             Action::ToSongListPage(songlist) => {
                 let page = window.init_songlist_page(&songlist, false);
