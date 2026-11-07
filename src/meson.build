@@ -34,6 +34,7 @@ rust_sources = files(
   'audio/playlist.rs',
   'gui/mod.rs',
   'gui/discover.rs',
+  'gui/lyrics_page.rs',
   'gui/my_page.rs',
   'gui/player_controls.rs',
   'gui/playlist_lyrics.rs',

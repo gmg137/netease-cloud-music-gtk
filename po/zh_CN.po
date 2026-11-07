@@ -593,5 +593,33 @@ msgstr "切换为最早优先"
 msgid "Switch to newest first"
 msgstr "切换为最新优先"
 
+#: src/gui/player_controls.rs
+msgid "Play From My Taste"
+msgstr "根据喜好播放"
+
+#: src/application.rs
+msgid "Personal Radio"
+msgstr "私人漫游"
+
+#: src/application.rs
+msgid "Personal Radio Off"
+msgstr "私人漫游已关闭"
+
+#: src/application.rs
+msgid "Failed to get recommended songs!"
+msgstr "获取推荐歌曲失败！"
+
+#: src/application.rs src/gui/player_controls.rs
+msgid "Please log in first!"
+msgstr "请先登录！"
+
+#: src/application.rs
+msgid "No lyrics available"
+msgstr "暂无歌词"
+
+#: src/gui/player_controls.rs
+msgid "No song playing"
+msgstr "当前没有播放中的歌曲"
+
 #~ msgid "{} songs, {} favs"
 #~ msgstr "{} 首歌曲，{} 收藏"

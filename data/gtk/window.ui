@@ -260,6 +260,10 @@
                 <attribute name="action">app.preferences</attribute>
             </item>
             <item>
+                <attribute name="label" translatable="yes">Play From My Taste</attribute>
+                <attribute name="action">win.play-from-taste</attribute>
+            </item>
+            <item>
                 <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
                 <attribute name="action">win.show-help-overlay</attribute>
             </item>

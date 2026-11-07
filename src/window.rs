@@ -77,6 +77,7 @@ mod imp {
         pub my_page: TemplateChild<MyPage>,
 
         pub playlist_lyrics_page: OnceCell<PlayListLyricsPage>,
+        pub lyrics_page: OnceCell<LyricsPage>,
 
         pub user_menus: OnceCell<UserMenus>,
         pub popover_menu: OnceCell<PopoverMenu>,
@@ -136,6 +137,8 @@ mod imp {
             self.playlist_lyrics_page
                 .set(PlayListLyricsPage::new())
                 .unwrap();
+
+            self.lyrics_page.set(LyricsPage::new()).unwrap();
 
             if let Ok(mut stack_child) = self.stack_child.lock() {
                 stack_child.push_back(("discover".to_owned(), "".to_owned()));
@@ -311,6 +314,14 @@ impl NeteaseCloudMusicGtk4Window {
         let sender = sender_;
         action_back.connect_activate(move |_, _| {
             sender.send_blocking(Action::PageBack).unwrap();
+        });
+
+        // 根据喜好播放（私人漫游）
+        let action_taste = SimpleAction::new("play-from-taste", None);
+        self.add_action(&action_taste);
+        let sender = self.imp().sender.get().unwrap().clone();
+        action_taste.connect_activate(move |_, _| {
+            sender.send_blocking(Action::PersonalRadio).unwrap();
         });
     }
 
@@ -496,10 +507,6 @@ impl NeteaseCloudMusicGtk4Window {
         self.init_playlist_lyrics_page(sis, si.to_owned());
 
         if si.id == 0 {
-            let player_revealer = self.imp().player_revealer.get();
-            player_revealer.set_reveal_child(false);
-            player_revealer.set_visible(false);
-            player_revealer.set_reveal_child(false);
             let sender = self.imp().sender.get().unwrap();
             sender.send_blocking(Action::PageBack).unwrap();
         }
@@ -524,6 +531,12 @@ impl NeteaseCloudMusicGtk4Window {
     pub fn set_heartbeat_active(&self, active: bool) {
         let player_controls = self.imp().player_controls.get();
         player_controls.set_heartbeat_active(active);
+    }
+
+    // 私人漫游开启/关闭时同步按钮状态
+    pub fn set_personal_radio_active(&self, active: bool) {
+        let player_controls = self.imp().player_controls.get();
+        player_controls.set_personal_radio_active(active);
     }
 
     // 根据 song_id 定位播放位置（心动模式追加续播前使用）
@@ -564,7 +577,8 @@ impl NeteaseCloudMusicGtk4Window {
         let id = song_info.id;
         let player_controls = self.imp().player_controls.get();
         player_controls.set_property("like", self.imp().user_like_song_contains(&id));
-        player_controls.play(song_info);
+        player_controls.play(song_info.clone());
+        self.imp().lyrics_page.get().unwrap().set_song(&song_info);
         self.show_player_bar();
         self.imp().current_song_id.set(id);
         self.emit_by_name::<()>("current-song-changed", &[&id]);
@@ -582,8 +596,9 @@ impl NeteaseCloudMusicGtk4Window {
         let player_controls = imp.player_controls.get();
         player_controls.set_sender(sender.clone());
 
-        // 恢复播放列表UI（如果有保存的播放列表）
-        if player_controls.restore_playlist_ui() {
+        // 播放栏常驻：即使播放列表为空也显示（空列表时展示占位信息）
+        player_controls.restore_playlist_ui();
+        {
             let player_revealer = imp.player_revealer.get();
             player_revealer.set_visible(true);
             player_revealer.set_reveal_child(true);
@@ -602,6 +617,13 @@ impl NeteaseCloudMusicGtk4Window {
         // 初始化播放列表页
         let playlist_lyrics_page = imp.playlist_lyrics_page.get().unwrap();
         playlist_lyrics_page.set_sender(sender.clone());
+
+        // 初始化大封面歌词页
+        let lyrics_page = imp.lyrics_page.get().unwrap();
+        lyrics_page.set_sender(sender.clone());
+        if let Some(si) = imp.player_controls.get().get_current_song() {
+            lyrics_page.set_song(&si);
+        }
 
         let page_stack = imp.page_stack.get().unwrap();
         page_stack.set_transition_type(StackTransitionType::Crossfade);
@@ -797,11 +819,41 @@ impl NeteaseCloudMusicGtk4Window {
         page.bind_current_song(self);
     }
 
+    pub fn page_cur_lyrics_page(&self) -> bool {
+        let imp = self.imp();
+        let page = imp.lyrics_page.get().unwrap();
+        let cur = &imp.page_stack.get().unwrap().top_page().child();
+        cur == page
+    }
+
+    // 点击播放栏封面进入官方风格的大封面歌词页
+    pub fn init_lyrics_page(&self, si: SongInfo) {
+        let imp = self.imp();
+        let page = imp.lyrics_page.get().unwrap().clone();
+        page.set_song(&si);
+        // 歌词还没拿到（比如切换歌曲时请求失败），进入页面时补拉一次
+        if !page.has_lyrics() {
+            if let Some(sender) = imp.sender.get() {
+                let _ = sender.try_send(Action::LoadLyrics(si));
+            }
+        }
+        if self.page_cur_lyrics_page() {
+            return;
+        }
+        self.page_new_with_name("Lyrics", &page, &gettext("Lyrics"));
+    }
+
+    // 歌词行点击跳转，单位微秒
+    pub fn seek_to(&self, usec: u64) {
+        self.imp().player_controls.get().seek_to(usec);
+    }
+
     // 更新歌词内容，不调整位置
     pub fn update_lyrics(&self, lrc: Vec<(u64, String)>) {
         let imp = self.imp();
         let page = imp.playlist_lyrics_page.get().unwrap();
-        page.update_lyrics(lrc);
+        page.update_lyrics(lrc.clone());
+        imp.lyrics_page.get().unwrap().update_lyrics(lrc);
     }
 
     // 强行更新歌词区文字，用于显示歌词加载提示
@@ -809,11 +861,13 @@ impl NeteaseCloudMusicGtk4Window {
         let imp = self.imp();
         let page = imp.playlist_lyrics_page.get().unwrap();
         page.update_lyrics_text(text);
+        imp.lyrics_page.get().unwrap().update_lyrics_text(text);
     }
 
     // 更新歌词高亮位置
     pub fn update_lyrics_timestamp(&self, time: u64) {
         let imp = self.imp();
+        imp.lyrics_page.get().unwrap().update_lyrics_highlight(time);
         let page = imp.playlist_lyrics_page.get().unwrap();
         if self.page_cur_playlist_lyrics_page() {
             page.update_lyrics_highlight(time);

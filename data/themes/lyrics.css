@@ -1,0 +1,40 @@
+/*
+ * lyrics.css
+ * Copyright (C) 2022 gmg137
+ *
+ * Distributed under terms of the GPL-3.0-or-later license.
+ */
+
+/* 歌词页固定使用深色底，与官方客户端的大封面歌词界面一致 */
+.lyrics-backdrop {
+  background-color: #14141a;
+  background-image: linear-gradient(160deg, #1f1f27 0%, #0e0e12 100%);
+}
+
+.lyrics-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.lyrics-artist {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.lyrics-album {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+picture.lyrics-cover {
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+}
+
+textview.lyrics-view,
+textview.lyrics-view text {
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 15px;
+}

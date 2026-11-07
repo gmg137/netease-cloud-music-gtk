@@ -15,11 +15,11 @@ use gstreamer_play::{prelude::ElementExt, *};
 use gtk::{CompositeTemplate, GestureClick, glib, prelude::*, subclass::prelude::*, *};
 use log::*;
 use mpris_server::PlaybackStatus;
-use ncm_api::{SongInfo, SongList};
+use ncm_api::SongInfo;
 use once_cell::sync::*;
 
 use crate::{
-    application::{Action, HEARTBEAT_ACTIVE, HeartbeatExtendMode},
+    application::{Action, HEARTBEAT_ACTIVE, HeartbeatExtendMode, PERSONAL_RADIO_ACTIVE},
     audio::*,
     model::ImageDownloadImpl,
     path::CACHE,
@@ -416,6 +416,16 @@ impl PlayerControls {
         player.seek(ClockTime::from_useconds(msec));
     }
 
+    // 跳转到指定位置（微秒），供歌词行点击使用
+    pub fn seek_to(&self, usec: u64) {
+        let imp = self.imp();
+        if imp.player.get().is_none() {
+            return;
+        }
+        imp.seek_scale.get().set_value(usec as f64);
+        self.gst_position_update(usec);
+    }
+
     pub fn gst_duration_changed(&self, msec: u64) {
         let imp = self.imp();
         let sec = msec / 10u64.pow(6);
@@ -613,6 +623,16 @@ impl PlayerControls {
                 .moved_button
                 .get()
                 .remove_css_class("heartbeat-active");
+        }
+    }
+
+    // 私人漫游开启/关闭时更新按钮状态（开启高亮）
+    pub fn set_personal_radio_active(&self, active: bool) {
+        let button = self.imp().personal_radio_button.get();
+        if active {
+            button.add_css_class("heartbeat-active");
+        } else {
+            button.remove_css_class("heartbeat-active");
         }
     }
 
@@ -975,21 +995,14 @@ impl PlayerControls {
     #[template_callback]
     fn cover_clicked_cb(&self) {
         let sender = self.imp().sender.get().unwrap().clone();
-        if let Some(songinfo) = self.get_current_song() {
-            if songinfo.album_id != 0 {
-                let songlist = SongList {
-                    id: songinfo.album_id,
-                    name: songinfo.album,
-                    cover_img_url: songinfo.pic_url,
-                    author: String::new(),
-                    special_type: 0,
-                };
-                sender.send_blocking(Action::ToAlbumPage(songlist)).unwrap();
-            } else {
-                sender
-                    .send_blocking(Action::AddToast(gettext("Album not found!")))
-                    .unwrap();
-            }
+        match self.get_current_song() {
+            // 点击封面进入官方风格的大封面歌词页，再次点击返回
+            Some(songinfo) => sender
+                .send_blocking(Action::ToLyricsPage(songinfo))
+                .unwrap(),
+            None => sender
+                .send_blocking(Action::AddToast(gettext("No song playing")))
+                .unwrap(),
         }
     }
 
@@ -1062,6 +1075,8 @@ mod imp {
         pub shuffle_button: TemplateChild<CheckButton>,
         #[template_child(id = "moved_button")]
         pub moved_button: TemplateChild<Button>,
+        #[template_child(id = "personal_radio_button")]
+        pub personal_radio_button: TemplateChild<Button>,
         #[template_child(id = "like_button")]
         pub like_button: TemplateChild<Button>,
 
@@ -1186,22 +1201,29 @@ mod imp {
             } else {
                 (LoopsState::None, 0, 0)
             };
-            // 心动模式 + 列表循环播到最后一首：不回绕，追加新的心动歌曲后继续播放
-            if *HEARTBEAT_ACTIVE.lock().unwrap()
-                && loops == LoopsState::Playlist
-                && len > 0
-                && pos_before + 1 == len
-            {
-                let si = {
-                    if let Ok(playlist) = self.playlist.lock() {
-                        playlist.current_song().map(|s| s.to_owned())
-                    } else {
-                        None
+            // 心动模式 / 私人漫游 + 列表循环播到最后一首：不回绕，追加新歌曲后继续播放
+            let at_list_end = len > 0 && pos_before + 1 == len;
+            if loops == LoopsState::Playlist && at_list_end {
+                if *HEARTBEAT_ACTIVE.lock().unwrap() {
+                    let si = {
+                        if let Ok(playlist) = self.playlist.lock() {
+                            playlist.current_song().map(|s| s.to_owned())
+                        } else {
+                            None
+                        }
+                    };
+                    if let Some(si) = si {
+                        sender
+                            .send_blocking(Action::HeartbeatExtend(
+                                si,
+                                HeartbeatExtendMode::ListLoop,
+                            ))
+                            .unwrap();
+                        return;
                     }
-                };
-                if let Some(si) = si {
+                } else if *PERSONAL_RADIO_ACTIVE.lock().unwrap() {
                     sender
-                        .send_blocking(Action::HeartbeatExtend(si, HeartbeatExtendMode::ListLoop))
+                        .send_blocking(Action::PersonalRadioExtend)
                         .unwrap();
                     return;
                 }
@@ -1215,8 +1237,15 @@ mod imp {
                     return;
                 }
                 if loops == LoopsState::None {
+                    // 不循环模式播完：私人漫游优先续播，其次心动模式
+                    if *PERSONAL_RADIO_ACTIVE.lock().unwrap() {
+                        sender
+                            .send_blocking(Action::PersonalRadioExtend)
+                            .unwrap();
+                        return;
+                    }
                     if let Some(si) = playlist.current_song().map(|s| s.to_owned()) {
-                        // 不循环模式播完：追加心动歌曲并自动续播
+                        // 追加心动歌曲并自动续播
                         sender
                             .send_blocking(Action::HeartbeatExtend(si, HeartbeatExtendMode::ListEnd))
                             .unwrap();
@@ -1254,6 +1283,12 @@ mod imp {
             sender
                 .send_blocking(Action::AddToast(gettext("Intelligent mode failure！")))
                 .unwrap();
+        }
+
+        #[template_callback]
+        fn personal_radio_cb(&self) {
+            let sender = self.sender.get().unwrap().clone();
+            sender.send_blocking(Action::PersonalRadio).unwrap();
         }
 
         #[template_callback]

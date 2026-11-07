@@ -14,7 +14,10 @@ use std::{
     cell::RefCell,
     fs,
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
     time::Duration,
 };
 
@@ -42,8 +45,12 @@ pub type ActionCallback<Targ = ()> = Arc<dyn ActionCallbackTr<Targ>>;
 
 // uid -> 我喜欢的音乐歌单 id 缓存，避免每次点击心动模式都重新拉取歌单
 static FAVORITE_PLAYLIST_ID: Lazy<Mutex<Option<(u64, u64)>>> = Lazy::new(|| Mutex::new(None));
+// 最近一次已发起歌词请求的歌曲 id，避免同一首歌重复拉取
+static LAST_LYRICS_ID: AtomicU64 = AtomicU64::new(0);
 // 心动模式开启状态，true 表示已开启，再次点击则关闭
 pub(crate) static HEARTBEAT_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+// 私人漫游（根据喜好播放）开启状态
+pub(crate) static PERSONAL_RADIO_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
 // 心动模式追加推荐的来源：列表循环（播完最后一首）或列表播完（不循环模式）
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,6 +86,62 @@ async fn favorite_playlist_id(ncmapi: &NcmClient, uid: u64) -> Result<u64, &'sta
         Err(err) => {
             error!("获取用户歌单失败: {:?}", err);
             Err("Request for interface failed, please try again!")
+        }
+    }
+}
+
+// 拉取歌词并写入页面；失败、空歌词都给出明确提示，避免一直停在“正在加载歌词...”
+async fn load_lyrics(window: &NeteaseCloudMusicGtk4Window, ncmapi: &NcmClient, si: SongInfo) {
+    window.update_lyrics_text(&gettext("Loading lyrics..."));
+    match ncmapi.get_lyrics(si).await {
+        Ok(lrc) if !lrc.is_empty() => {
+            debug!("获取歌词：{} 行", lrc.len());
+            window.update_lyrics(lrc);
+        }
+        Ok(_) => {
+            debug!("歌词为空");
+            window.update_lyrics_text(&gettext("No lyrics available"));
+        }
+        Err(e) => {
+            debug!("获取歌词失败: {}", e);
+            window.update_lyrics_text(&gettext("No lyrics available"));
+        }
+    }
+}
+
+// 拉取符合用户喜好的推荐歌曲（私人FM，失败则退回每日推荐），追加到播放列表并播放第一首
+async fn personal_radio_append(
+    window: &NeteaseCloudMusicGtk4Window,
+    ncmapi: &NcmClient,
+    sender: &Sender<Action>,
+) -> bool {
+    let songs = match ncmapi.client.personal_fm().await {
+        Ok(list) if !list.is_empty() => list,
+        _ => match ncmapi.client.recommend_songs().await {
+            Ok(list) if !list.is_empty() => list,
+            Ok(_) => {
+                debug!("私人漫游没有可用歌曲");
+                return false;
+            }
+            Err(err) => {
+                error!("获取私人漫游歌曲失败: {:?}", err);
+                return false;
+            }
+        },
+    };
+
+    let mut songs = songs;
+    // append_playlist 会过滤灰歌并去重，返回真正追加的歌曲
+    let appended = window.append_playlist(&mut songs);
+    match appended.first() {
+        Some(song) => {
+            window.sync_playlist_position(song.id);
+            sender.send(Action::Play(song.to_owned())).await.unwrap();
+            true
+        }
+        None => {
+            debug!("私人漫游歌曲全部重复或不可播放");
+            false
         }
     }
 }
@@ -158,6 +221,17 @@ pub enum Action {
     ToPlayListLyricsPage(Vec<SongInfo>, SongInfo),
     UpdateLyrics(SongInfo, u64),
     RemoveFromPlayList(SongInfo),
+
+    // 官方风格的大封面歌词页
+    ToLyricsPage(SongInfo),
+    // 强制重新拉取指定歌曲的歌词
+    LoadLyrics(SongInfo),
+    // 根据喜好播放（私人漫游）：开启/关闭切换
+    PersonalRadio,
+    // 私人漫游续播：当前批次播完时追加新的推荐歌曲
+    PersonalRadioExtend,
+    // 点击歌词行跳转，单位微秒
+    SeekTo(u64),
 
     // page routing
     ToTopPicksPage,
@@ -1179,6 +1253,60 @@ impl NeteaseCloudMusicGtk4Application {
                     }
                 });
             }
+            Action::PersonalRadio => {
+                let sender = imp.sender.clone();
+                debug!("私人漫游：切换请求");
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    // 已开启则关闭，不再拉取
+                    if *PERSONAL_RADIO_ACTIVE.lock().unwrap() {
+                        *PERSONAL_RADIO_ACTIVE.lock().unwrap() = false;
+                        window.set_personal_radio_active(false);
+                        sender
+                            .send(Action::AddToast(gettext("Personal Radio Off")))
+                            .await
+                            .unwrap();
+                        return;
+                    }
+
+                    if window.get_uid() == 0 {
+                        sender
+                            .send(Action::AddToast(gettext("Please log in first!")))
+                            .await
+                            .unwrap();
+                        return;
+                    }
+
+                    if personal_radio_append(&window, &ncmapi, &sender).await {
+                        *PERSONAL_RADIO_ACTIVE.lock().unwrap() = true;
+                        window.set_personal_radio_active(true);
+                        sender
+                            .send(Action::AddToast(gettext("Personal Radio")))
+                            .await
+                            .unwrap();
+                    } else {
+                        *PERSONAL_RADIO_ACTIVE.lock().unwrap() = false;
+                        window.set_personal_radio_active(false);
+                        sender
+                            .send(Action::AddToast(gettext(
+                                "Failed to get recommended songs!",
+                            )))
+                            .await
+                            .unwrap();
+                    }
+                });
+            }
+            Action::PersonalRadioExtend => {
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    if !*PERSONAL_RADIO_ACTIVE.lock().unwrap() {
+                        return;
+                    }
+                    if !personal_radio_append(&window, &ncmapi, &sender).await {
+                        // 取不到新歌时回到列表开头，避免播放卡死
+                        playlist_restart(&window, &sender).await;
+                    }
+                });
+            }
             Action::GetToplist => {
                 let sender = imp.sender.clone();
                 MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
@@ -1451,21 +1579,31 @@ impl NeteaseCloudMusicGtk4Application {
                     sender.send_blocking(Action::PageBack).unwrap();
                 }
             }
+            Action::ToLyricsPage(si) => {
+                let sender = imp.sender.clone();
+                if !window.page_cur_lyrics_page() {
+                    window.init_lyrics_page(si);
+                } else {
+                    sender.send_blocking(Action::PageBack).unwrap();
+                }
+            }
             Action::UpdateLyrics(si, time) => {
+                // 切歌后首个位置更新不一定是 0，按歌曲 id 兜底，避免漏取歌词
+                let need_fetch =
+                    time == 0 || LAST_LYRICS_ID.load(Ordering::Relaxed) != si.id;
                 MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
-                    if time == 0 {
-                        // 当新曲目播放时，写入歌词内容
-                        window.update_lyrics_text(&gettext("Loading lyrics..."));
-                        match ncmapi.get_lyrics(si).await {
-                            Ok(lrc) => {
-                                debug!("获取歌词：{:?}", lrc);
-                                window.update_lyrics(lrc);
-                            }
-                            Err(e) => debug!("{}", e),
-                        }
+                    if need_fetch {
+                        LAST_LYRICS_ID.store(si.id, Ordering::Relaxed);
+                        load_lyrics(&window, &ncmapi, si).await;
                     }
                     // 更新歌词高亮位置
                     window.update_lyrics_timestamp(time);
+                });
+            }
+            Action::LoadLyrics(si) => {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    LAST_LYRICS_ID.store(si.id, Ordering::Relaxed);
+                    load_lyrics(&window, &ncmapi, si).await;
                 });
             }
             Action::RemoveFromPlayList(song_info) => {
@@ -1490,6 +1628,9 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::ScaleValueUpdate => {
                 window.scale_value_update();
+            }
+            Action::SeekTo(usec) => {
+                window.seek_to(usec);
             }
 
             Action::PageBack => {

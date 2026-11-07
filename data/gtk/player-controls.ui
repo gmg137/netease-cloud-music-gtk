@@ -60,7 +60,7 @@
                 <property name="valign">center</property>
                 <property name="icon-name">image-missing-symbolic</property>
                 <property name="pixel-size">50</property>
-                <property name="tooltip-text" translatable="yes">View Album</property>
+                <property name="tooltip-text" translatable="yes">Lyrics</property>
                 <child>
                     <object class="GtkGestureClick">
                         <signal name="pressed" handler="cover_clicked_cb" swapped="true" />
@@ -150,6 +150,18 @@
                         <property name="tooltip-text" translatable="yes">Intelligent Mode</property>
                         <property name="icon-name">emote-love-symbolic</property>
                         <signal name="clicked" handler="moved_button_cb" swapped="true" />
+                        <style>
+                            <class name="flat" />
+                        </style>
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkButton" id="personal_radio_button">
+                        <property name="halign">fill</property>
+                        <property name="valign">center</property>
+                        <property name="tooltip-text" translatable="yes">Play From My Taste</property>
+                        <property name="icon-name">emblem-music-symbolic</property>
+                        <signal name="clicked" handler="personal_radio_cb" swapped="true" />
                         <style>
                             <class name="flat" />
                         </style>

@@ -265,7 +265,7 @@ mod imp {
     impl BinImpl for PlayListLyricsPage {}
 }
 
-fn get_playing_indexes(mut lyrics: Vec<(u64, String)>, time: u64) -> Option<(usize, usize)> {
+pub fn get_playing_indexes(mut lyrics: Vec<(u64, String)>, time: u64) -> Option<(usize, usize)> {
     // 填充空白行，以使用window(3)方法时可以到达最后一行
     lyrics.push((3600000000, "".to_string()));
     lyrics.push((3600000000, "".to_string()));
