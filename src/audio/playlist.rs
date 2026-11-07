@@ -340,7 +340,12 @@ impl PlayList {
         self.list = list.clone();
         let mut list = list;
         if let LoopsState::Shuffle = self.loops {
-            fastrand::shuffle(&mut list);
+            // 队首是调用方指定的「要播的那首」（本地列表里点的那一行），必须留着：
+            // 整体 shuffle 会把顺序打乱，position 归零后播的是随机第一首，
+            // 表现就是「点 A 播 B」。只打乱除队首以外的部分。
+            if list.len() > 1 {
+                fastrand::shuffle(&mut list[1..]);
+            }
             self.shuffle = list;
         }
         self.position = 0;
