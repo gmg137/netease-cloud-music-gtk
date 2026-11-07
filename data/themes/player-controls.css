@@ -22,6 +22,12 @@
   color: alpha(currentColor, 0.6);
 }
 
+/* 本地文件：显示文件自身格式，非会员音质 */
+.quality-badge.quality-local {
+  background-color: alpha(currentColor, 0.16);
+  color: alpha(currentColor, 0.9);
+}
+
 /* 音质切换菜单 */
 .quality-menu {
   min-width: 148px;

@@ -14,7 +14,7 @@ use glib::{
     subclass::Signal,
 };
 use gtk::{
-    CompositeTemplate,
+    CompositeTemplate, FileDialog,
     gio::{self, SettingsBindFlags},
     glib,
 };
@@ -322,6 +322,60 @@ impl NeteaseCloudMusicGtk4Window {
         let sender = self.imp().sender.get().unwrap().clone();
         action_taste.connect_activate(move |_, _| {
             sender.send_blocking(Action::PersonalRadio).unwrap();
+        });
+
+        // 打开本地文件
+        let action_local_files = SimpleAction::new("open-local-files", None);
+        self.add_action(&action_local_files);
+        let sender = self.imp().sender.get().unwrap().clone();
+        let parent = self.clone();
+        action_local_files.connect_activate(move |_, _| {
+            let dialog = FileDialog::builder()
+                .title(gettext("Open Local Files"))
+                .modal(true)
+                .build();
+            let sender = sender.clone();
+            let parent = parent.clone();
+            dialog.open_multiple(Some(&parent), gio::Cancellable::NONE, move |result| {
+                debug!("本地文件对话框返回: {:?}", result.is_ok());
+                let Ok(files) = result else {
+                    return;
+                };
+                let paths: Vec<PathBuf> = (0..files.n_items())
+                    .filter_map(|index| files.item(index))
+                    .filter_map(|object| object.downcast::<gio::File>().ok())
+                    .filter_map(|file| file.path())
+                    .collect();
+                if !paths.is_empty() {
+                    sender
+                        .send_blocking(Action::LoadLocalFiles(paths))
+                        .unwrap();
+                }
+            });
+        });
+
+        // 打开本地目录
+        let action_local_folder = SimpleAction::new("open-local-folder", None);
+        self.add_action(&action_local_folder);
+        let sender = self.imp().sender.get().unwrap().clone();
+        let parent = self.clone();
+        action_local_folder.connect_activate(move |_, _| {
+            let dialog = FileDialog::builder()
+                .title(gettext("Open Local Folder"))
+                .modal(true)
+                .build();
+            let sender = sender.clone();
+            let parent = parent.clone();
+            dialog.select_folder(Some(&parent), gio::Cancellable::NONE, move |result| {
+                let Ok(folder) = result else {
+                    return;
+                };
+                if let Some(path) = folder.path() {
+                    sender
+                        .send_blocking(Action::LoadLocalFiles(vec![path]))
+                        .unwrap();
+                }
+            });
         });
     }
 

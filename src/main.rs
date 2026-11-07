@@ -2,6 +2,7 @@ mod application;
 mod audio;
 mod config;
 mod gui;
+mod local_music;
 mod model;
 mod ncmapi;
 mod path;

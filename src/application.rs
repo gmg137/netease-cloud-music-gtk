@@ -93,6 +93,21 @@ async fn favorite_playlist_id(ncmapi: &NcmClient, uid: u64) -> Result<u64, &'sta
 // 拉取歌词并写入页面；失败、空歌词都给出明确提示，避免一直停在“正在加载歌词...”
 async fn load_lyrics(window: &NeteaseCloudMusicGtk4Window, ncmapi: &NcmClient, si: SongInfo) {
     window.update_lyrics_text(&gettext("Loading lyrics..."));
+    // 本地歌曲：只读同名 .lrc，不请求接口
+    if let Some(path) = crate::local_music::local_file_of(&si.song_url) {
+        let lrc = crate::local_music::lyric_file_of(&path)
+            .and_then(|lrc| std::fs::read_to_string(lrc).ok())
+            .map(|content| crate::local_music::parse_lrc(&content))
+            .unwrap_or_default();
+        if lrc.is_empty() {
+            debug!("本地歌曲没有歌词文件: {:?}", path);
+            window.update_lyrics_text(&gettext("No lyrics available"));
+        } else {
+            debug!("读取本地歌词：{} 行", lrc.len());
+            window.update_lyrics(lrc);
+        }
+        return;
+    }
     match ncmapi.get_lyrics(si).await {
         Ok(lrc) if !lrc.is_empty() => {
             debug!("获取歌词：{} 行", lrc.len());
@@ -174,6 +189,8 @@ pub enum Action {
     PlayPreviousSong,
     Play(SongInfo),
     ChangeQuality(u32),
+    // 载入本地音频：文件与目录混排，目录递归扫描
+    LoadLocalFiles(Vec<PathBuf>),
     PlayStart(SongInfo),
     TogglePlayPause,
     // (歌单, 是否立即播放)
@@ -827,6 +844,11 @@ impl NeteaseCloudMusicGtk4Application {
             Action::PlayPreviousSong => {
                 window.play_prev();
             }
+            Action::Play(song_info) if crate::local_music::is_local(&song_info.song_url) => {
+                // 本地歌曲直接播放，不请求接口
+                let sender = imp.sender.clone();
+                sender.send_blocking(Action::PlayStart(song_info)).unwrap();
+            }
             Action::Play(song_info) => {
                 let sender = imp.sender.clone();
                 let music_rate = song_info
@@ -1107,6 +1129,52 @@ impl NeteaseCloudMusicGtk4Application {
             Action::AddPlayList(sis, is_play) => {
                 window.add_playlist(sis, is_play);
             }
+            Action::LoadLocalFiles(paths) => {
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    let mut files: Vec<PathBuf> = Vec::new();
+                    for path in paths {
+                        if path.is_dir() {
+                            files.extend(crate::local_music::scan_dir(&path));
+                        } else if crate::local_music::is_audio_file(&path) {
+                            files.push(path);
+                        }
+                    }
+                    if files.is_empty() {
+                        sender
+                            .send(Action::AddToast(gettext(
+                                "No playable audio file found in the selection.",
+                            )))
+                            .await
+                            .unwrap();
+                        return;
+                    }
+                    let mut songs = Vec::new();
+                    for file in &files {
+                        if let Some(song_info) = crate::local_music::song_info_from_path(file) {
+                            songs.push(song_info);
+                        }
+                    }
+                    debug!("载入本地歌曲 {} 首", songs.len());
+                    if songs.is_empty() {
+                        sender
+                            .send(Action::AddToast(gettext(
+                                "Failed to read the selected audio files.",
+                            )))
+                            .await
+                            .unwrap();
+                        return;
+                    }
+                    sender
+                        .send(Action::AddToast(gettext_f(
+                            "Loaded {count} local songs",
+                            &[("count", &songs.len().to_string())],
+                        )))
+                        .await
+                        .unwrap();
+                    sender.send(Action::AddPlayList(songs, true)).await.unwrap();
+                });
+            }
             Action::PlayListStart => {
                 window.playlist_start();
             }
@@ -1169,6 +1237,17 @@ impl NeteaseCloudMusicGtk4Application {
                             .await
                             .unwrap();
                     }
+                });
+            }
+            Action::LikeSong(id, _, _) if crate::local_music::is_local_id(id) => {
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    sender
+                        .send(Action::AddToast(gettext(
+                            "Local songs can't be collected to your account.",
+                        )))
+                        .await
+                        .unwrap();
                 });
             }
             Action::LikeSong(id, is_like, callback) => {

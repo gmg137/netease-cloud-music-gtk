@@ -676,6 +676,48 @@ msgstr "该音质不可用，保持当前音质"
 msgid "Quality limited to {actual} (no {requested} entitlement)"
 msgstr "音质受限：已使用 {actual}（账号无 {requested} 权益）"
 
+#: src/window.rs data/gtk/window.ui
+msgid "Open Local Files…"
+msgstr "打开本地文件…"
+
+#: data/gtk/window.ui
+msgid "Open Local Folder…"
+msgstr "打开本地文件夹…"
+
+#: src/window.rs
+msgid "Open Local Files"
+msgstr "打开本地文件"
+
+#: src/window.rs
+msgid "Open Local Folder"
+msgstr "打开本地文件夹"
+
+#: src/application.rs
+msgid "No playable audio file found in the selection."
+msgstr "选中的位置没有可播放的音频文件。"
+
+#: src/application.rs
+msgid "Failed to read the selected audio files."
+msgstr "读取选中的音频文件失败。"
+
+#: src/application.rs
+msgid "Loaded {count} local songs"
+msgstr "已载入 {count} 首本地歌曲"
+
+#: src/gui/player_controls.rs
+msgid ""
+"Local file: {path}\n"
+"Format: {quality}\n"
+"Duration: {duration}"
+msgstr ""
+"本地文件：{path}\n"
+"格式：{quality}\n"
+"时长：{duration}"
+
+#: src/application.rs
+msgid "Local songs can't be collected to your account."
+msgstr "本地歌曲不能收藏到账号。"
+
 
 #~ msgid "{} songs, {} favs"
 #~ msgstr "{} 首歌曲，{} 收藏"

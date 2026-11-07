@@ -222,6 +222,32 @@ impl PlayerControls {
             return;
         }
 
+        // 本地歌曲：直接显示文件本身的格式/规格，不弹音质菜单
+        if let Some(text) = crate::local_music::local_quality_text_for(song_info) {
+            label.set_label(&text);
+            label.remove_css_class("quality-hires");
+            label.remove_css_class("quality-unknown");
+            label.add_css_class("quality-local");
+            button.set_popover(gtk::Popover::NONE);
+            let path = crate::local_music::local_file_of(&song_info.song_url)
+                .map(|path| path.to_string_lossy().to_string())
+                .unwrap_or_default();
+            let sec = song_info.duration / 1000;
+            let duration = format!("{:02}:{:02}", sec / 60, sec % 60);
+            let tooltip = gettext_f(
+                "Local file: {path}\nFormat: {quality}\nDuration: {duration}",
+                &[
+                    ("path", &path),
+                    ("quality", &text),
+                    ("duration", &duration),
+                ],
+            );
+            button.set_tooltip_text(Some(&tooltip));
+            button.set_visible(true);
+            return;
+        }
+        label.remove_css_class("quality-local");
+
         // 优先实际音质，其次已选音质，最后回退到设置里请求的码率
         let (quality, from_setting) = match current_quality(state) {
             Some(quality) => (quality, false),
@@ -332,7 +358,11 @@ impl PlayerControls {
         let cover_image = imp.cover_image.get();
         let mut path_cover = CACHE.clone();
         path_cover.push(format!("{}-songlist.jpg", song_info.album_id));
-        if path_cover.exists() {
+        // 本地歌曲优先用从文件内嵌图提取的封面
+        let local_cover = crate::local_music::local_cover_path(song_info.id);
+        if crate::local_music::is_local(&song_info.song_url) && local_cover.exists() {
+            cover_image.set_from_file(Some(&local_cover));
+        } else if path_cover.exists() {
             cover_image.set_from_file(Some(&path_cover));
         } else {
             cover_image.set_icon_name(Some("image-missing-symbolic"));

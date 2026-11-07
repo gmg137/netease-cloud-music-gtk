@@ -49,6 +49,20 @@ impl Default for PlayListData {
 }
 
 // 播放列表保存文件路径
+/// 本地歌曲：保留 file:// 链接并从文件刷新元数据；网络歌曲清空链接等待重新取流
+fn refresh_local_song(song: &mut SongInfo) {
+    if let Some(path) = crate::local_music::local_file_of(&song.song_url) {
+        if let Some(fresh) = crate::local_music::song_info_from_path(&path) {
+            song.name = fresh.name;
+            song.singer = fresh.singer;
+            song.album = fresh.album;
+            song.duration = fresh.duration;
+        }
+        return;
+    }
+    song.song_url.clear();
+}
+
 fn playlist_file_path() -> PathBuf {
     CONFIG.join("playlist.json")
 }
@@ -104,12 +118,12 @@ impl PlayList {
         match fs::read_to_string(&path) {
             Ok(json) => match serde_json::from_str::<PlayListData>(&json) {
                 Ok(mut data) => {
-                    // 清除保存的URL（会在播放时重新获取）
-                    for song in &mut data.list {
-                        song.song_url.clear();
+                    // 清除保存的URL（会在播放时重新获取）；本地歌曲保留 file:// 并刷新元数据
+                    for song in data.list.iter_mut() {
+                        refresh_local_song(song);
                     }
-                    for song in &mut data.shuffle {
-                        song.song_url.clear();
+                    for song in data.shuffle.iter_mut() {
+                        refresh_local_song(song);
                     }
                     let loops = LoopsState::from_str(&data.loops);
                     let mut shuffle = data.shuffle;
