@@ -50,6 +50,15 @@ impl Default for PlayListData {
 
 // 播放列表保存文件路径
 /// 本地歌曲：保留 file:// 链接并从文件刷新元数据；网络歌曲清空链接等待重新取流
+// 加载时只清掉在线歌曲的临时 URL。本地歌曲的元数据留到播放时再刷新——
+// 队列现在可能是几千首本地歌，启动时逐个解析标签会让启动卡上几分钟。
+fn clear_network_url(song: &mut SongInfo) {
+    if crate::local_music::is_local(&song.song_url) {
+        return;
+    }
+    song.song_url.clear();
+}
+
 fn refresh_local_song(song: &mut SongInfo) {
     if let Some(path) = crate::local_music::local_file_of(&song.song_url) {
         if let Some(fresh) = crate::local_music::song_info_from_path(&path) {
@@ -118,12 +127,18 @@ impl PlayList {
         match fs::read_to_string(&path) {
             Ok(json) => match serde_json::from_str::<PlayListData>(&json) {
                 Ok(mut data) => {
-                    // 清除保存的URL（会在播放时重新获取）；本地歌曲保留 file:// 并刷新元数据
-                    for song in data.list.iter_mut() {
-                        refresh_local_song(song);
+                    // 清除保存的 URL（播放时会重新获取）；本地歌曲保留 file://，
+                    // 只有当前这首顺便刷新元数据，其余等播放时再刷新
+                    let current = data.position as usize;
+                    for (index, song) in data.list.iter_mut().enumerate() {
+                        if index == current {
+                            refresh_local_song(song);
+                        } else {
+                            clear_network_url(song);
+                        }
                     }
                     for song in data.shuffle.iter_mut() {
-                        refresh_local_song(song);
+                        clear_network_url(song);
                     }
                     let loops = LoopsState::from_str(&data.loops);
                     let mut shuffle = data.shuffle;
@@ -347,6 +362,19 @@ impl PlayList {
         } else {
             vec![]
         }
+    }
+
+    /// 补全某首歌的网易云元数据（本地歌曲匹配到封面用）；返回是否真的改了
+    pub fn update_song_meta(&mut self, id: u64, album_id: u64, pic_url: &str) -> bool {
+        if let Some(song) = self.list.iter_mut().find(|song| song.id == id) {
+            if song.album_id == album_id && song.pic_url == pic_url {
+                return false;
+            }
+            song.album_id = album_id;
+            song.pic_url = pic_url.to_string();
+            return true;
+        }
+        false
     }
 
     pub fn set_song_url(&mut self, si: SongInfo) {

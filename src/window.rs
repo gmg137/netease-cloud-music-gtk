@@ -615,6 +615,16 @@ impl NeteaseCloudMusicGtk4Window {
         self.page_new(&page, &gettext("Local Music"), "Local Music");
     }
 
+    /// 本地歌曲匹配到网易云曲目后，把封面信息补进队列条目并刷新正在显示的界面
+    pub fn apply_local_meta(&self, id: u64, album_id: u64, pic_url: &str) {
+        let imp = self.imp();
+        let player_controls = imp.player_controls.get();
+        if let Some(si) = player_controls.apply_local_meta(id, album_id, pic_url) {
+            player_controls.init_play_info(si.clone());
+            imp.lyrics_page.get().unwrap().force_set_song(&si);
+        }
+    }
+
     // 本地音乐页刷新（收藏/推荐/最近播放变化后）；「全部」视图不重排整表
     pub fn refresh_local_page(&self) {
         if let Some(page) = self.imp().local_music_page.get() {

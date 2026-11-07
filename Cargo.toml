@@ -11,6 +11,8 @@ qrcode-generator = "~5.0"
 # ncm-api 2.1.0 已包含 special_type 字段（PR #19）
 ncm-api = { git = "https://github.com/gmg137/netease-cloud-music-api.git", tag = "2.2.2", package = "netease-cloud-music-api" }
 anyhow = "~1.0"
+# 本地歌曲匹配用的搜索走公开的 /api/search/get/web，需要自己发 HTTP（复用 ncm-api 已依赖的 isahc 2）
+isahc = "~2.0"
 gstreamer = "~0.25"
 gstreamer-play = "~0.25"
 fastrand = "~2.3"

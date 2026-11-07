@@ -121,6 +121,12 @@ impl PlayListLyricsPage {
             page.imp().filter_key.replace(entry.text().to_string());
             page.apply_filter();
         });
+
+        // 定位当前播放：滚动到正在播放的那首
+        let page = self.clone();
+        imp.locate_button.connect_clicked(move |_| {
+            page.imp().songs_list.get().scroll_to_playing();
+        });
     }
 
     // 在页面挂载到窗口后调用：订阅 current-song-changed 并刷新当前曲目指示符。
@@ -264,6 +270,8 @@ mod imp {
         pub filter_key: Rc<RefCell<String>>,
         #[template_child]
         pub filter_entry: TemplateChild<SearchEntry>,
+        #[template_child]
+        pub locate_button: TemplateChild<Button>,
         pub sender: OnceCell<Sender<Action>>,
         pub current_lyrics: Arc<RwLock<Vec<(u64, String)>>>,
         pub subscribed: Cell<bool>,

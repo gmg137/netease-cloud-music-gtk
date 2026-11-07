@@ -818,6 +818,16 @@ msgstr "已取消收藏：{name}"
 msgid "Won't recommend again: {name}"
 msgstr "不再推荐：{name}"
 
+#: data/gtk/playlist-lyrics-page.ui data/gtk/local-music-page.ui
+msgid "Locate the playing song"
+msgstr "定位当前播放"
+
 
 #~ msgid "{} songs, {} favs"
 #~ msgstr "{} 首歌曲，{} 收藏"
+
+msgid "Fetch Lyrics"
+msgstr "补全歌词封面"
+
+msgid "Fetch lyrics and covers for local songs from the cloud"
+msgstr "为本地歌曲批量从云端补全歌词与封面"

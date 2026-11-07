@@ -14,9 +14,20 @@
                         <property name="margin-start">12</property>
                         <property name="margin-end">12</property>
                         <child>
-                            <object class="GtkSearchEntry" id="filter_entry">
-                                <property name="placeholder-text" translatable="yes">Search in playlist</property>
-                                <property name="hexpand">true</property>
+                            <object class="GtkBox">
+                                <property name="spacing">6</property>
+                                <child>
+                                    <object class="GtkSearchEntry" id="filter_entry">
+                                        <property name="placeholder-text" translatable="yes">Search in playlist</property>
+                                        <property name="hexpand">true</property>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="GtkButton" id="locate_button">
+                                        <property name="icon-name">find-location-symbolic</property>
+                                        <property name="tooltip-text" translatable="yes">Locate the playing song</property>
+                                    </object>
+                                </child>
                             </object>
                         </child>
                         <child>

@@ -482,3 +482,90 @@ fn save_library(list: &[SongInfo]) {
         Err(err) => log::debug!("序列化本地曲库索引失败: {:?}", err),
     }
 }
+
+/// 本地歌曲匹配到的网易云曲目（补全歌词/封面用），存 `local_net_match.json`。
+/// 只保留必要字段，`song_url` 清空，避免被当成可播放的在线曲目。
+static NET_MATCH_CACHE: OnceLock<Mutex<Option<HashMap<u64, SongInfo>>>> = OnceLock::new();
+
+fn net_match_cache() -> &'static Mutex<Option<HashMap<u64, SongInfo>>> {
+    NET_MATCH_CACHE.get_or_init(|| Mutex::new(None))
+}
+
+fn net_match_file() -> PathBuf {
+    crate::path::CONFIG.join("local_net_match.json")
+}
+
+fn load_net_matches() -> HashMap<u64, SongInfo> {
+    std::fs::read_to_string(net_match_file())
+        .ok()
+        .and_then(|json| serde_json::from_str::<HashMap<u64, SongInfo>>(&json).ok())
+        .unwrap_or_default()
+}
+
+/// 取本地歌曲对应的网易云曲目（还没匹配过就是 None）
+pub fn net_match(id: u64) -> Option<SongInfo> {
+    let cache = net_match_cache();
+    let mut guard = cache.lock().unwrap();
+    if guard.is_none() {
+        *guard = Some(load_net_matches());
+    }
+    guard.as_ref().unwrap().get(&id).cloned()
+}
+
+/// 记住本地歌曲 ↔ 网易云曲目的匹配结果
+pub fn save_net_match(id: u64, si: &SongInfo) {
+    let cache = net_match_cache();
+    let mut guard = cache.lock().unwrap();
+    if guard.is_none() {
+        *guard = Some(load_net_matches());
+    }
+    let map = guard.as_mut().unwrap();
+    let existing = map.get(&id);
+    if existing.map(|old| old.album_id == si.album_id && old.pic_url == si.pic_url) == Some(true) {
+        return;
+    }
+    let mut slim = si.clone();
+    slim.song_url.clear();
+    map.insert(id, slim);
+    if let Ok(json) = serde_json::to_string(&*map) {
+        let path = net_match_file();
+        let tmp = path.with_extension("json.tmp");
+        if std::fs::write(&tmp, json).is_err() || std::fs::rename(&tmp, &path).is_err() {
+            log::debug!("保存本地歌曲匹配缓存失败");
+        }
+    }
+}
+
+/// 在线歌词缓存文件（不写进用户的音乐目录，保持原文件干净）
+pub fn net_lyric_path(id: u64) -> PathBuf {
+    let mut path = crate::path::CACHE.clone();
+    path.push(format!("net_lyric_{id}.lrc"));
+    path
+}
+
+/// 保存在线歌词（按 LRC 格式落盘，下次直接复用）
+pub fn save_net_lyric(id: u64, lines: &[(u64, String)]) {
+    let mut text = String::with_capacity(lines.len() * 32);
+    for (usec, line) in lines {
+        let min = usec / 60_000_000;
+        let sec = (usec % 60_000_000) / 1_000_000;
+        let cs = (usec % 1_000_000) / 10_000;
+        text.push_str(&format!("[{:02}:{:02}.{:02}]{}\n", min, sec, cs, line));
+    }
+    let path = net_lyric_path(id);
+    if std::fs::write(&path, text).is_err() {
+        log::debug!("保存在线歌词失败：{:?}", path);
+    }
+}
+
+/// 读取已缓存的在线歌词
+pub fn load_net_lyric(id: u64) -> Option<Vec<(u64, String)>> {
+    let text = std::fs::read_to_string(net_lyric_path(id)).ok()?;
+    let lines = parse_lrc(&text);
+    (!lines.is_empty()).then_some(lines)
+}
+
+/// 这首歌是否已经有歌词（同名 .lrc 或在线歌词缓存）
+pub fn has_lyrics(id: u64) -> bool {
+    load_net_lyric(id).is_some()
+}

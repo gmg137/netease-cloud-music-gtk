@@ -6,7 +6,7 @@
 use crate::{application::Action, utils::setup_ellipsis_tooltip};
 use async_channel::Sender;
 use gettextrs::gettext;
-use glib::{ParamSpec, ParamSpecBoolean, SendWeakRef, Value};
+use glib::{subclass::Signal, ParamSpec, ParamSpecBoolean, SendWeakRef, SignalHandlerId, Value};
 use gtk::{CompositeTemplate, glib, prelude::*, subclass::prelude::*, *};
 use ncm_api::{SongInfo, SongList};
 use once_cell::sync::{Lazy, OnceCell};
@@ -17,7 +17,7 @@ use std::{
 
 glib::wrapper! {
     pub struct SonglistRow(ObjectSubclass<imp::SonglistRow>)
-        @extends Widget, ListBoxRow,
+        @extends Widget, Box,
         @implements Accessible, Actionable, Buildable, ConstraintTarget;
 }
 
@@ -41,11 +41,29 @@ impl SonglistRow {
         self.set_album(&si.album);
         self.set_duration(si.duration);
 
-        self.set_activatable(si.copyright.playable());
+        self.imp().playable.set(si.copyright.playable());
+    }
+
+    /// 是否可播放（不可播放的曲目点击无效，除非用户关了「忽略灰色歌曲」）
+    pub fn is_activatable(&self) -> bool {
+        self.imp().playable.get()
     }
 
     pub fn not_ignore_grey(&self) -> bool {
         self.property("not_ignore_grey")
+    }
+
+    /// 行被点击（父类换成 Box 后自己提供 activate 信号）
+    pub fn emit_activate(&self) {
+        self.emit_by_name::<()>("activate", &[]);
+    }
+
+    pub fn connect_activate<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId {
+        self.connect_local("activate", false, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            f(&obj);
+            None
+        })
     }
 
     pub fn get_song_info(&self) -> Option<SongInfo> {
@@ -213,13 +231,15 @@ mod imp {
 
         pub like: Cell<bool>,
         pub not_ignore_grey: Cell<bool>,
+        // 曲目可播放（不再是 ListBoxRow 的 activatable）
+        pub playable: Cell<bool>,
     }
 
     #[glib::object_subclass]
     impl ObjectSubclass for SonglistRow {
         const NAME: &'static str = "SonglistRow";
         type Type = super::SonglistRow;
-        type ParentType = ListBoxRow;
+        type ParentType = Box;
 
         fn class_init(klass: &mut Self::Class) {
             Self::bind_template(klass);
@@ -232,6 +252,13 @@ mod imp {
     }
 
     impl ObjectImpl for SonglistRow {
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
+                vec![Signal::builder("activate").build()]
+            });
+            SIGNALS.as_ref()
+        }
+
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
@@ -283,5 +310,5 @@ mod imp {
         }
     }
     impl WidgetImpl for SonglistRow {}
-    impl ListBoxRowImpl for SonglistRow {}
+    impl BoxImpl for SonglistRow {}
 }

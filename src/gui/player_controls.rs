@@ -873,6 +873,23 @@ impl PlayerControls {
         appended
     }
 
+    /// 本地歌曲匹配到网易云曲目后：更新队列条目；若正在播放这首，返回补全后的 SongInfo 供界面刷新
+    pub fn apply_local_meta(&self, id: u64, album_id: u64, pic_url: &str) -> Option<SongInfo> {
+        let Ok(mut playlist) = self.imp().playlist.lock() else {
+            return None;
+        };
+        let is_current = playlist.current_song().map(|song| song.id) == Some(id);
+        if !playlist.update_song_meta(id, album_id, pic_url) {
+            return None;
+        }
+        playlist.save_to_file();
+        if is_current {
+            playlist.get_list().into_iter().find(|song| song.id == id)
+        } else {
+            None
+        }
+    }
+
     // 根据 song_id 定位播放位置（心动模式追加续播前使用）
     pub fn sync_playlist_position(&self, song_id: u64) {
         if let Ok(mut playlist) = self.imp().playlist.lock() {
@@ -1466,6 +1483,19 @@ mod imp {
                     return;
                 }
                 if loops == LoopsState::None {
+                    // 本地歌曲没有「心动模式」可续，手动点下一首时回到队列开头，
+                    // 否则播到最后一首后这个按钮点了完全没反应
+                    let current_is_local = playlist
+                        .current_song()
+                        .map(|song| crate::local_music::is_local(&song.song_url))
+                        .unwrap_or(false);
+                    if current_is_local {
+                        playlist.set_position(0);
+                        if let Some(song) = playlist.current_song().map(|song| song.to_owned()) {
+                            sender.send_blocking(Action::Play(song)).unwrap();
+                            return;
+                        }
+                    }
                     // 不循环模式播完：私人漫游优先续播，其次心动模式
                     if *PERSONAL_RADIO_ACTIVE.lock().unwrap() {
                         sender

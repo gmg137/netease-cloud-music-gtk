@@ -49,6 +49,30 @@ static FAVORITE_PLAYLIST_ID: Lazy<Mutex<Option<(u64, u64)>>> = Lazy::new(|| Mute
 static LAST_LYRICS_ID: AtomicU64 = AtomicU64::new(0);
 // 本地歌曲没有 .lrc 时记住，避免每次位置更新重复读盘
 static NO_LOCAL_LYRICS_ID: AtomicU64 = AtomicU64::new(0);
+
+// 本地歌曲在线匹配失败的记录（id -> 时间）：5 分钟内不再重复请求，避免刷接口
+static LOCAL_META_FAILED: Lazy<Mutex<std::collections::HashMap<u64, std::time::Instant>>> =
+    Lazy::new(|| Mutex::new(std::collections::HashMap::new()));
+
+fn local_meta_recently_failed(id: u64) -> bool {
+    let Ok(mut map) = LOCAL_META_FAILED.lock() else {
+        return false;
+    };
+    match map.get(&id) {
+        Some(at) if at.elapsed().as_secs() < 300 => true,
+        Some(_) => {
+            map.remove(&id);
+            false
+        }
+        None => false,
+    }
+}
+
+fn mark_local_meta_failed(id: u64) {
+    if let Ok(mut map) = LOCAL_META_FAILED.lock() {
+        map.insert(id, std::time::Instant::now());
+    }
+}
 // 心动模式开启状态，true 表示已开启，再次点击则关闭
 pub(crate) static HEARTBEAT_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 // 私人漫游（根据喜好播放）开启状态
@@ -93,21 +117,158 @@ async fn favorite_playlist_id(ncmapi: &NcmClient, uid: u64) -> Result<u64, &'sta
 }
 
 // 拉取歌词并写入页面；失败、空歌词都给出明确提示，避免一直停在“正在加载歌词...”
+/// 批量补全本地歌曲的歌词与封面：只对还缺东西的歌请求，且只发「歌名+歌手」。
+/// 每首之间靠 match_song 内部的节流排队，避免触发网易云限流。
+async fn prefetch_local_meta(sender: async_channel::Sender<Action>, ncmapi: &NcmClient) {
+    let limit: usize = std::env::var("NCM_PREFETCH_LIMIT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    let songs = crate::local_music::library();
+    let mut handled = 0usize;
+    let mut ok = 0usize;
+    let mut misses = 0usize;
+    for si in songs {
+        let Some(path) = crate::local_music::local_file_of(&si.song_url) else {
+            continue;
+        };
+        let has_lrc = crate::local_music::lyric_file_of(&path).is_some()
+            || crate::local_music::has_lyrics(si.id);
+        let has_cover = crate::local_music::local_cover_path(si.id).exists()
+            || crate::local_music::net_match(si.id)
+                .map(|m| !m.pic_url.is_empty())
+                .unwrap_or(false);
+        if has_lrc && has_cover {
+            continue;
+        }
+        if limit > 0 && handled >= limit {
+            break;
+        }
+        handled += 1;
+        let file_stem = path
+            .file_stem()
+            .map(|stem| stem.to_string_lossy().to_string());
+        let matched = match crate::local_music::net_match(si.id) {
+            Some(matched) => Some(matched),
+            None => ncmapi
+                .match_song(&si.name, &si.singer, file_stem.as_deref())
+                .await,
+        };
+        let Some(matched) = matched else {
+            debug!("补全失败（匹配不到）: {} - {}", si.name, si.singer);
+            misses += 1;
+            // 连续失败多半是接口被限流，先停下来，等下次再补
+            if misses >= 5 {
+                debug!("连续 {} 首匹配失败，暂停批量补全（可能被限流）", misses);
+                break;
+            }
+            continue;
+        };
+        misses = 0;
+        crate::local_music::save_net_match(si.id, &matched);
+        if !matched.pic_url.is_empty() {
+            // 补全跑在后台线程，封面刷新交回 GUI 线程
+            sender
+                .send(Action::ApplyLocalMeta(
+                    si.id,
+                    matched.album_id,
+                    matched.pic_url.clone(),
+                ))
+                .await
+                .ok();
+        }
+        if !has_lrc {
+            match ncmapi.get_lyrics(matched).await {
+                Ok(text) if !text.is_empty() => {
+                    crate::local_music::save_net_lyric(si.id, &text);
+                    ok += 1;
+                }
+                _ => debug!("补全失败（无歌词）: {} - {}", si.name, si.singer),
+            }
+        } else {
+            ok += 1;
+        }
+        if handled % 10 == 0 {
+            debug!("补全进度：处理 {} 首，成功 {} 首", handled, ok);
+        }
+    }
+    debug!("补全结束：处理 {} 首，成功 {} 首", handled, ok);
+}
+
 async fn load_lyrics(window: &NeteaseCloudMusicGtk4Window, ncmapi: &NcmClient, si: SongInfo) {
     window.update_lyrics_text(&gettext("Loading lyrics..."));
-    // 本地歌曲：只读同名 .lrc，不请求接口
+    // 本地歌曲：先读同名 .lrc 与内嵌封面；缺哪个就按「歌名+歌手」去网易云匹配
+    // （只把歌名/歌手发出去，不涉及路径），补全歌词与封面。
     if let Some(path) = crate::local_music::local_file_of(&si.song_url) {
-        let lrc = crate::local_music::lyric_file_of(&path)
+        let mut lrc = crate::local_music::lyric_file_of(&path)
             .and_then(|lrc| std::fs::read_to_string(lrc).ok())
             .map(|content| crate::local_music::parse_lrc(&content))
             .unwrap_or_default();
         if lrc.is_empty() {
-            debug!("本地歌曲没有歌词文件: {:?}", path);
-            NO_LOCAL_LYRICS_ID.store(si.id, Ordering::Relaxed);
-            window.update_lyrics_text(&gettext("No lyrics available"));
-        } else {
+            // 之前批量补全过的在线歌词
+            if let Some(cached) = crate::local_music::load_net_lyric(si.id) {
+                lrc = cached;
+            }
+        }
+        let cover_ready = crate::local_music::local_cover_path(si.id).exists();
+        if !lrc.is_empty() && cover_ready {
             debug!("读取本地歌词：{} 行", lrc.len());
             window.update_lyrics(lrc);
+            return;
+        }
+        if !lrc.is_empty() {
+            // 歌词本地有，只补封面
+            window.update_lyrics(lrc.clone());
+        }
+
+        let matched = match crate::local_music::net_match(si.id) {
+            Some(matched) => Some(matched),
+            None if local_meta_recently_failed(si.id) => None,
+            None => {
+                let file_stem = path
+                    .file_stem()
+                    .map(|stem| stem.to_string_lossy().to_string());
+                match ncmapi
+                    .match_song(&si.name, &si.singer, file_stem.as_deref())
+                    .await
+                {
+                    Some(matched) => Some(matched),
+                    None => {
+                        mark_local_meta_failed(si.id);
+                        None
+                    }
+                }
+            }
+        };
+        let Some(matched) = matched else {
+            if lrc.is_empty() {
+                debug!("本地歌曲既没有歌词文件也没有匹配到在线曲目: {:?}", path);
+                NO_LOCAL_LYRICS_ID.store(si.id, Ordering::Relaxed);
+                window.update_lyrics_text(&gettext("No lyrics available"));
+            }
+            return;
+        };
+        crate::local_music::save_net_match(si.id, &matched);
+        debug!(
+            "本地歌曲匹配到在线曲目: {} - {}（专辑 id {}）",
+            matched.name, matched.singer, matched.album_id
+        );
+        if !matched.pic_url.is_empty() {
+            window.apply_local_meta(si.id, matched.album_id, &matched.pic_url);
+        }
+        if lrc.is_empty() {
+            match ncmapi.get_lyrics(matched).await {
+                Ok(text) if !text.is_empty() => {
+                    debug!("在线歌词：{} 行", text.len());
+                    crate::local_music::save_net_lyric(si.id, &text);
+                    window.update_lyrics(text);
+                    return;
+                }
+                Ok(_) => debug!("在线歌词为空"),
+                Err(err) => debug!("在线歌词获取失败: {}", err),
+            }
+            NO_LOCAL_LYRICS_ID.store(si.id, Ordering::Relaxed);
+            window.update_lyrics_text(&gettext("No lyrics available"));
         }
         return;
     }
@@ -198,6 +359,10 @@ pub enum Action {
     AddLocalSongs(Vec<SongInfo>, bool),
     // 重新扫描已记住的本地音乐目录
     RescanLocal,
+    // 批量补全本地歌曲的歌词与封面（只发歌名+歌手）
+    PrefetchLocalMeta,
+    // 后台补全拿到的匹配结果：刷新本地歌曲封面（GUI 线程应用）
+    ApplyLocalMeta(u64, u64, String),
     // 重新扫描结果（GUI 线程应用变更）
     ApplyRescan(Vec<SongInfo>),
     // 清空播放列表中的本地歌曲并忘记目录
@@ -482,6 +647,10 @@ impl NeteaseCloudMusicGtk4Application {
                                     .await
                                     .unwrap();
                                 sender.send(Action::InitMyPage).await.unwrap();
+                                // 隐藏开关：NCM_PREFETCH=1 启动后自动跑一次批量补全（便于验证）
+                                if std::env::var("NCM_PREFETCH").is_ok() {
+                                    sender.send(Action::PrefetchLocalMeta).await.unwrap();
+                                }
                                 sender
                                     .send(Action::AddToast(gettext("Login successful!")))
                                     .await
@@ -1222,6 +1391,23 @@ impl NeteaseCloudMusicGtk4Application {
                         sender.send(Action::AddToast(message)).await.unwrap();
                     });
                 }
+            }
+            Action::PrefetchLocalMeta => {
+                let ncmapi_ = ncmapi.clone();
+                let sender = imp.sender.clone();
+                // 补全要连网、会退避重试，跑在 GTK 主上下文里会把整个界面冻住：
+                // 用独立的 MainContext 在后台线程里驱动这些 future，结果经 sender 回投。
+                std::thread::spawn(move || {
+                    let ctx = crate::glib::MainContext::new();
+                    if let Err(err) = ctx.with_thread_default(|| {
+                        ctx.block_on(prefetch_local_meta(sender, &ncmapi_));
+                    }) {
+                        error!("批量补全线程未能设置 MainContext：{}", err);
+                    }
+                });
+            }
+            Action::ApplyLocalMeta(id, album_id, pic_url) => {
+                window.apply_local_meta(id, album_id, &pic_url);
             }
             Action::RescanLocal => {
                 let sender = imp.sender.clone();

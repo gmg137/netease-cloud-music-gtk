@@ -32,6 +32,18 @@
                                 <property name="tooltip-text" translatable="yes">Rescan remembered local music folders</property>
                             </object>
                         </child>
+                        <child>
+                            <object class="GtkButton" id="fetch_meta_button">
+                                <property name="label" translatable="yes">Fetch Lyrics</property>
+                                <property name="tooltip-text" translatable="yes">Fetch lyrics and covers for local songs from the cloud</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkButton" id="locate_button">
+                                <property name="icon-name">find-location-symbolic</property>
+                                <property name="tooltip-text" translatable="yes">Locate the playing song</property>
+                            </object>
+                        </child>
                     </object>
                 </child>
                 <child>

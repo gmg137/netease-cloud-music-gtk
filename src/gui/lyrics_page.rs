@@ -90,6 +90,12 @@ impl LyricsPage {
         }
     }
 
+    /// 元数据补全后强制重画（同一首歌也要重新找封面）
+    pub fn force_set_song(&self, si: &SongInfo) {
+        self.imp().song_id.set(0);
+        self.set_song(si);
+    }
+
     pub fn update_lyrics_text(&self, text: &str) {
         let imp = self.imp();
         imp.buffer.get().set_text(text);

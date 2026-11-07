@@ -78,6 +78,20 @@ impl LocalMusicPage {
             sender_.send_blocking(Action::RescanLocal).unwrap();
         });
 
+        // 批量补全歌词与封面
+        let sender_ = imp.sender.get().unwrap().clone();
+        let fetch_btn = imp.fetch_meta_button.get();
+        fetch_btn.connect_clicked(move |btn| {
+            btn.set_sensitive(false);
+            sender_.send_blocking(Action::PrefetchLocalMeta).unwrap();
+        });
+
+        // 定位当前播放
+        let page = self.clone();
+        imp.locate_button.connect_clicked(move |_| {
+            page.imp().songs_list.get().scroll_to_playing();
+        });
+
         // 搜索过滤
         let page = self.clone();
         imp.filter_entry
@@ -175,9 +189,10 @@ impl LocalMusicPage {
             .collect();
         let songs_list = imp.songs_list.get();
         songs_list.set_property("block-remove", view == LocalView::Recommend);
-        // 「收藏 / 喜爱推荐 / 最近播放」点任意一首即按该列表顺序连续播放；
-        // 「全部」本身就是播放列表，保持原来的单曲加入行为
-        songs_list.set_property("replace-on-activate", view != LocalView::All);
+        // 点任意一首就按当前列表（含搜索过滤）的顺序连续播放。
+        // 队列必须和眼前看到的列表一致，否则「下一首」会跳到队列里的另一首歌，
+        // 表现就是列表顺序和播放顺序对不上（乱跳）。
+        songs_list.set_property("replace-on-activate", true);
         songs_list.cancel_render();
         songs_list.clear_list();
         songs_list.init_new_list(&filtered, &likes);
@@ -247,6 +262,10 @@ mod imp {
         pub play_all_button: TemplateChild<Button>,
         #[template_child]
         pub rescan_button: TemplateChild<Button>,
+        #[template_child]
+        pub locate_button: TemplateChild<Button>,
+        #[template_child]
+        pub fetch_meta_button: TemplateChild<Button>,
         #[template_child]
         pub mode_all: TemplateChild<ToggleButton>,
         #[template_child]

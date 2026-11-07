@@ -3,6 +3,9 @@
 // Copyright (C) 2022 gmg137 <gmg137 AT live.com>
 // Distributed under terms of the GPL-3.0-or-later license.
 //
+// 歌曲列表：GtkListView + ListStore 虚拟化渲染。
+// 早先用 GtkListBox 一次性插入所有行，几千首时是 5 万多个 widget（RSS ~780MB、
+// 滚动明显卡顿）；现在只渲染可视区域内的行，数据放 ListStore。
 use gio::Settings;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
@@ -18,8 +21,14 @@ use ncm_api::SongInfo;
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
-    rc::Rc,
+    collections::HashMap,
 };
+
+/// ListStore 里每一项：歌曲 + 是否已收藏
+pub struct RowEntry {
+    pub si: SongInfo,
+    pub like: bool,
+}
 
 glib::wrapper! {
     pub struct SongListView(ObjectSubclass<imp::SongListView>)
@@ -54,155 +63,172 @@ impl SongListView {
             .expect("Could not set `Settings`.");
     }
 
-    // 取消尚未完成的分片渲染（列表重建前调用，避免旧任务把过期行插回来）
-    pub fn cancel_render(&self) {
-        let imp = self.imp();
-        imp.render_gen.set(imp.render_gen.get().wrapping_add(1));
-    }
+    /// 保留接口：虚拟化之后没有分片任务，不需要取消
+    pub fn cancel_render(&self) {}
 
+    /// 重建整个列表（数据进 ListStore，行由 ListView 按需创建）
     pub fn init_new_list(&self, sis: &[SongInfo], likes: &[bool]) {
         let imp = self.imp();
-        // 几千首的播放列表一次性插入会卡住主线程，改成每次空闲插 80 行
-        let generation = imp.render_gen.get().wrapping_add(1);
-        imp.render_gen.set(generation);
-        let songs: Vec<SongInfo> = sis.to_vec();
-        let likes: Vec<bool> = likes.to_vec();
-        let cursor = Rc::new(Cell::new(0usize));
-        let view = self.clone();
-        glib::source::idle_add_local(move || {
-            if view.imp().render_gen.get() != generation {
-                return glib::ControlFlow::Break;
-            }
-            let start = cursor.get();
-            if start >= songs.len() {
-                return glib::ControlFlow::Break;
-            }
-            let end = (start + 80).min(songs.len());
-            view.append_rows(&songs[start..end], &likes[start..end]);
-            cursor.set(end);
-            glib::ControlFlow::Continue
-        });
+        let store = imp.store.get().unwrap();
+        store.remove_all();
+        imp.live_rows.borrow_mut().clear();
+        let items: Vec<glib::BoxedAnyObject> = sis
+            .iter()
+            .zip(likes.iter())
+            .map(|(si, like)| {
+                glib::BoxedAnyObject::new(RowEntry {
+                    si: si.clone(),
+                    like: *like,
+                })
+            })
+            .collect();
+        store.extend_from_slice(&items);
+        imp.list_view.scroll_to(0, ListScrollFlags::NONE, None);
     }
 
-    // 追加一段行（分片渲染用）
-    fn append_rows(&self, sis: &[SongInfo], likes: &[bool]) {
+    /// 追加一批（搜索/翻页增量用）
+    pub fn append_rows(&self, sis: &[SongInfo], likes: &[bool]) {
         let imp = self.imp();
-        let sender = imp.sender.get().unwrap().to_owned();
-        let settings = imp.settings.get().unwrap();
-
-        let listbox = imp.listbox.get();
-        let no_act_like = self.property::<bool>("no-act-like");
-        let no_act_album = self.property::<bool>("no-act-album");
-        let no_act_remove = self.property::<bool>("no-act-remove");
-        let block_remove = self.property::<bool>("block-remove");
-        let playing_id = imp.playing_id.get();
-        let replace_on_activate = self.property::<bool>("replace-on-activate");
-        sis.iter().zip(likes.iter()).for_each(|(si, like)| {
-            let sender = sender.clone();
-
-            let row = SonglistRow::new(sender.clone(), si);
-            row.set_property("like", like);
-            row.set_like_button_visible(!no_act_like);
-            row.set_album_button_visible(!no_act_album);
-            row.set_remove_button_visible(!no_act_remove);
-            row.set_block_remove(block_remove);
-            row.switch_image(si.id == playing_id);
-
-            let si = si.clone();
-            row.connect_activate(clone!(
-                #[weak(rename_to = s)]
-                self,
-                move |row| {
-                    if row.is_activatable() || row.not_ignore_grey() {
-                        row.switch_image(true);
-                        if replace_on_activate {
-                            // 连续播放：用当前列表（含搜索过滤）替换队列，从点击的这首开始
-                            let list = s.play_list_from(row);
-                            if list.is_empty() {
-                                sender.send_blocking(Action::AddPlay(si.clone())).unwrap();
-                            } else {
-                                sender.send_blocking(Action::AddPlayList(list, true)).unwrap();
-                            }
-                        } else {
-                            sender.send_blocking(Action::AddPlay(si.clone())).unwrap();
-                        }
-                        s.emit_row_activated(row);
-                    }
-                }
-            ));
-
-            settings
-                .bind("not-ignore-grey", &row, "not-ignore-grey")
-                .get_only()
-                .build();
-            listbox.append(&row);
-        });
+        let store = imp.store.get().unwrap();
+        let items: Vec<glib::BoxedAnyObject> = sis
+            .iter()
+            .zip(likes.iter())
+            .map(|(si, like)| {
+                glib::BoxedAnyObject::new(RowEntry {
+                    si: si.clone(),
+                    like: *like,
+                })
+            })
+            .collect();
+        store.extend_from_slice(&items);
     }
 
+    /// 列表里的全部歌曲（按当前顺序）
     pub fn get_songinfo_list(&self) -> Vec<SongInfo> {
-        let listbox = self.imp().listbox.get();
-        let mut sis: Vec<SongInfo> = vec![];
-        if let Some(mut child) = listbox.first_child() {
-            loop {
-                let row = child.clone().downcast::<SonglistRow>().unwrap();
-                sis.push(row.get_song_info().unwrap());
-
-                if let Some(next) = child.next_sibling() {
-                    child = next;
-                } else {
-                    break;
-                }
-            }
-        }
-        sis
+        let store = self.imp().store.get().unwrap();
+        (0..store.n_items())
+            .filter_map(|index| store.item(index))
+            .filter_map(|item| item.downcast::<glib::BoxedAnyObject>().ok())
+            .map(|item| item.borrow::<RowEntry>().si.clone())
+            .collect()
     }
 
     pub fn clear_list(&self) {
-        let listbox = self.imp().listbox.get();
-        while let Some(child) = listbox.last_child() {
-            listbox.remove(&child);
+        let imp = self.imp();
+        if let Some(store) = imp.store.get() {
+            store.remove_all();
         }
+        imp.live_rows.borrow_mut().clear();
     }
 
-    pub fn list_box(&self) -> ListBox {
-        self.imp().listbox.get()
+    /// 滚动到正在播放的那首；列表里没有它（比如搜索过滤掉了）就返回 false
+    pub fn scroll_to_playing(&self) -> bool {
+        let imp = self.imp();
+        let playing_id = imp.playing_id.get();
+        if playing_id == 0 {
+            return false;
+        }
+        let Some(store) = imp.store.get() else {
+            return false;
+        };
+        for index in 0..store.n_items() {
+            let hit = store
+                .item(index)
+                .and_then(|item| item.downcast::<glib::BoxedAnyObject>().ok())
+                .map(|item| item.borrow::<RowEntry>().si.id == playing_id)
+                .unwrap_or(false);
+            if hit {
+                imp.list_view.scroll_to(index, ListScrollFlags::NONE, None);
+                return true;
+            }
+        }
+        false
     }
 
-    // 根据当前播放歌曲 id 更新指示符，使 ▶️ 始终指向正在播放的曲目。
+    /// 根据当前播放歌曲 id 更新指示符（只改已经渲染出来的行）
     pub fn update_playing_song(&self, song_id: u64) {
         self.imp().playing_id.set(song_id);
-        let listbox = self.list_box();
-        let mut child = listbox.first_child();
-        while let Some(row) = child {
-            let row = row.downcast::<SonglistRow>().unwrap();
+        for row in self.imp().live_rows.borrow().values() {
             let visible = row
                 .get_song_info()
                 .map(|si| si.id == song_id)
                 .unwrap_or(false);
             row.switch_image(visible);
-            child = row.next_sibling();
         }
     }
 
-    // 以当前列表顺序构造播放队列，从被点击的行开始（连续播放用）
+    /// 以当前列表顺序构造播放队列，从被点击的行开始（连续播放用）
     fn play_list_from(&self, clicked: &SonglistRow) -> Vec<SongInfo> {
-        let listbox = self.list_box();
-        let mut songs: Vec<SongInfo> = Vec::new();
-        let mut child = listbox.first_child();
-        while let Some(node) = child {
-            if let Ok(row) = node.clone().downcast::<SonglistRow>() {
-                if let Some(si) = row.get_song_info() {
-                    songs.push(si);
-                }
-            }
-            child = node.next_sibling();
-        }
+        let mut songs = self.get_songinfo_list();
         if let Some(si) = clicked.get_song_info() {
             if let Some(pos) = songs.iter().position(|song| song.id == si.id) {
                 songs.rotate_left(pos);
             }
         }
         songs
+    }
+
+    // ListView 的 bind：为这一项创建一个行（滚出视野就被回收，控件数始终只跟可视区域有关）
+    fn bind_row(&self, list_item: &ListItem) {
+        let imp = self.imp();
+        let Some(item) = list_item.item() else {
+            return;
+        };
+        let Ok(boxed) = item.downcast::<glib::BoxedAnyObject>() else {
+            return;
+        };
+        let (si, like) = {
+            let entry = boxed.borrow::<RowEntry>();
+            (entry.si.clone(), entry.like)
+        };
+        let Some(sender) = imp.sender.get().cloned() else {
+            return;
+        };
+
+        let row = SonglistRow::new(sender.clone(), &si);
+        // ListView 的每一项默认按自然宽度摆放，行要自己撑满整行
+        row.set_halign(Align::Fill);
+        row.set_hexpand(true);
+        row.set_property("like", like);
+        row.set_like_button_visible(!imp.no_act_like.get());
+        row.set_album_button_visible(!imp.no_act_album.get());
+        row.set_remove_button_visible(!imp.no_act_remove.get());
+        row.set_block_remove(imp.block_remove.get());
+        row.switch_image(si.id == imp.playing_id.get());
+
+        let replace_on_activate = imp.replace_on_activate.get();
+        let si_click = si.clone();
+        row.connect_activate(clone!(
+            #[weak(rename_to = s)]
+            self,
+            move |row| {
+                if row.is_activatable() || row.not_ignore_grey() {
+                    row.switch_image(true);
+                    if replace_on_activate {
+                        // 连续播放：用当前列表（含搜索过滤）替换队列，从点击的这首开始
+                        let list = s.play_list_from(row);
+                        if list.is_empty() {
+                            sender.send_blocking(Action::AddPlay(si_click.clone())).unwrap();
+                        } else {
+                            sender.send_blocking(Action::AddPlayList(list, true)).unwrap();
+                        }
+                    } else {
+                        sender.send_blocking(Action::AddPlay(si_click.clone())).unwrap();
+                    }
+                    s.emit_row_activated(row);
+                }
+            }
+        ));
+
+        if let Some(settings) = imp.settings.get() {
+            settings
+                .bind("not-ignore-grey", &row, "not-ignore-grey")
+                .get_only()
+                .build();
+        }
+
+        imp.live_rows.borrow_mut().insert(si.id, row.clone());
+        list_item.set_child(Some(&row));
     }
 
     pub fn emit_row_activated(&self, row: &SonglistRow) {
@@ -227,24 +253,26 @@ mod imp {
         #[template_child]
         pub scroll_win: TemplateChild<ScrolledWindow>,
         #[template_child]
-        pub adw_clamp: TemplateChild<adw::Clamp>,
-        #[template_child]
-        pub listbox: TemplateChild<ListBox>,
+        pub list_view: TemplateChild<ListView>,
+
+        pub store: OnceCell<gio::ListStore>,
+        // 当前已渲染出来的行（播放在播指示更新用）
+        pub live_rows: RefCell<HashMap<u64, SonglistRow>>,
 
         pub sender: OnceCell<Sender<Action>>,
         pub settings: OnceCell<Settings>,
-        // 分片渲染代号：列表重建时自增，旧的分片任务自动放弃
+        // 保留字段：老代码在重建列表前会调 cancel_render()
         pub render_gen: Cell<u64>,
 
-        no_act_like: Cell<bool>,
-        no_act_album: Cell<bool>,
-        no_act_remove: Cell<bool>,
+        pub no_act_like: Cell<bool>,
+        pub no_act_album: Cell<bool>,
+        pub no_act_remove: Cell<bool>,
         // 垃圾桶按钮语义改为「不再推荐」
-        block_remove: Cell<bool>,
-        // 当前播放歌曲 id：分片渲染新插入的行也要带上播放指示
+        pub block_remove: Cell<bool>,
+        // 当前播放歌曲 id
         pub playing_id: Cell<u64>,
         // 点击行时用「整个当前列表」替换播放队列并从该行开始（连续播放）
-        replace_on_activate: Cell<bool>,
+        pub replace_on_activate: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -271,24 +299,45 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
-
             obj.setup_settings();
 
-            // clear old actived row
-            let old_select_row = Rc::new(RefCell::new(-1));
-            self.listbox.connect_row_activated(move |list, row| {
-                let index;
-                {
-                    index = *old_select_row.borrow();
-                }
-                *old_select_row.borrow_mut() = row.index();
-                if index != -1 && index != row.index() {
-                    if let Some(row) = list.row_at_index(index) {
-                        let row = row.downcast::<SonglistRow>().unwrap();
-                        row.switch_image(false);
+            let store = gio::ListStore::new::<glib::BoxedAnyObject>();
+            self.store.set(store.clone()).unwrap();
+
+            let factory = SignalListItemFactory::new();
+            factory.connect_bind(clone!(
+                #[weak]
+                obj,
+                move |_, list_item| {
+                    if let Some(list_item) = list_item.downcast_ref::<ListItem>() {
+                        obj.bind_row(list_item);
                     }
                 }
-            });
+            ));
+            // 行滚出视野就解绑：从 live_rows 里摘掉，避免持有已回收的行
+            factory.connect_unbind(clone!(
+                #[weak]
+                obj,
+                move |_, list_item| {
+                    let Some(list_item) = list_item.downcast_ref::<ListItem>() else {
+                        return;
+                    };
+                    if let Some(row) = list_item
+                        .child()
+                        .and_then(|child| child.downcast::<SonglistRow>().ok())
+                    {
+                        if let Some(si) = row.get_song_info() {
+                            obj.imp().live_rows.borrow_mut().remove(&si.id);
+                        }
+                    }
+                    list_item.set_child(None::<&Widget>);
+                }
+            ));
+
+            // 不用选中态：行内自己处理点击
+            let selection = NoSelection::new(Some(store.clone()));
+            self.list_view.set_factory(Some(&factory));
+            self.list_view.set_model(Some(&selection));
         }
 
         fn signals() -> &'static [Signal] {
@@ -339,22 +388,8 @@ mod imp {
                     let val = value.get().unwrap();
                     self.replace_on_activate.replace(val);
                 }
-                "clamp-margin-top" => {
-                    let val = value.get().unwrap();
-                    self.adw_clamp.set_margin_top(val);
-                }
-                "clamp-margin-bottom" => {
-                    let val = value.get().unwrap();
-                    self.adw_clamp.set_margin_bottom(val);
-                }
-                "clamp-maximum-size" => {
-                    let val = value.get().unwrap();
-                    self.adw_clamp.set_maximum_size(val);
-                }
-                "clamp-tightening-threshold" => {
-                    let val = value.get().unwrap();
-                    self.adw_clamp.set_tightening_threshold(val);
-                }
+                "clamp-margin-top" | "clamp-margin-bottom" | "clamp-maximum-size"
+                | "clamp-tightening-threshold" => {}
                 n => unimplemented!("{}", n),
             }
         }
@@ -366,10 +401,8 @@ mod imp {
                 "no-act-remove" => self.no_act_remove.get().to_value(),
                 "block-remove" => self.block_remove.get().to_value(),
                 "replace-on-activate" => self.replace_on_activate.get().to_value(),
-                "clamp-margin-top" => self.adw_clamp.margin_top().to_value(),
-                "clamp-margin-bottom" => self.adw_clamp.margin_bottom().to_value(),
-                "clamp-maximum-size" => self.adw_clamp.maximum_size().to_value(),
-                "clamp-tightening-threshold" => self.adw_clamp.tightening_threshold().to_value(),
+                "clamp-margin-top" | "clamp-margin-bottom" | "clamp-maximum-size"
+                | "clamp-tightening-threshold" => 0i32.to_value(),
                 n => unimplemented!("{}", n),
             }
         }
