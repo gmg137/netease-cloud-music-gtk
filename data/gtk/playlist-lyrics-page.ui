@@ -7,10 +7,26 @@
             <object class="AdwFlap">
                 <property name="flap-position">end</property>
                 <property name="content">
-                    <object class="SongListView" id="songs_list">
-                        <property name="width-request">500</property>
-                        <property name="clamp-maximum-size">1000</property>
-                        <property name="clamp-tightening-threshold">730</property>
+                    <object class="GtkBox">
+                        <property name="orientation">vertical</property>
+                        <property name="spacing">6</property>
+                        <property name="margin-top">6</property>
+                        <property name="margin-start">12</property>
+                        <property name="margin-end">12</property>
+                        <child>
+                            <object class="GtkSearchEntry" id="filter_entry">
+                                <property name="placeholder-text" translatable="yes">Search in playlist</property>
+                                <property name="hexpand">true</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="SongListView" id="songs_list">
+                                <property name="width-request">500</property>
+                                <property name="clamp-maximum-size">1000</property>
+                                <property name="clamp-tightening-threshold">730</property>
+                                <property name="vexpand">true</property>
+                            </object>
+                        </child>
                     </object>
                 </property>
                 <property name="flap">

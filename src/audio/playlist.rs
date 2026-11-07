@@ -300,6 +300,27 @@ impl PlayList {
         }
     }
 
+    // 批量移除歌曲（按 id），只重算一次位置；返回实际移除数量
+    pub fn remove_songs(&mut self, ids: &[u64]) -> usize {
+        if ids.is_empty() || self.list.is_empty() {
+            return 0;
+        }
+        let before = self
+            .list
+            .iter()
+            .take(self.position)
+            .filter(|song| ids.contains(&song.id))
+            .count();
+        let removed = self.list.iter().filter(|song| ids.contains(&song.id)).count();
+        if removed == 0 {
+            return 0;
+        }
+        self.list.retain(|song| !ids.contains(&song.id));
+        self.shuffle.retain(|song| !ids.contains(&song.id));
+        self.position = self.position.saturating_sub(before);
+        removed
+    }
+
     pub fn add_list(&mut self, list: Vec<SongInfo>) {
         self.list = list.clone();
         let mut list = list;

@@ -47,6 +47,8 @@ pub type ActionCallback<Targ = ()> = Arc<dyn ActionCallbackTr<Targ>>;
 static FAVORITE_PLAYLIST_ID: Lazy<Mutex<Option<(u64, u64)>>> = Lazy::new(|| Mutex::new(None));
 // 最近一次已发起歌词请求的歌曲 id，避免同一首歌重复拉取
 static LAST_LYRICS_ID: AtomicU64 = AtomicU64::new(0);
+// 本地歌曲没有 .lrc 时记住，避免每次位置更新重复读盘
+static NO_LOCAL_LYRICS_ID: AtomicU64 = AtomicU64::new(0);
 // 心动模式开启状态，true 表示已开启，再次点击则关闭
 pub(crate) static HEARTBEAT_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 // 私人漫游（根据喜好播放）开启状态
@@ -101,6 +103,7 @@ async fn load_lyrics(window: &NeteaseCloudMusicGtk4Window, ncmapi: &NcmClient, s
             .unwrap_or_default();
         if lrc.is_empty() {
             debug!("本地歌曲没有歌词文件: {:?}", path);
+            NO_LOCAL_LYRICS_ID.store(si.id, Ordering::Relaxed);
             window.update_lyrics_text(&gettext("No lyrics available"));
         } else {
             debug!("读取本地歌词：{} 行", lrc.len());
@@ -191,6 +194,14 @@ pub enum Action {
     ChangeQuality(u32),
     // 载入本地音频：文件与目录混排，目录递归扫描
     LoadLocalFiles(Vec<PathBuf>),
+    // 扫描完成：追加到播放列表（第二个参数表示是否立即播放）
+    AddLocalSongs(Vec<SongInfo>, bool),
+    // 重新扫描已记住的本地音乐目录
+    RescanLocal,
+    // 重新扫描结果（GUI 线程应用变更）
+    ApplyRescan(Vec<SongInfo>),
+    // 清空播放列表中的本地歌曲并忘记目录
+    ClearLocal,
     PlayStart(SongInfo),
     TogglePlayPause,
     // (歌单, 是否立即播放)
@@ -845,9 +856,28 @@ impl NeteaseCloudMusicGtk4Application {
                 window.play_prev();
             }
             Action::Play(song_info) if crate::local_music::is_local(&song_info.song_url) => {
-                // 本地歌曲直接播放，不请求接口
+                // 本地歌曲直接播放，不请求接口；文件已不存在则移除条目并跳下一首
+                let exists = crate::local_music::local_file_of(&song_info.song_url)
+                    .map(|path| path.is_file())
+                    .unwrap_or(false);
                 let sender = imp.sender.clone();
-                sender.send_blocking(Action::PlayStart(song_info)).unwrap();
+                if exists {
+                    window.sync_playlist_position(song_info.id);
+                    sender.send_blocking(Action::PlayStart(song_info)).unwrap();
+                } else {
+                    MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                        sender
+                            .send(Action::AddToast(gettext_f(
+                                "Local file not found: {name}",
+                                &[("name", &song_info.name)],
+                            )))
+                            .await
+                            .unwrap();
+                        window.remove_from_playlist(song_info);
+                        timeout_future_seconds(2).await;
+                        sender.send(Action::PlayNextSong).await.unwrap();
+                    });
+                }
             }
             Action::Play(song_info) => {
                 let sender = imp.sender.clone();
@@ -1131,48 +1161,111 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::LoadLocalFiles(paths) => {
                 let sender = imp.sender.clone();
-                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                // 目录可能很大，扫描与标签解析放后台线程，避免卡住界面
+                std::thread::spawn(move || {
                     let mut files: Vec<PathBuf> = Vec::new();
+                    let mut dirs = 0;
                     for path in paths {
                         if path.is_dir() {
+                            crate::local_music::remember_dir(&path);
+                            dirs += 1;
                             files.extend(crate::local_music::scan_dir(&path));
                         } else if crate::local_music::is_audio_file(&path) {
                             files.push(path);
                         }
                     }
-                    if files.is_empty() {
+                    files.sort();
+                    files.dedup();
+                    let songs: Vec<SongInfo> = files
+                        .iter()
+                        .filter_map(|file| crate::local_music::song_info_from_path(file))
+                        .collect();
+                    debug!(
+                        "本地扫描：目录 {} 个，候选文件 {} 个，可播放 {} 首",
+                        dirs,
+                        files.len(),
+                        songs.len()
+                    );
+                    sender.send_blocking(Action::AddLocalSongs(songs, true)).ok();
+                });
+            }
+            Action::AddLocalSongs(songs, play) => {
+                let sender = imp.sender.clone();
+                if songs.is_empty() {
+                    MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                         sender
                             .send(Action::AddToast(gettext(
                                 "No playable audio file found in the selection.",
                             )))
                             .await
                             .unwrap();
-                        return;
-                    }
-                    let mut songs = Vec::new();
-                    for file in &files {
-                        if let Some(song_info) = crate::local_music::song_info_from_path(file) {
-                            songs.push(song_info);
-                        }
-                    }
-                    debug!("载入本地歌曲 {} 首", songs.len());
-                    if songs.is_empty() {
+                    });
+                } else {
+                    let window = window.clone();
+                    MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                        let added = window.append_local(songs, play);
+                        let message = if added == 0 {
+                            gettext("These songs are already in the playlist.").to_string()
+                        } else {
+                            gettext_f(
+                                "Added {count} local songs",
+                                &[("count", &added.to_string())],
+                            )
+                        };
+                        sender.send(Action::AddToast(message)).await.unwrap();
+                    });
+                }
+            }
+            Action::RescanLocal => {
+                let sender = imp.sender.clone();
+                std::thread::spawn(move || {
+                    if crate::local_music::local_dirs().is_empty() {
                         sender
-                            .send(Action::AddToast(gettext(
-                                "Failed to read the selected audio files.",
+                            .send_blocking(Action::AddToast(gettext(
+                                "No local music folder remembered yet.",
                             )))
-                            .await
-                            .unwrap();
+                            .ok();
                         return;
                     }
+                    let files = crate::local_music::scan_all();
+                    let songs: Vec<SongInfo> = files
+                        .iter()
+                        .filter_map(|file| crate::local_music::song_info_from_path(file))
+                        .collect();
+                    debug!("重新扫描本地音乐：{} 首", songs.len());
+                    sender.send_blocking(Action::ApplyRescan(songs)).ok();
+                });
+            }
+            Action::ApplyRescan(songs) => {
+                let sender = imp.sender.clone();
+                let window = window.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    let (added, removed, total) = window.apply_rescan(songs);
                     sender
                         .send(Action::AddToast(gettext_f(
-                            "Loaded {count} local songs",
-                            &[("count", &songs.len().to_string())],
+                            "Local library: {added} added, {removed} removed, {total} in playlist",
+                            &[
+                                ("added", &added.to_string()),
+                                ("removed", &removed.to_string()),
+                                ("total", &total.to_string()),
+                            ],
                         )))
                         .await
                         .unwrap();
-                    sender.send(Action::AddPlayList(songs, true)).await.unwrap();
+                });
+            }
+            Action::ClearLocal => {
+                let sender = imp.sender.clone();
+                let window = window.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    let removed = window.clear_local();
+                    sender
+                        .send(Action::AddToast(gettext_f(
+                            "Removed {count} local songs",
+                            &[("count", &removed.to_string())],
+                        )))
+                        .await
+                        .unwrap();
                 });
             }
             Action::PlayListStart => {
@@ -1721,9 +1814,10 @@ impl NeteaseCloudMusicGtk4Application {
                 }
             }
             Action::UpdateLyrics(si, time) => {
-                // 切歌后首个位置更新不一定是 0，按歌曲 id 兜底，避免漏取歌词
-                let need_fetch =
-                    time == 0 || LAST_LYRICS_ID.load(Ordering::Relaxed) != si.id;
+                // 切歌后首个位置更新不一定是 0，按歌曲 id 兜底，避免漏取歌词；
+                // 本地歌曲没有 .lrc 时不再重复读盘
+                let need_fetch = (time == 0 || LAST_LYRICS_ID.load(Ordering::Relaxed) != si.id)
+                    && NO_LOCAL_LYRICS_ID.load(Ordering::Relaxed) != si.id;
                 MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                     if need_fetch {
                         LAST_LYRICS_ID.store(si.id, Ordering::Relaxed);

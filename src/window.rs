@@ -23,7 +23,7 @@ use ncm_api::{BannersInfo, LoginInfo, SongInfo, SongList, TopList};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
-    collections::LinkedList,
+    collections::{HashSet, LinkedList},
     path::PathBuf,
     sync::{Arc, Mutex},
 };
@@ -235,6 +235,7 @@ impl NeteaseCloudMusicGtk4Window {
         window.imp().sender.set(sender).unwrap();
         window.setup_widget();
         window.setup_action();
+        window.setup_drag_drop();
         window.init_page_data();
         window
     }
@@ -376,6 +377,30 @@ impl NeteaseCloudMusicGtk4Window {
                         .unwrap();
                 }
             });
+        });
+
+        // 重新扫描已记住的本地音乐目录
+        let action_rescan = SimpleAction::new("rescan-local", None);
+        self.add_action(&action_rescan);
+        let sender = self.imp().sender.get().unwrap().clone();
+        action_rescan.connect_activate(move |_, _| {
+            sender.send_blocking(Action::RescanLocal).unwrap();
+        });
+
+        // 清空播放列表中的本地音乐
+        let action_clear_local = SimpleAction::new("clear-local", None);
+        self.add_action(&action_clear_local);
+        let sender = self.imp().sender.get().unwrap().clone();
+        action_clear_local.connect_activate(move |_, _| {
+            sender.send_blocking(Action::ClearLocal).unwrap();
+        });
+
+        // 打开播放列表页（方便键盘/自动化触发）
+        let action_playlist = SimpleAction::new("open-playlist", None);
+        self.add_action(&action_playlist);
+        let player_controls = self.imp().player_controls.get();
+        action_playlist.connect_activate(move |_, _| {
+            player_controls.open_playlist_page();
         });
     }
 
@@ -597,6 +622,83 @@ impl NeteaseCloudMusicGtk4Window {
     pub fn sync_playlist_position(&self, song_id: u64) {
         let player_controls = self.imp().player_controls.get();
         player_controls.sync_playlist_position(song_id);
+    }
+
+    // 追加本地歌曲到播放列表，返回实际追加的数量；play=true 时播放第一首新增
+    pub fn append_local(&self, songs: Vec<SongInfo>, play: bool) -> usize {
+        let player_controls = self.imp().player_controls.get();
+        let mut list = songs;
+        let appended = player_controls.append_list(&mut list);
+        if play {
+            if let Some(first) = appended.first() {
+                self.sync_playlist_position(first.id);
+                let sender = self.imp().sender.get().unwrap();
+                sender.send_blocking(Action::Play(first.to_owned())).unwrap();
+            }
+        }
+        appended.len()
+    }
+
+    // 应用重新扫描结果：移除已失效的本地条目，追加新文件
+    pub fn apply_rescan(&self, songs: Vec<SongInfo>) -> (usize, usize, usize) {
+        let player_controls = self.imp().player_controls.get();
+        let scanned: HashSet<u64> = songs.iter().map(|song| song.id).collect();
+        let dirs = crate::local_music::local_dirs();
+        // 只清理「记住的目录里确实不存在了」的歌，其他位置的本地歌曲保持不动
+        let stale: Vec<u64> = player_controls
+            .get_list()
+            .into_iter()
+            .filter(|song| crate::local_music::is_local(&song.song_url))
+            .filter(|song| !scanned.contains(&song.id))
+            .filter(|song| {
+                crate::local_music::local_file_of(&song.song_url)
+                    .map(|path| dirs.iter().any(|dir| path.starts_with(dir)))
+                    .unwrap_or(false)
+            })
+            .map(|song| song.id)
+            .collect();
+        let removed = player_controls.remove_songs(&stale);
+        let mut list = songs;
+        let added = player_controls.append_list(&mut list).len();
+        (added, removed, player_controls.get_list().len())
+    }
+
+    // 移除播放列表里的全部本地歌曲，并忘记已记住的目录
+    pub fn clear_local(&self) -> usize {
+        let player_controls = self.imp().player_controls.get();
+        let ids: Vec<u64> = player_controls
+            .get_list()
+            .into_iter()
+            .filter(|song| crate::local_music::is_local(&song.song_url))
+            .map(|song| song.id)
+            .collect();
+        let count = player_controls.remove_songs(&ids);
+        crate::local_music::forget_dirs();
+        count
+    }
+
+    // 把拖进窗口的文件/目录当作“打开本地音乐”处理
+    fn setup_drag_drop(&self) {
+        let drop_target =
+            gtk::DropTarget::new(gtk::gdk::FileList::static_type(), gtk::gdk::DragAction::COPY);
+        let sender = self.imp().sender.get().unwrap().clone();
+        drop_target.connect_drop(move |_, value, _x, _y| {
+            let Ok(files) = value.get::<gtk::gdk::FileList>() else {
+                return false;
+            };
+            let paths: Vec<PathBuf> = files
+                .files()
+                .into_iter()
+                .filter_map(|file| file.path())
+                .collect();
+            if paths.is_empty() {
+                return false;
+            }
+            debug!("拖入本地音乐 {} 个", paths.len());
+            sender.send_blocking(Action::LoadLocalFiles(paths)).unwrap();
+            true
+        });
+        self.add_controller(drop_target);
     }
 
     pub fn playlist_position(&self) -> usize {

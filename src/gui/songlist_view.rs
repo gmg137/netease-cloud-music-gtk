@@ -54,7 +54,38 @@ impl SongListView {
             .expect("Could not set `Settings`.");
     }
 
+    // 取消尚未完成的分片渲染（列表重建前调用，避免旧任务把过期行插回来）
+    pub fn cancel_render(&self) {
+        let imp = self.imp();
+        imp.render_gen.set(imp.render_gen.get().wrapping_add(1));
+    }
+
     pub fn init_new_list(&self, sis: &[SongInfo], likes: &[bool]) {
+        let imp = self.imp();
+        // 几千首的播放列表一次性插入会卡住主线程，改成每次空闲插 80 行
+        let generation = imp.render_gen.get().wrapping_add(1);
+        imp.render_gen.set(generation);
+        let songs: Vec<SongInfo> = sis.to_vec();
+        let likes: Vec<bool> = likes.to_vec();
+        let cursor = Rc::new(Cell::new(0usize));
+        let view = self.clone();
+        glib::source::idle_add_local(move || {
+            if view.imp().render_gen.get() != generation {
+                return glib::ControlFlow::Break;
+            }
+            let start = cursor.get();
+            if start >= songs.len() {
+                return glib::ControlFlow::Break;
+            }
+            let end = (start + 80).min(songs.len());
+            view.append_rows(&songs[start..end], &likes[start..end]);
+            cursor.set(end);
+            glib::ControlFlow::Continue
+        });
+    }
+
+    // 追加一段行（分片渲染用）
+    fn append_rows(&self, sis: &[SongInfo], likes: &[bool]) {
         let imp = self.imp();
         let sender = imp.sender.get().unwrap().to_owned();
         let settings = imp.settings.get().unwrap();
@@ -165,6 +196,8 @@ mod imp {
 
         pub sender: OnceCell<Sender<Action>>,
         pub settings: OnceCell<Settings>,
+        // 分片渲染代号：列表重建时自增，旧的分片任务自动放弃
+        pub render_gen: Cell<u64>,
 
         no_act_like: Cell<bool>,
         no_act_album: Cell<bool>,

@@ -718,6 +718,38 @@ msgstr ""
 msgid "Local songs can't be collected to your account."
 msgstr "本地歌曲不能收藏到账号。"
 
+#: data/gtk/window.ui
+msgid "Rescan Local Music"
+msgstr "重新扫描本地音乐"
+
+#: data/gtk/window.ui
+msgid "Clear Local Music"
+msgstr "清空本地音乐"
+
+#: src/application.rs
+msgid "These songs are already in the playlist."
+msgstr "这些歌曲已经在播放列表里了。"
+
+#: src/application.rs
+msgid "No local music folder remembered yet."
+msgstr "还没有记住本地音乐目录，先用「打开本地文件夹」添加一个。"
+
+#: src/application.rs
+msgid "Local library: {added} added, {removed} removed, {total} in playlist"
+msgstr "本地音乐：新增 {added} 首，移除 {removed} 首，播放列表共 {total} 首"
+
+#: src/application.rs
+msgid "Removed {count} local songs"
+msgstr "已移除 {count} 首本地歌曲"
+
+#: src/application.rs
+msgid "Local file not found: {name}"
+msgstr "本地文件不存在：{name}"
+
+#: data/gtk/playlist-lyrics-page.ui
+msgid "Search in playlist"
+msgstr "在播放列表中搜索"
+
 
 #~ msgid "{} songs, {} favs"
 #~ msgstr "{} 首歌曲，{} 收藏"

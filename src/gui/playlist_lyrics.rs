@@ -43,6 +43,7 @@ impl PlayListLyricsPage {
                     sender.send_blocking(Action::UpdateLyrics(si, 0)).unwrap();
                 }
             }));
+        self.setup_filter();
     }
 
     pub fn init_page(&self, sis: &[SongInfo], si: SongInfo, likes: &[bool]) {
@@ -78,10 +79,48 @@ impl PlayListLyricsPage {
     pub fn update_playlist(&self, sis: &[SongInfo], _current_song: SongInfo, likes: &[bool]) {
         let imp = self.imp();
         imp.playlist.replace(Clone::clone(&sis).to_vec());
+        imp.likes.replace(likes.to_vec());
         let sender = imp.sender.get().unwrap();
         let songs_list = imp.songs_list.get();
         songs_list.set_sender(sender.clone());
-        songs_list.init_new_list(sis, likes);
+        self.apply_filter();
+    }
+
+    // 按搜索框内容过滤播放列表（歌名/歌手/专辑，忽略大小写）
+    fn apply_filter(&self) {
+        let imp = self.imp();
+        let key = imp.filter_key.borrow().trim().to_lowercase();
+        let songs = imp.playlist.borrow();
+        let likes = imp.likes.borrow();
+        let songs_list = imp.songs_list.get();
+        songs_list.cancel_render();
+        songs_list.clear_list();
+        if key.is_empty() {
+            songs_list.init_new_list(&songs, &likes);
+            return;
+        }
+        let mut filtered: Vec<SongInfo> = Vec::new();
+        let mut filtered_likes: Vec<bool> = Vec::new();
+        for (index, song) in songs.iter().enumerate() {
+            let hit = song.name.to_lowercase().contains(&key)
+                || song.singer.to_lowercase().contains(&key)
+                || song.album.to_lowercase().contains(&key);
+            if hit {
+                filtered.push(song.to_owned());
+                filtered_likes.push(likes.get(index).copied().unwrap_or(false));
+            }
+        }
+        songs_list.init_new_list(&filtered, &filtered_likes);
+    }
+
+    fn setup_filter(&self) {
+        let imp = self.imp();
+        let filter_entry = imp.filter_entry.get();
+        let page = self.clone();
+        filter_entry.connect_search_changed(move |entry| {
+            page.imp().filter_key.replace(entry.text().to_string());
+            page.apply_filter();
+        });
     }
 
     // 在页面挂载到窗口后调用：订阅 current-song-changed 并刷新当前曲目指示符。
@@ -220,6 +259,11 @@ mod imp {
         pub uttered_text_tag: TemplateChild<TextTag>,
         pub(crate) scrolled: Arc<Mutex<usize>>,
         pub playlist: Rc<RefCell<Vec<SongInfo>>>,
+        // 完整喜欢状态，过滤时与 playlist 同步裁剪
+        pub likes: Rc<RefCell<Vec<bool>>>,
+        pub filter_key: Rc<RefCell<String>>,
+        #[template_child]
+        pub filter_entry: TemplateChild<SearchEntry>,
         pub sender: OnceCell<Sender<Action>>,
         pub current_lyrics: Arc<RwLock<Vec<(u64, String)>>>,
         pub subscribed: Cell<bool>,

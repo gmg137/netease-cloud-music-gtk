@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
-use lofty::file::{AudioFile, TaggedFileExt};
+use lofty::file::{AudioFile, TaggedFile, TaggedFileExt};
 use lofty::prelude::Accessor;
 use ncm_api::{SongCopyright, SongInfo, SongQualityState};
 
@@ -137,18 +137,25 @@ fn path_id(path: &Path) -> u64 {
 }
 
 fn describe_quality(path: &Path) -> (String, u64) {
-    let ext = path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .unwrap_or("audio")
-        .to_uppercase();
-    let tagged = match lofty::read_from_path(path) {
-        Ok(tagged) => tagged,
+    match lofty::read_from_path(path) {
+        Ok(tagged) => describe_quality_of(path, &tagged),
         Err(err) => {
             log::debug!("读取本地音频信息失败: {:?} {:?}", path, err);
-            return (ext, 0);
+            (ext_upper(path), 0)
         }
-    };
+    }
+}
+
+fn ext_upper(path: &Path) -> String {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("audio")
+        .to_uppercase()
+}
+
+/// 已经读过标签文件时复用，避免同一文件读两遍
+fn describe_quality_of(path: &Path, tagged: &TaggedFile) -> (String, u64) {
+    let ext = ext_upper(path);
     let props = tagged.properties();
     let duration = props.duration().as_millis() as u64;
 
@@ -189,14 +196,11 @@ pub fn local_cover_path(id: u64) -> PathBuf {
 }
 
 /// 从内嵌标签里提取封面，写入缓存供播放栏使用
-fn extract_cover(path: &Path, id: u64) {
+fn extract_cover(id: u64, tagged: &TaggedFile) {
     let dst = local_cover_path(id);
     if dst.exists() {
         return;
     }
-    let Ok(tagged) = lofty::read_from_path(path) else {
-        return;
-    };
     let Some(tag) = tagged.primary_tag().or_else(|| tagged.first_tag()) else {
         return;
     };
@@ -214,7 +218,15 @@ pub fn song_info_from_path(path: &Path) -> Option<SongInfo> {
         return None;
     }
     let id = path_id(&path);
-    let (quality_text, duration) = describe_quality(&path);
+    // 每个文件只解析一次标签，音质/时长/封面/元数据共用
+    let tagged = lofty::read_from_path(&path).ok();
+    let (quality_text, duration) = match tagged.as_ref() {
+        Some(tagged) => describe_quality_of(&path, tagged),
+        None => {
+            log::debug!("读取本地音频信息失败: {:?}", path);
+            (ext_upper(&path), 0)
+        }
+    };
     if let Ok(mut map) = quality_map().lock() {
         map.insert(id, quality_text);
     }
@@ -225,8 +237,8 @@ pub fn song_info_from_path(path: &Path) -> Option<SongInfo> {
         .unwrap_or("未知歌曲")
         .to_string();
     let (mut name, mut singer, mut album) = (stem.clone(), "未知歌手".to_string(), "本地音乐".to_string());
-    extract_cover(&path, id);
-    if let Ok(tagged) = lofty::read_from_path(&path) {
+    if let Some(tagged) = tagged.as_ref() {
+        extract_cover(id, tagged);
         let tag = tagged.primary_tag().or_else(|| tagged.first_tag());
         if let Some(tag) = tag {
             if let Some(title) = tag.title().map(|t| t.trim().to_string()) {
@@ -271,6 +283,68 @@ pub fn song_info_from_path(path: &Path) -> Option<SongInfo> {
     })
 }
 
+/// 已记住的本地音乐目录（配置文件 `local_dirs.json`）
+pub fn local_dirs() -> Vec<PathBuf> {
+    let Ok(json) = std::fs::read_to_string(dirs_file()) else {
+        return Vec::new();
+    };
+    serde_json::from_str::<Vec<String>>(&json)
+        .map(|list| {
+            list.into_iter()
+                .map(PathBuf::from)
+                .filter(|dir| dir.is_dir())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn dirs_file() -> PathBuf {
+    crate::path::CONFIG.join("local_dirs.json")
+}
+
+fn save_dirs(dirs: &[PathBuf]) {
+    let list: Vec<String> = dirs
+        .iter()
+        .map(|dir| dir.to_string_lossy().to_string())
+        .collect();
+    match serde_json::to_string_pretty(&list) {
+        Ok(json) => {
+            if let Err(err) = std::fs::write(dirs_file(), json) {
+                log::debug!("保存本地音乐目录失败: {:?}", err);
+            }
+        }
+        Err(err) => log::debug!("序列化本地音乐目录失败: {:?}", err),
+    }
+}
+
+/// 记住一个音乐目录（已存在则忽略），返回是否新增
+pub fn remember_dir(dir: &Path) -> bool {
+    let dir = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
+    let mut dirs = local_dirs();
+    if dirs.iter().any(|item| item == &dir) {
+        return false;
+    }
+    dirs.push(dir);
+    save_dirs(&dirs);
+    true
+}
+
+/// 忘记所有已记住的目录
+pub fn forget_dirs() {
+    let _ = std::fs::remove_file(dirs_file());
+}
+
+/// 扫描所有已记住的目录
+pub fn scan_all() -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    for dir in local_dirs() {
+        files.extend(scan_dir(&dir));
+    }
+    files.sort();
+    files.dedup();
+    files
+}
+
 /// 递归扫描目录下的音频文件（按路径排序，便于稳定播放顺序）
 pub fn scan_dir(dir: &Path) -> Vec<PathBuf> {
     let mut files = Vec::new();
@@ -281,6 +355,10 @@ pub fn scan_dir(dir: &Path) -> Vec<PathBuf> {
         };
         for entry in entries.flatten() {
             let path = entry.path();
+            let name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
+            if name.starts_with('.') {
+                continue;
+            }
             if path.is_dir() {
                 stack.push(path);
             } else if is_audio_file(&path) {

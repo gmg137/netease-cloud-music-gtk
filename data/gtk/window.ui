@@ -272,6 +272,14 @@
                 <attribute name="action">win.open-local-folder</attribute>
             </item>
             <item>
+                <attribute name="label" translatable="yes">Rescan Local Music</attribute>
+                <attribute name="action">win.rescan-local</attribute>
+            </item>
+            <item>
+                <attribute name="label" translatable="yes">Clear Local Music</attribute>
+                <attribute name="action">win.clear-local</attribute>
+            </item>
+            <item>
                 <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
                 <attribute name="action">win.show-help-overlay</attribute>
             </item>

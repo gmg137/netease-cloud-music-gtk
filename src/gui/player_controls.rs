@@ -713,6 +713,23 @@ impl PlayerControls {
         }
     }
 
+    // 打开「播放列表/歌词」页面（播放栏按钮与 win.open-playlist 共用）
+    pub fn open_playlist_page(&self) {
+        if let Ok(playlist) = self.imp().playlist.lock() {
+            let current_song = playlist
+                .current_song()
+                .unwrap_or(&crate::utils::empty_song_info())
+                .to_owned();
+            let sender = self.imp().sender.get().unwrap().clone();
+            sender
+                .send_blocking(Action::ToPlayListLyricsPage(
+                    playlist.get_list(),
+                    current_song,
+                ))
+                .unwrap();
+        }
+    }
+
     pub fn get_list(&self) -> Vec<SongInfo> {
         if let Ok(playlist) = self.imp().playlist.lock() {
             playlist.get_list()
@@ -744,6 +761,29 @@ impl PlayerControls {
             }
             self.save_playlist();
         }
+    }
+
+    // 批量移除歌曲（本地音乐重扫/清空用），只保存一次播放列表
+    pub fn remove_songs(&self, ids: &[u64]) -> usize {
+        if ids.is_empty() {
+            return 0;
+        }
+        if let Some(current) = self.get_current_song() {
+            if ids.contains(&current.id) {
+                if self.playlist_length() > ids.len() {
+                    self.next_song();
+                } else {
+                    self.switch_stop();
+                }
+            }
+        }
+        let removed = if let Ok(mut playlist) = self.imp().playlist.lock() {
+            playlist.remove_songs(ids)
+        } else {
+            0
+        };
+        self.save_playlist();
+        removed
     }
 
     pub fn add_list(&self, list: Vec<SongInfo>) {
@@ -1496,19 +1536,7 @@ mod imp {
 
         #[template_callback]
         fn playlist_lyrics_cb(&self) {
-            if let Ok(playlist) = self.playlist.lock() {
-                let current_song = playlist
-                    .current_song()
-                    .unwrap_or(&crate::utils::empty_song_info())
-                    .to_owned();
-                let sender = self.sender.get().unwrap().clone();
-                sender
-                    .send_blocking(Action::ToPlayListLyricsPage(
-                        playlist.get_list(),
-                        current_song,
-                    ))
-                    .unwrap();
-            }
+            self.obj().open_playlist_page();
         }
     }
 
