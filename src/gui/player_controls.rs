@@ -27,11 +27,12 @@ use crate::{
     utils::*,
 };
 use std::{
-    cell::Cell,
+    cell::{Cell, RefCell},
     fs, path,
     rc::Rc,
     sync::{Arc, Mutex},
     thread,
+    time::Duration,
 };
 
 glib::wrapper! {
@@ -564,7 +565,8 @@ impl PlayerControls {
         // 当剩余5秒时提前获取下首歌曲的播放链接。
         let duration: u64 = self.property("duration");
         let secp = (msec / 10u64.pow(5)) % 10;
-        if duration - sec == 5 && secp >= 5 {
+        // duration 可能小于 sec（拖动到末尾/时长未知），直接相减会 u64 下溢
+        if duration > sec && duration - sec == 5 && secp >= 5 {
             if let Some(si) = self.get_next_song() {
                 sender.send_blocking(Action::GetSongUrl(si)).unwrap();
             }
@@ -1339,6 +1341,8 @@ mod imp {
 
         // 播放条拖动结束时的值
         scale_value: Cell<f64>,
+        // 拖动进度条的防抖定时器：合并 change-value 的连续回调，停止拖动后只 seek 一次
+        pub seek_debounce: Rc<RefCell<Option<glib::SourceId>>>,
 
         // 是否从文件恢复播放列表（URL可能已过期），恢复后首次播放需重新获取URL
         pub restored: Cell<bool>,
@@ -1524,6 +1528,24 @@ mod imp {
             self.progress_time_label.get().set_label(&duration);
 
             self.scale_value.set(value);
+
+            // 真正的跳转要等用户停止拖动：change-value 在拖动过程中会连续触发，
+            // 用 250ms 防抖合并成一次 seek。
+            // 原先只在 GestureClick::released 里 seek，但拖动由 GtkScale 内部的
+            // GestureDrag 接管，released 根本不触发 —— 结果只改了时间标签，
+            // 歌曲没跳转，歌词随之停在原处不跟。
+            if let Some(id) = self.seek_debounce.borrow_mut().take() {
+                id.remove();
+            }
+            let sender = self.sender.get().unwrap().clone();
+            // 回调里先把槽清空：timeout_add_local_once 触发的 SourceId 已经失效，
+            // 事后再对它调 remove() 会 panic（glib SourceId::remove 的断言）。
+            let slot = self.seek_debounce.clone();
+            let id = glib::timeout_add_local_once(Duration::from_millis(250), move || {
+                slot.borrow_mut().take();
+                let _ = sender.send_blocking(Action::ScaleValueUpdate);
+            });
+            *self.seek_debounce.borrow_mut() = Some(id);
 
             Propagation::Proceed
         }

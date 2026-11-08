@@ -395,10 +395,13 @@ impl NcmClient {
                 for l in lyr.lyric.iter() {
                     let mut time = 0;
                     if l.len() >= 10 && re.is_match(l) {
-                        time = (l[1..3].parse::<u64>().unwrap() * 60
-                            + l[4..6].parse::<u64>().unwrap())
-                            * 1000
-                            + l[7..9].parse::<u64>().unwrap_or(0) * 10;
+                        // 时间戳可能是 [00:11:22] 这类异常格式，直接 unwrap 会 panic
+                        let ts = |r: std::ops::Range<usize>| {
+                            l.get(r)
+                                .and_then(|s| s.parse::<u64>().ok())
+                                .unwrap_or(0)
+                        };
+                        time = (ts(1..3) * 60 + ts(4..6)) * 1000 + ts(7..9) * 10;
                         let mut nl = re.replace_all(l, "").to_string();
                         nl.push('\n');
                         lt.push((time, nl));
