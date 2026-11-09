@@ -14,7 +14,7 @@ use glib::{
     subclass::Signal,
 };
 use gtk::{
-    CompositeTemplate,
+    CompositeTemplate, FileDialog,
     gio::{self, SettingsBindFlags},
     glib,
 };
@@ -23,7 +23,7 @@ use ncm_api::{BannersInfo, LoginInfo, SongInfo, SongList, TopList};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
     cell::{Cell, RefCell},
-    collections::LinkedList,
+    collections::{HashSet, LinkedList},
     path::PathBuf,
     sync::{Arc, Mutex},
 };
@@ -77,6 +77,9 @@ mod imp {
         pub my_page: TemplateChild<MyPage>,
 
         pub playlist_lyrics_page: OnceCell<PlayListLyricsPage>,
+        pub lyrics_page: OnceCell<LyricsPage>,
+        // 本地音乐页（重扫后原地刷新）
+        pub local_music_page: OnceCell<crate::gui::LocalMusicPage>,
 
         pub user_menus: OnceCell<UserMenus>,
         pub popover_menu: OnceCell<PopoverMenu>,
@@ -136,6 +139,8 @@ mod imp {
             self.playlist_lyrics_page
                 .set(PlayListLyricsPage::new())
                 .unwrap();
+
+            self.lyrics_page.set(LyricsPage::new()).unwrap();
 
             if let Ok(mut stack_child) = self.stack_child.lock() {
                 stack_child.push_back(("discover".to_owned(), "".to_owned()));
@@ -232,6 +237,21 @@ impl NeteaseCloudMusicGtk4Window {
         window.imp().sender.set(sender).unwrap();
         window.setup_widget();
         window.setup_action();
+        window.setup_drag_drop();
+        // 老用户升级：曲库索引为空时用播放列表里的本地歌播种一次
+        if crate::local_music::library().is_empty() {
+            let local: Vec<SongInfo> = window
+                .imp()
+                .player_controls
+                .get()
+                .get_list()
+                .into_iter()
+                .filter(|song| crate::local_music::is_local(&song.song_url))
+                .collect();
+            if !local.is_empty() {
+                crate::local_music::merge_library(&local);
+            }
+        }
         window.init_page_data();
         window
     }
@@ -269,6 +289,10 @@ impl NeteaseCloudMusicGtk4Window {
         // 绑定设置与主题
         let action_style = self.settings().create_action("style-variant");
         self.add_action(&action_style);
+
+        // 独占音频输出开关（⋯ 菜单与偏好设置共用同一个 GSettings 键）
+        let action_exclusive = self.settings().create_action("audio-exclusive");
+        self.add_action(&action_exclusive);
 
         // 绑定搜索按钮和搜索栏
         let search_button = imp.search_button.get();
@@ -311,6 +335,100 @@ impl NeteaseCloudMusicGtk4Window {
         let sender = sender_;
         action_back.connect_activate(move |_, _| {
             sender.send_blocking(Action::PageBack).unwrap();
+        });
+
+        // 根据喜好播放（私人漫游）
+        let action_taste = SimpleAction::new("play-from-taste", None);
+        self.add_action(&action_taste);
+        let sender = self.imp().sender.get().unwrap().clone();
+        action_taste.connect_activate(move |_, _| {
+            sender.send_blocking(Action::PersonalRadio).unwrap();
+        });
+
+        // 打开本地文件
+        let action_local_files = SimpleAction::new("open-local-files", None);
+        self.add_action(&action_local_files);
+        let sender = self.imp().sender.get().unwrap().clone();
+        let parent = self.clone();
+        action_local_files.connect_activate(move |_, _| {
+            let dialog = FileDialog::builder()
+                .title(gettext("Open Local Files"))
+                .modal(true)
+                .build();
+            let sender = sender.clone();
+            let parent = parent.clone();
+            dialog.open_multiple(Some(&parent), gio::Cancellable::NONE, move |result| {
+                debug!("本地文件对话框返回: {:?}", result.is_ok());
+                let Ok(files) = result else {
+                    return;
+                };
+                let paths: Vec<PathBuf> = (0..files.n_items())
+                    .filter_map(|index| files.item(index))
+                    .filter_map(|object| object.downcast::<gio::File>().ok())
+                    .filter_map(|file| file.path())
+                    .collect();
+                if !paths.is_empty() {
+                    sender
+                        .send_blocking(Action::LoadLocalFiles(paths))
+                        .unwrap();
+                }
+            });
+        });
+
+        // 打开本地目录
+        let action_local_folder = SimpleAction::new("open-local-folder", None);
+        self.add_action(&action_local_folder);
+        let sender = self.imp().sender.get().unwrap().clone();
+        let parent = self.clone();
+        action_local_folder.connect_activate(move |_, _| {
+            let dialog = FileDialog::builder()
+                .title(gettext("Open Local Folder"))
+                .modal(true)
+                .build();
+            let sender = sender.clone();
+            let parent = parent.clone();
+            dialog.select_folder(Some(&parent), gio::Cancellable::NONE, move |result| {
+                let Ok(folder) = result else {
+                    return;
+                };
+                if let Some(path) = folder.path() {
+                    sender
+                        .send_blocking(Action::LoadLocalFiles(vec![path]))
+                        .unwrap();
+                }
+            });
+        });
+
+        // 重新扫描已记住的本地音乐目录
+        let action_rescan = SimpleAction::new("rescan-local", None);
+        self.add_action(&action_rescan);
+        let sender = self.imp().sender.get().unwrap().clone();
+        action_rescan.connect_activate(move |_, _| {
+            sender.send_blocking(Action::RescanLocal).unwrap();
+        });
+
+        // 清空播放列表中的本地音乐
+        let action_clear_local = SimpleAction::new("clear-local", None);
+        self.add_action(&action_clear_local);
+        let sender = self.imp().sender.get().unwrap().clone();
+        action_clear_local.connect_activate(move |_, _| {
+            sender.send_blocking(Action::ClearLocal).unwrap();
+        });
+
+        // 打开播放列表页（方便键盘/自动化触发）
+        let action_playlist = SimpleAction::new("open-playlist", None);
+        self.add_action(&action_playlist);
+        let player_controls = self.imp().player_controls.get();
+        action_playlist.connect_activate(move |_, _| {
+            player_controls.open_playlist_page();
+        });
+
+        // 打开「本地音乐」页面
+        let action_local_page = SimpleAction::new("open-local-music", None);
+        self.add_action(&action_local_page);
+        let window = self.clone();
+        action_local_page.connect_activate(move |_, _| {
+            window.open_local_music_page();
         });
     }
 
@@ -486,6 +604,60 @@ impl NeteaseCloudMusicGtk4Window {
         player_controls.add_song(song_info);
     }
 
+    // 打开独立的「本地音乐」页面（本地歌曲列表 + 搜索 + 全部播放 + 重新扫描）
+    pub fn open_local_music_page(&self) {
+        let songs = self.local_songs();
+        let sender = self.imp().sender.get().unwrap().clone();
+        let page = self
+            .imp()
+            .local_music_page
+            .get_or_init(crate::gui::LocalMusicPage::new)
+            .clone();
+        page.set_sender(sender);
+        page.set_window(self);
+        page.set_songs(songs);
+        self.page_new(&page, &gettext("Local Music"), "Local Music");
+    }
+
+    /// 本地歌曲匹配到网易云曲目后，把封面信息补进队列条目并刷新正在显示的界面
+    pub fn apply_local_meta(&self, id: u64, album_id: u64, pic_url: &str) {
+        let imp = self.imp();
+        let player_controls = imp.player_controls.get();
+        if let Some(si) = player_controls.apply_local_meta(id, album_id, pic_url) {
+            player_controls.init_play_info(si.clone());
+            imp.lyrics_page.get().unwrap().force_set_song(&si);
+        }
+    }
+
+    // 本地音乐页刷新（收藏/推荐/最近播放变化后）；「全部」视图不重排整表
+    pub fn refresh_local_page(&self) {
+        if let Some(page) = self.imp().local_music_page.get() {
+            page.update_cache(self.local_songs());
+        }
+    }
+
+    // 本地曲库（索引 ∪ 播放列表里的本地歌，按 id 去重）
+    pub fn local_songs(&self) -> Vec<SongInfo> {
+        let mut songs = crate::local_music::library();
+        let known: std::collections::HashSet<u64> = songs.iter().map(|song| song.id).collect();
+        let mut extra: Vec<SongInfo> = self
+            .imp()
+            .player_controls
+            .get()
+            .get_list()
+            .into_iter()
+            .filter(|song| crate::local_music::is_local(&song.song_url))
+            .filter(|song| !known.contains(&song.id))
+            .collect();
+        songs.append(&mut extra);
+        songs
+    }
+
+    // 打开「播放列表/歌词」页面（播放栏按钮与 win.open-playlist 共用）
+    pub fn open_playlist_page(&self) {
+        self.imp().player_controls.get().open_playlist_page();
+    }
+
     pub fn remove_from_playlist(&self, song_info: SongInfo) {
         let player_controls = self.imp().player_controls.get();
         player_controls.remove_song(song_info);
@@ -496,10 +668,6 @@ impl NeteaseCloudMusicGtk4Window {
         self.init_playlist_lyrics_page(sis, si.to_owned());
 
         if si.id == 0 {
-            let player_revealer = self.imp().player_revealer.get();
-            player_revealer.set_reveal_child(false);
-            player_revealer.set_visible(false);
-            player_revealer.set_reveal_child(false);
             let sender = self.imp().sender.get().unwrap();
             sender.send_blocking(Action::PageBack).unwrap();
         }
@@ -526,10 +694,100 @@ impl NeteaseCloudMusicGtk4Window {
         player_controls.set_heartbeat_active(active);
     }
 
+    // 私人漫游开启/关闭时同步按钮状态
+    pub fn set_personal_radio_active(&self, active: bool) {
+        let player_controls = self.imp().player_controls.get();
+        player_controls.set_personal_radio_active(active);
+    }
+
     // 根据 song_id 定位播放位置（心动模式追加续播前使用）
     pub fn sync_playlist_position(&self, song_id: u64) {
         let player_controls = self.imp().player_controls.get();
         player_controls.sync_playlist_position(song_id);
+    }
+
+    // 追加本地歌曲到播放列表，返回实际追加的数量；play=true 时播放第一首新增
+    pub fn append_local(&self, songs: Vec<SongInfo>, play: bool) -> usize {
+        let player_controls = self.imp().player_controls.get();
+        let mut list = songs;
+        let appended = player_controls.append_list(&mut list);
+        if play {
+            if let Some(first) = appended.first() {
+                self.sync_playlist_position(first.id);
+                let sender = self.imp().sender.get().unwrap();
+                sender.send_blocking(Action::Play(first.to_owned())).unwrap();
+            }
+        }
+        appended.len()
+    }
+
+    // 应用重新扫描结果：移除已失效的本地条目，追加新文件
+    pub fn apply_rescan(&self, songs: Vec<SongInfo>) -> (usize, usize, usize) {
+        let player_controls = self.imp().player_controls.get();
+        let scanned: HashSet<u64> = songs.iter().map(|song| song.id).collect();
+        let dirs = crate::local_music::local_dirs();
+        // 只清理「记住的目录里确实不存在了」的歌，其他位置的本地歌曲保持不动
+        let stale: Vec<u64> = player_controls
+            .get_list()
+            .into_iter()
+            .filter(|song| crate::local_music::is_local(&song.song_url))
+            .filter(|song| !scanned.contains(&song.id))
+            .filter(|song| {
+                crate::local_music::local_file_of(&song.song_url)
+                    .map(|path| dirs.iter().any(|dir| path.starts_with(dir)))
+                    .unwrap_or(false)
+            })
+            .map(|song| song.id)
+            .collect();
+        crate::local_music::merge_library(&songs);
+        crate::local_music::prune_library();
+        let removed = player_controls.remove_songs(&stale);
+        let mut list = songs;
+        let added = player_controls.append_list(&mut list).len();
+        // 本地音乐页开着就原地刷新（页面上的「重新扫描」按钮会直接看到结果）
+        if let Some(page) = self.imp().local_music_page.get() {
+            page.set_songs(self.local_songs());
+        }
+        (added, removed, player_controls.get_list().len())
+    }
+
+    // 移除播放列表里的全部本地歌曲，并忘记已记住的目录
+    pub fn clear_local(&self) -> usize {
+        crate::local_music::clear_library();
+        let player_controls = self.imp().player_controls.get();
+        let ids: Vec<u64> = player_controls
+            .get_list()
+            .into_iter()
+            .filter(|song| crate::local_music::is_local(&song.song_url))
+            .map(|song| song.id)
+            .collect();
+        let count = player_controls.remove_songs(&ids);
+        crate::local_music::forget_dirs();
+        count
+    }
+
+    // 把拖进窗口的文件/目录当作“打开本地音乐”处理
+    fn setup_drag_drop(&self) {
+        let drop_target =
+            gtk::DropTarget::new(gtk::gdk::FileList::static_type(), gtk::gdk::DragAction::COPY);
+        let sender = self.imp().sender.get().unwrap().clone();
+        drop_target.connect_drop(move |_, value, _x, _y| {
+            let Ok(files) = value.get::<gtk::gdk::FileList>() else {
+                return false;
+            };
+            let paths: Vec<PathBuf> = files
+                .files()
+                .into_iter()
+                .filter_map(|file| file.path())
+                .collect();
+            if paths.is_empty() {
+                return false;
+            }
+            debug!("拖入本地音乐 {} 个", paths.len());
+            sender.send_blocking(Action::LoadLocalFiles(paths)).unwrap();
+            true
+        });
+        self.add_controller(drop_target);
     }
 
     pub fn playlist_position(&self) -> usize {
@@ -564,7 +822,8 @@ impl NeteaseCloudMusicGtk4Window {
         let id = song_info.id;
         let player_controls = self.imp().player_controls.get();
         player_controls.set_property("like", self.imp().user_like_song_contains(&id));
-        player_controls.play(song_info);
+        player_controls.play(song_info.clone());
+        self.imp().lyrics_page.get().unwrap().set_song(&song_info);
         self.show_player_bar();
         self.imp().current_song_id.set(id);
         self.emit_by_name::<()>("current-song-changed", &[&id]);
@@ -582,8 +841,9 @@ impl NeteaseCloudMusicGtk4Window {
         let player_controls = imp.player_controls.get();
         player_controls.set_sender(sender.clone());
 
-        // 恢复播放列表UI（如果有保存的播放列表）
-        if player_controls.restore_playlist_ui() {
+        // 播放栏常驻：即使播放列表为空也显示（空列表时展示占位信息）
+        player_controls.restore_playlist_ui();
+        {
             let player_revealer = imp.player_revealer.get();
             player_revealer.set_visible(true);
             player_revealer.set_reveal_child(true);
@@ -602,6 +862,13 @@ impl NeteaseCloudMusicGtk4Window {
         // 初始化播放列表页
         let playlist_lyrics_page = imp.playlist_lyrics_page.get().unwrap();
         playlist_lyrics_page.set_sender(sender.clone());
+
+        // 初始化大封面歌词页
+        let lyrics_page = imp.lyrics_page.get().unwrap();
+        lyrics_page.set_sender(sender.clone());
+        if let Some(si) = imp.player_controls.get().get_current_song() {
+            lyrics_page.set_song(&si);
+        }
 
         let page_stack = imp.page_stack.get().unwrap();
         page_stack.set_transition_type(StackTransitionType::Crossfade);
@@ -797,11 +1064,52 @@ impl NeteaseCloudMusicGtk4Window {
         page.bind_current_song(self);
     }
 
+    pub fn page_cur_lyrics_page(&self) -> bool {
+        let imp = self.imp();
+        let page = imp.lyrics_page.get().unwrap();
+        let cur = &imp.page_stack.get().unwrap().top_page().child();
+        cur == page
+    }
+
+    // 点击播放栏封面进入官方风格的大封面歌词页
+    pub fn init_lyrics_page(&self, si: SongInfo) {
+        let imp = self.imp();
+        let page = imp.lyrics_page.get().unwrap().clone();
+        page.set_song(&si);
+        // 歌词还没拿到（比如切换歌曲时请求失败），进入页面时补拉一次
+        if !page.has_lyrics() {
+            if let Some(sender) = imp.sender.get() {
+                let _ = sender.try_send(Action::LoadLyrics(si));
+            }
+        }
+        if self.page_cur_lyrics_page() {
+            return;
+        }
+        self.page_new_with_name("Lyrics", &page, &gettext("Lyrics"));
+    }
+
+    // 歌词行点击跳转，单位微秒
+    pub fn seek_to(&self, usec: u64) {
+        self.imp().player_controls.get().seek_to(usec);
+    }
+
+    // 切换音质前准备：返回当前歌曲，并记下进度以便换流后继续
+    pub fn prepare_quality_change(&self) -> Option<SongInfo> {
+        let player_controls = self.imp().player_controls.get();
+        let song_info = player_controls.get_current_song()?;
+        let position = player_controls.property::<f64>("scale-value");
+        if position > 0.0 {
+            player_controls.set_pending_seek((position * 1_000_000.0) as u64);
+        }
+        Some(song_info)
+    }
+
     // 更新歌词内容，不调整位置
     pub fn update_lyrics(&self, lrc: Vec<(u64, String)>) {
         let imp = self.imp();
         let page = imp.playlist_lyrics_page.get().unwrap();
-        page.update_lyrics(lrc);
+        page.update_lyrics(lrc.clone());
+        imp.lyrics_page.get().unwrap().update_lyrics(lrc);
     }
 
     // 强行更新歌词区文字，用于显示歌词加载提示
@@ -809,11 +1117,13 @@ impl NeteaseCloudMusicGtk4Window {
         let imp = self.imp();
         let page = imp.playlist_lyrics_page.get().unwrap();
         page.update_lyrics_text(text);
+        imp.lyrics_page.get().unwrap().update_lyrics_text(text);
     }
 
     // 更新歌词高亮位置
     pub fn update_lyrics_timestamp(&self, time: u64) {
         let imp = self.imp();
+        imp.lyrics_page.get().unwrap().update_lyrics_highlight(time);
         let page = imp.playlist_lyrics_page.get().unwrap();
         if self.page_cur_playlist_lyrics_page() {
             page.update_lyrics_highlight(time);

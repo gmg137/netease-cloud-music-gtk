@@ -14,7 +14,10 @@ use std::{
     cell::RefCell,
     fs,
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
     time::Duration,
 };
 
@@ -42,8 +45,38 @@ pub type ActionCallback<Targ = ()> = Arc<dyn ActionCallbackTr<Targ>>;
 
 // uid -> 我喜欢的音乐歌单 id 缓存，避免每次点击心动模式都重新拉取歌单
 static FAVORITE_PLAYLIST_ID: Lazy<Mutex<Option<(u64, u64)>>> = Lazy::new(|| Mutex::new(None));
+// 最近一次已发起歌词请求的歌曲 id，避免同一首歌重复拉取
+static LAST_LYRICS_ID: AtomicU64 = AtomicU64::new(0);
+// 本地歌曲没有 .lrc 时记住，避免每次位置更新重复读盘
+static NO_LOCAL_LYRICS_ID: AtomicU64 = AtomicU64::new(0);
+
+// 本地歌曲在线匹配失败的记录（id -> 时间）：5 分钟内不再重复请求，避免刷接口
+static LOCAL_META_FAILED: Lazy<Mutex<std::collections::HashMap<u64, std::time::Instant>>> =
+    Lazy::new(|| Mutex::new(std::collections::HashMap::new()));
+
+fn local_meta_recently_failed(id: u64) -> bool {
+    let Ok(mut map) = LOCAL_META_FAILED.lock() else {
+        return false;
+    };
+    match map.get(&id) {
+        Some(at) if at.elapsed().as_secs() < 300 => true,
+        Some(_) => {
+            map.remove(&id);
+            false
+        }
+        None => false,
+    }
+}
+
+fn mark_local_meta_failed(id: u64) {
+    if let Ok(mut map) = LOCAL_META_FAILED.lock() {
+        map.insert(id, std::time::Instant::now());
+    }
+}
 // 心动模式开启状态，true 表示已开启，再次点击则关闭
 pub(crate) static HEARTBEAT_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+// 私人漫游（根据喜好播放）开启状态
+pub(crate) static PERSONAL_RADIO_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
 // 心动模式追加推荐的来源：列表循环（播完最后一首）或列表播完（不循环模式）
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,6 +116,215 @@ async fn favorite_playlist_id(ncmapi: &NcmClient, uid: u64) -> Result<u64, &'sta
     }
 }
 
+// 拉取歌词并写入页面；失败、空歌词都给出明确提示，避免一直停在“正在加载歌词...”
+/// 批量补全本地歌曲的歌词与封面：只对还缺东西的歌请求，且只发「歌名+歌手」。
+/// 每首之间靠 match_song 内部的节流排队，避免触发网易云限流。
+async fn prefetch_local_meta(sender: async_channel::Sender<Action>, ncmapi: &NcmClient) {
+    let limit: usize = std::env::var("NCM_PREFETCH_LIMIT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    let songs = crate::local_music::library();
+    let mut handled = 0usize;
+    let mut ok = 0usize;
+    let mut misses = 0usize;
+    for si in songs {
+        let Some(path) = crate::local_music::local_file_of(&si.song_url) else {
+            continue;
+        };
+        let has_lrc = crate::local_music::lyric_file_of(&path).is_some()
+            || crate::local_music::has_lyrics(si.id);
+        let has_cover = crate::local_music::local_cover_path(si.id).exists()
+            || crate::local_music::net_match(si.id)
+                .map(|m| !m.pic_url.is_empty())
+                .unwrap_or(false);
+        if has_lrc && has_cover {
+            continue;
+        }
+        if limit > 0 && handled >= limit {
+            break;
+        }
+        handled += 1;
+        let file_stem = path
+            .file_stem()
+            .map(|stem| stem.to_string_lossy().to_string());
+        let matched = match crate::local_music::net_match(si.id) {
+            Some(matched) => Some(matched),
+            None => ncmapi
+                .match_song(&si.name, &si.singer, file_stem.as_deref())
+                .await,
+        };
+        let Some(matched) = matched else {
+            debug!("补全失败（匹配不到）: {} - {}", si.name, si.singer);
+            misses += 1;
+            // 连续失败多半是接口被限流，先停下来，等下次再补
+            if misses >= 5 {
+                debug!("连续 {} 首匹配失败，暂停批量补全（可能被限流）", misses);
+                break;
+            }
+            continue;
+        };
+        misses = 0;
+        crate::local_music::save_net_match(si.id, &matched);
+        if !matched.pic_url.is_empty() {
+            // 补全跑在后台线程，封面刷新交回 GUI 线程
+            sender
+                .send(Action::ApplyLocalMeta(
+                    si.id,
+                    matched.album_id,
+                    matched.pic_url.clone(),
+                ))
+                .await
+                .ok();
+        }
+        if !has_lrc {
+            match ncmapi.get_lyrics(matched).await {
+                Ok(text) if !text.is_empty() => {
+                    crate::local_music::save_net_lyric(si.id, &text);
+                    ok += 1;
+                }
+                _ => debug!("补全失败（无歌词）: {} - {}", si.name, si.singer),
+            }
+        } else {
+            ok += 1;
+        }
+        if handled % 10 == 0 {
+            debug!("补全进度：处理 {} 首，成功 {} 首", handled, ok);
+        }
+    }
+    debug!("补全结束：处理 {} 首，成功 {} 首", handled, ok);
+}
+
+async fn load_lyrics(window: &NeteaseCloudMusicGtk4Window, ncmapi: &NcmClient, si: SongInfo) {
+    window.update_lyrics_text(&gettext("Loading lyrics..."));
+    // 本地歌曲：先读同名 .lrc 与内嵌封面；缺哪个就按「歌名+歌手」去网易云匹配
+    // （只把歌名/歌手发出去，不涉及路径），补全歌词与封面。
+    if let Some(path) = crate::local_music::local_file_of(&si.song_url) {
+        let mut lrc = crate::local_music::lyric_file_of(&path)
+            .and_then(|lrc| std::fs::read_to_string(lrc).ok())
+            .map(|content| crate::local_music::parse_lrc(&content))
+            .unwrap_or_default();
+        if lrc.is_empty() {
+            // 之前批量补全过的在线歌词
+            if let Some(cached) = crate::local_music::load_net_lyric(si.id) {
+                lrc = cached;
+            }
+        }
+        let cover_ready = crate::local_music::local_cover_path(si.id).exists();
+        if !lrc.is_empty() && cover_ready {
+            debug!("读取本地歌词：{} 行", lrc.len());
+            window.update_lyrics(lrc);
+            return;
+        }
+        if !lrc.is_empty() {
+            // 歌词本地有，只补封面
+            window.update_lyrics(lrc.clone());
+        }
+
+        let matched = match crate::local_music::net_match(si.id) {
+            Some(matched) => Some(matched),
+            None if local_meta_recently_failed(si.id) => None,
+            None => {
+                let file_stem = path
+                    .file_stem()
+                    .map(|stem| stem.to_string_lossy().to_string());
+                match ncmapi
+                    .match_song(&si.name, &si.singer, file_stem.as_deref())
+                    .await
+                {
+                    Some(matched) => Some(matched),
+                    None => {
+                        mark_local_meta_failed(si.id);
+                        None
+                    }
+                }
+            }
+        };
+        let Some(matched) = matched else {
+            if lrc.is_empty() {
+                debug!("本地歌曲既没有歌词文件也没有匹配到在线曲目: {:?}", path);
+                NO_LOCAL_LYRICS_ID.store(si.id, Ordering::Relaxed);
+                window.update_lyrics_text(&gettext("No lyrics available"));
+            }
+            return;
+        };
+        crate::local_music::save_net_match(si.id, &matched);
+        debug!(
+            "本地歌曲匹配到在线曲目: {} - {}（专辑 id {}）",
+            matched.name, matched.singer, matched.album_id
+        );
+        if !matched.pic_url.is_empty() {
+            window.apply_local_meta(si.id, matched.album_id, &matched.pic_url);
+        }
+        if lrc.is_empty() {
+            match ncmapi.get_lyrics(matched).await {
+                Ok(text) if !text.is_empty() => {
+                    debug!("在线歌词：{} 行", text.len());
+                    crate::local_music::save_net_lyric(si.id, &text);
+                    window.update_lyrics(text);
+                    return;
+                }
+                Ok(_) => debug!("在线歌词为空"),
+                Err(err) => debug!("在线歌词获取失败: {}", err),
+            }
+            NO_LOCAL_LYRICS_ID.store(si.id, Ordering::Relaxed);
+            window.update_lyrics_text(&gettext("No lyrics available"));
+        }
+        return;
+    }
+    match ncmapi.get_lyrics(si).await {
+        Ok(lrc) if !lrc.is_empty() => {
+            debug!("获取歌词：{} 行", lrc.len());
+            window.update_lyrics(lrc);
+        }
+        Ok(_) => {
+            debug!("歌词为空");
+            window.update_lyrics_text(&gettext("No lyrics available"));
+        }
+        Err(e) => {
+            debug!("获取歌词失败: {}", e);
+            window.update_lyrics_text(&gettext("No lyrics available"));
+        }
+    }
+}
+
+// 拉取符合用户喜好的推荐歌曲（私人FM，失败则退回每日推荐），追加到播放列表并播放第一首
+async fn personal_radio_append(
+    window: &NeteaseCloudMusicGtk4Window,
+    ncmapi: &NcmClient,
+    sender: &Sender<Action>,
+) -> bool {
+    let songs = match ncmapi.client.personal_fm().await {
+        Ok(list) if !list.is_empty() => list,
+        _ => match ncmapi.client.recommend_songs().await {
+            Ok(list) if !list.is_empty() => list,
+            Ok(_) => {
+                debug!("私人漫游没有可用歌曲");
+                return false;
+            }
+            Err(err) => {
+                error!("获取私人漫游歌曲失败: {:?}", err);
+                return false;
+            }
+        },
+    };
+
+    let mut songs = songs;
+    // append_playlist 会过滤灰歌并去重，返回真正追加的歌曲
+    let appended = window.append_playlist(&mut songs);
+    match appended.first() {
+        Some(song) => {
+            window.sync_playlist_position(song.id);
+            sender.send(Action::Play(song.to_owned())).await.unwrap();
+            true
+        }
+        None => {
+            debug!("私人漫游歌曲全部重复或不可播放");
+            false
+        }
+    }
+}
+
 // 列表循环模式追加失败/为空时：从头播放列表第一首
 async fn playlist_restart(window: &NeteaseCloudMusicGtk4Window, sender: &Sender<Action>) {
     if let Some(first) = window.playlist_first_restart() {
@@ -110,6 +352,27 @@ pub enum Action {
     PlayNextSong,
     PlayPreviousSong,
     Play(SongInfo),
+    ChangeQuality(u32),
+    // 载入本地音频：文件与目录混排，目录递归扫描
+    LoadLocalFiles(Vec<PathBuf>),
+    // 扫描完成：追加到播放列表（第二个参数表示是否立即播放）
+    AddLocalSongs(Vec<SongInfo>, bool),
+    // 重新扫描已记住的本地音乐目录
+    RescanLocal,
+    // 批量补全本地歌曲的歌词与封面（只发歌名+歌手）
+    PrefetchLocalMeta,
+    // 后台补全拿到的匹配结果：刷新本地歌曲封面（GUI 线程应用）
+    ApplyLocalMeta(u64, u64, String),
+    // 重新扫描结果（GUI 线程应用变更）
+    ApplyRescan(Vec<SongInfo>),
+    // 清空播放列表中的本地歌曲并忘记目录
+    ClearLocal,
+    // 本地歌曲收藏切换
+    ToggleLocalFav(SongInfo),
+    // 从喜爱推荐里移除
+    BlockRecommend(SongInfo),
+    // 本地音乐页刷新（收藏/推荐变化后）
+    RefreshLocalPage,
     PlayStart(SongInfo),
     TogglePlayPause,
     // (歌单, 是否立即播放)
@@ -159,6 +422,17 @@ pub enum Action {
     UpdateLyrics(SongInfo, u64),
     RemoveFromPlayList(SongInfo),
 
+    // 官方风格的大封面歌词页
+    ToLyricsPage(SongInfo),
+    // 强制重新拉取指定歌曲的歌词
+    LoadLyrics(SongInfo),
+    // 根据喜好播放（私人漫游）：开启/关闭切换
+    PersonalRadio,
+    // 私人漫游续播：当前批次播完时追加新的推荐歌曲
+    PersonalRadioExtend,
+    // 点击歌词行跳转，单位微秒
+    SeekTo(u64),
+
     // page routing
     ToTopPicksPage,
     ToAllAlbumsPage,
@@ -178,6 +452,8 @@ pub enum Action {
     GstDurationChanged(u64),
     GstStateChanged(gstreamer_play::PlayState),
     GstVolumeChanged(f64),
+    // 播放错误（错误信息, 详细结构, 是否资源忙）：独占输出打不开声卡时由播放条自行回退
+    GstPlaybackError(String, String, bool),
     GstCacheDownloadComplete(String),
     ScaleSeekUpdate(u64),
     ScaleValueUpdate,
@@ -373,6 +649,10 @@ impl NeteaseCloudMusicGtk4Application {
                                     .await
                                     .unwrap();
                                 sender.send(Action::InitMyPage).await.unwrap();
+                                // 隐藏开关：NCM_PREFETCH=1 启动后自动跑一次批量补全（便于验证）
+                                if std::env::var("NCM_PREFETCH").is_ok() {
+                                    sender.send(Action::PrefetchLocalMeta).await.unwrap();
+                                }
                                 sender
                                     .send(Action::AddToast(gettext("Login successful!")))
                                     .await
@@ -752,6 +1032,30 @@ impl NeteaseCloudMusicGtk4Application {
             Action::PlayPreviousSong => {
                 window.play_prev();
             }
+            Action::Play(song_info) if crate::local_music::is_local(&song_info.song_url) => {
+                // 本地歌曲直接播放，不请求接口；文件已不存在则移除条目并跳下一首
+                let exists = crate::local_music::local_file_of(&song_info.song_url)
+                    .map(|path| path.is_file())
+                    .unwrap_or(false);
+                let sender = imp.sender.clone();
+                if exists {
+                    window.sync_playlist_position(song_info.id);
+                    sender.send_blocking(Action::PlayStart(song_info)).unwrap();
+                } else {
+                    MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                        sender
+                            .send(Action::AddToast(gettext_f(
+                                "Local file not found: {name}",
+                                &[("name", &song_info.name)],
+                            )))
+                            .await
+                            .unwrap();
+                        window.remove_from_playlist(song_info);
+                        timeout_future_seconds(2).await;
+                        sender.send(Action::PlayNextSong).await.unwrap();
+                    });
+                }
+            }
             Action::Play(song_info) => {
                 let sender = imp.sender.clone();
                 let music_rate = song_info
@@ -838,6 +1142,59 @@ impl NeteaseCloudMusicGtk4Application {
                     .unwrap();
 
                 window.play(song_info);
+            }
+            Action::ChangeQuality(music_rate) => {
+                window.settings().set_uint("music-rate", music_rate).ok();
+                if let Some(mut song_info) = window.prepare_quality_change() {
+                    if song_info.id != 0 {
+                        let sender = imp.sender.clone();
+                        MAINCONTEXT.spawn_local_with_priority(
+                            Priority::DEFAULT_IDLE,
+                            async move {
+                                match ncmapi.songs_url(&[song_info.id], music_rate).await {
+                                    Ok(song_url) if !song_url.is_empty() => {
+                                        let song_url = &song_url[0];
+                                        debug!("切换音质获取播放链接: {:?}", song_url);
+                                        song_info.song_url = song_url.url.to_owned();
+                                        song_info.quality.actual = Some(song_url.quality);
+                                        song_info.quality.selected = Some(song_url.quality);
+                                        if !song_info.quality.available.contains(&song_url.quality)
+                                        {
+                                            song_info.quality.available.push(song_url.quality);
+                                        }
+                                        // 服务端降级（多为账号没有对应音质权益）时说明原因
+                                        let requested = NcmClient::get_quality(music_rate);
+                                        if NcmClient::get_quality_index(song_url.quality)
+                                            < NcmClient::get_quality_index(requested)
+                                        {
+                                            let toast = gettext_f(
+                                                "Quality limited to {actual} (no {requested} entitlement)",
+                                                &[
+                                                    ("actual", &quality_name(song_url.quality)),
+                                                    ("requested", &quality_name(requested)),
+                                                ],
+                                            );
+                                            sender.send(Action::AddToast(toast)).await.unwrap();
+                                        }
+                                        sender.send(Action::PlayStart(song_info)).await.unwrap();
+                                    }
+                                    _ => {
+                                        error!(
+                                            "切换音质获取播放链接失败: {:?}",
+                                            &[song_info.id]
+                                        );
+                                        sender
+                                            .send(Action::AddToast(gettext(
+                                                "This quality is not available, keep the current one.",
+                                            )))
+                                            .await
+                                            .unwrap();
+                                    }
+                                }
+                            },
+                        );
+                    }
+                }
             }
             Action::ToSongListPage(songlist) => {
                 let page = window.init_songlist_page(&songlist, false);
@@ -979,6 +1336,169 @@ impl NeteaseCloudMusicGtk4Application {
             Action::AddPlayList(sis, is_play) => {
                 window.add_playlist(sis, is_play);
             }
+            Action::LoadLocalFiles(paths) => {
+                let sender = imp.sender.clone();
+                // 目录可能很大，扫描与标签解析放后台线程，避免卡住界面
+                std::thread::spawn(move || {
+                    let mut files: Vec<PathBuf> = Vec::new();
+                    let mut dirs = 0;
+                    for path in paths {
+                        if path.is_dir() {
+                            crate::local_music::remember_dir(&path);
+                            dirs += 1;
+                            files.extend(crate::local_music::scan_dir(&path));
+                        } else if crate::local_music::is_audio_file(&path) {
+                            files.push(path);
+                        }
+                    }
+                    files.sort();
+                    files.dedup();
+                    let songs: Vec<SongInfo> = files
+                        .iter()
+                        .filter_map(|file| crate::local_music::song_info_from_path(file))
+                        .collect();
+                    debug!(
+                        "本地扫描：目录 {} 个，候选文件 {} 个，可播放 {} 首",
+                        dirs,
+                        files.len(),
+                        songs.len()
+                    );
+                    sender.send_blocking(Action::AddLocalSongs(songs, true)).ok();
+                });
+            }
+            Action::AddLocalSongs(songs, play) => {
+                let sender = imp.sender.clone();
+                if songs.is_empty() {
+                    MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                        sender
+                            .send(Action::AddToast(gettext(
+                                "No playable audio file found in the selection.",
+                            )))
+                            .await
+                            .unwrap();
+                    });
+                } else {
+                    crate::local_music::merge_library(&songs);
+                    let window = window.clone();
+                    MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                        let added = window.append_local(songs, play);
+                        let message = if added == 0 {
+                            gettext("These songs are already in the playlist.").to_string()
+                        } else {
+                            gettext_f(
+                                "Added {count} local songs",
+                                &[("count", &added.to_string())],
+                            )
+                        };
+                        sender.send(Action::AddToast(message)).await.unwrap();
+                    });
+                }
+            }
+            Action::PrefetchLocalMeta => {
+                let ncmapi_ = ncmapi.clone();
+                let sender = imp.sender.clone();
+                // 补全要连网、会退避重试，跑在 GTK 主上下文里会把整个界面冻住：
+                // 用独立的 MainContext 在后台线程里驱动这些 future，结果经 sender 回投。
+                std::thread::spawn(move || {
+                    let ctx = crate::glib::MainContext::new();
+                    if let Err(err) = ctx.with_thread_default(|| {
+                        ctx.block_on(prefetch_local_meta(sender, &ncmapi_));
+                    }) {
+                        error!("批量补全线程未能设置 MainContext：{}", err);
+                    }
+                });
+            }
+            Action::ApplyLocalMeta(id, album_id, pic_url) => {
+                window.apply_local_meta(id, album_id, &pic_url);
+            }
+            Action::RescanLocal => {
+                let sender = imp.sender.clone();
+                std::thread::spawn(move || {
+                    if crate::local_music::local_dirs().is_empty() {
+                        sender
+                            .send_blocking(Action::AddToast(gettext(
+                                "No local music folder remembered yet.",
+                            )))
+                            .ok();
+                        return;
+                    }
+                    let files = crate::local_music::scan_all();
+                    let songs: Vec<SongInfo> = files
+                        .iter()
+                        .filter_map(|file| crate::local_music::song_info_from_path(file))
+                        .collect();
+                    debug!("重新扫描本地音乐：{} 首", songs.len());
+                    sender.send_blocking(Action::ApplyRescan(songs)).ok();
+                });
+            }
+            Action::ApplyRescan(songs) => {
+                let sender = imp.sender.clone();
+                let window = window.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    let (added, removed, total) = window.apply_rescan(songs);
+                    sender
+                        .send(Action::AddToast(gettext_f(
+                            "Local library: {added} added, {removed} removed, {total} in playlist",
+                            &[
+                                ("added", &added.to_string()),
+                                ("removed", &removed.to_string()),
+                                ("total", &total.to_string()),
+                            ],
+                        )))
+                        .await
+                        .unwrap();
+                });
+            }
+            Action::ClearLocal => {
+                let sender = imp.sender.clone();
+                let window = window.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    let removed = window.clear_local();
+                    sender
+                        .send(Action::AddToast(gettext_f(
+                            "Removed {count} local songs",
+                            &[("count", &removed.to_string())],
+                        )))
+                        .await
+                        .unwrap();
+                });
+            }
+            Action::ToggleLocalFav(song_info) => {
+                let path = crate::local_music::local_file_of(&song_info.song_url)
+                    .map(|path| path.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let fav = crate::local_stats::toggle_fav(song_info.id, &path);
+                window.refresh_local_page();
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    let msg = if fav {
+                        gettext_f("Added to local favorites: {name}", &[("name", &song_info.name)])
+                    } else {
+                        gettext_f(
+                            "Removed from local favorites: {name}",
+                            &[("name", &song_info.name)],
+                        )
+                    };
+                    sender.send(Action::AddToast(msg)).await.unwrap();
+                });
+            }
+            Action::BlockRecommend(song_info) => {
+                crate::local_stats::block_recommend(song_info.id);
+                window.refresh_local_page();
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    sender
+                        .send(Action::AddToast(gettext_f(
+                            "Won't recommend again: {name}",
+                            &[("name", &song_info.name)],
+                        )))
+                        .await
+                        .unwrap();
+                });
+            }
+            Action::RefreshLocalPage => {
+                window.refresh_local_page();
+            }
             Action::PlayListStart => {
                 window.playlist_start();
             }
@@ -1041,6 +1561,17 @@ impl NeteaseCloudMusicGtk4Application {
                             .await
                             .unwrap();
                     }
+                });
+            }
+            Action::LikeSong(id, _, _) if crate::local_music::is_local_id(id) => {
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    sender
+                        .send(Action::AddToast(gettext(
+                            "Local songs can't be collected to your account.",
+                        )))
+                        .await
+                        .unwrap();
                 });
             }
             Action::LikeSong(id, is_like, callback) => {
@@ -1176,6 +1707,60 @@ impl NeteaseCloudMusicGtk4Application {
                                 playlist_restart(&window, &sender).await;
                             }
                         }
+                    }
+                });
+            }
+            Action::PersonalRadio => {
+                let sender = imp.sender.clone();
+                debug!("私人漫游：切换请求");
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    // 已开启则关闭，不再拉取
+                    if *PERSONAL_RADIO_ACTIVE.lock().unwrap() {
+                        *PERSONAL_RADIO_ACTIVE.lock().unwrap() = false;
+                        window.set_personal_radio_active(false);
+                        sender
+                            .send(Action::AddToast(gettext("Personal Radio Off")))
+                            .await
+                            .unwrap();
+                        return;
+                    }
+
+                    if window.get_uid() == 0 {
+                        sender
+                            .send(Action::AddToast(gettext("Please log in first!")))
+                            .await
+                            .unwrap();
+                        return;
+                    }
+
+                    if personal_radio_append(&window, &ncmapi, &sender).await {
+                        *PERSONAL_RADIO_ACTIVE.lock().unwrap() = true;
+                        window.set_personal_radio_active(true);
+                        sender
+                            .send(Action::AddToast(gettext("Personal Radio")))
+                            .await
+                            .unwrap();
+                    } else {
+                        *PERSONAL_RADIO_ACTIVE.lock().unwrap() = false;
+                        window.set_personal_radio_active(false);
+                        sender
+                            .send(Action::AddToast(gettext(
+                                "Failed to get recommended songs!",
+                            )))
+                            .await
+                            .unwrap();
+                    }
+                });
+            }
+            Action::PersonalRadioExtend => {
+                let sender = imp.sender.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    if !*PERSONAL_RADIO_ACTIVE.lock().unwrap() {
+                        return;
+                    }
+                    if !personal_radio_append(&window, &ncmapi, &sender).await {
+                        // 取不到新歌时回到列表开头，避免播放卡死
+                        playlist_restart(&window, &sender).await;
                     }
                 });
             }
@@ -1451,21 +2036,32 @@ impl NeteaseCloudMusicGtk4Application {
                     sender.send_blocking(Action::PageBack).unwrap();
                 }
             }
+            Action::ToLyricsPage(si) => {
+                let sender = imp.sender.clone();
+                if !window.page_cur_lyrics_page() {
+                    window.init_lyrics_page(si);
+                } else {
+                    sender.send_blocking(Action::PageBack).unwrap();
+                }
+            }
             Action::UpdateLyrics(si, time) => {
+                // 切歌后首个位置更新不一定是 0，按歌曲 id 兜底，避免漏取歌词；
+                // 本地歌曲没有 .lrc 时不再重复读盘
+                let need_fetch = (time == 0 || LAST_LYRICS_ID.load(Ordering::Relaxed) != si.id)
+                    && NO_LOCAL_LYRICS_ID.load(Ordering::Relaxed) != si.id;
                 MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
-                    if time == 0 {
-                        // 当新曲目播放时，写入歌词内容
-                        window.update_lyrics_text(&gettext("Loading lyrics..."));
-                        match ncmapi.get_lyrics(si).await {
-                            Ok(lrc) => {
-                                debug!("获取歌词：{:?}", lrc);
-                                window.update_lyrics(lrc);
-                            }
-                            Err(e) => debug!("{}", e),
-                        }
+                    if need_fetch {
+                        LAST_LYRICS_ID.store(si.id, Ordering::Relaxed);
+                        load_lyrics(&window, &ncmapi, si).await;
                     }
                     // 更新歌词高亮位置
                     window.update_lyrics_timestamp(time);
+                });
+            }
+            Action::LoadLyrics(si) => {
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    LAST_LYRICS_ID.store(si.id, Ordering::Relaxed);
+                    load_lyrics(&window, &ncmapi, si).await;
                 });
             }
             Action::RemoveFromPlayList(song_info) => {
@@ -1479,6 +2075,17 @@ impl NeteaseCloudMusicGtk4Application {
             Action::GstStateChanged(state) => {
                 window.gst_state_changed(state);
             }
+            Action::GstPlaybackError(err, details, busy) => {
+                if !window
+                    .imp()
+                    .player_controls
+                    .get()
+                    .handle_exclusive_error(&err, &details, busy)
+                {
+                    window.add_toast(gettext_f("Playback error:{err}", &[("err", &err)]));
+                    window.play_next();
+                }
+            }
             Action::GstVolumeChanged(volume) => {
                 window.gst_volume_changed(volume);
             }
@@ -1490,6 +2097,9 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::ScaleValueUpdate => {
                 window.scale_value_update();
+            }
+            Action::SeekTo(usec) => {
+                window.seek_to(usec);
             }
 
             Action::PageBack => {

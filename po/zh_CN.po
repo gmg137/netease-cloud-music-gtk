@@ -593,5 +593,274 @@ msgstr "切换为最早优先"
 msgid "Switch to newest first"
 msgstr "切换为最新优先"
 
+#: src/gui/player_controls.rs
+msgid "Play From My Taste"
+msgstr "根据喜好播放"
+
+#: src/application.rs
+msgid "Personal Radio"
+msgstr "私人漫游"
+
+#: src/application.rs
+msgid "Personal Radio Off"
+msgstr "私人漫游已关闭"
+
+#: src/application.rs
+msgid "Failed to get recommended songs!"
+msgstr "获取推荐歌曲失败！"
+
+#: src/application.rs src/gui/player_controls.rs
+msgid "Please log in first!"
+msgstr "请先登录！"
+
+#: src/application.rs
+msgid "No lyrics available"
+msgstr "暂无歌词"
+
+#: src/gui/player_controls.rs
+msgid "No song playing"
+msgstr "当前没有播放中的歌曲"
+
+#: src/utils.rs
+msgid "Standard"
+msgstr "标准"
+
+#: src/utils.rs
+msgid "Higher"
+msgstr "较高"
+
+#: src/utils.rs
+msgid "Extreme"
+msgstr "极高"
+
+#: src/utils.rs
+msgid "Lossless"
+msgstr "无损"
+
+#: src/utils.rs
+msgid "Hi-Res"
+msgstr "Hi-Res"
+
+#: src/utils.rs
+msgid "Surround"
+msgstr "沉浸声"
+
+#: src/utils.rs
+msgid "Audio Vivid"
+msgstr "臻音"
+
+#: src/utils.rs
+msgid "Master"
+msgstr "母带"
+
+#: src/gui/player_controls.rs
+msgid ""
+"专辑: {album}\n"
+"时长: {duration}\n"
+"音质: {quality}\n"
+"可用音质: {available}"
+msgstr ""
+"专辑：{album}\n"
+"时长：{duration}\n"
+"音质：{quality}\n"
+"可用音质：{available}"
+#: src/gui/player_controls.rs
+msgid "{quality} (按设置)"
+msgstr "{quality}（按设置）"
+
+#: src/application.rs
+msgid "This quality is not available, keep the current one."
+msgstr "该音质不可用，保持当前音质"
+
+#: src/application.rs
+msgid "Quality limited to {actual} (no {requested} entitlement)"
+msgstr "音质受限：已使用 {actual}（账号无 {requested} 权益）"
+
+#: src/window.rs data/gtk/window.ui
+msgid "Open Local Files…"
+msgstr "打开本地文件…"
+
+#: data/gtk/window.ui
+msgid "Open Local Folder…"
+msgstr "打开本地文件夹…"
+
+#: src/window.rs
+msgid "Open Local Files"
+msgstr "打开本地文件"
+
+#: src/window.rs
+msgid "Open Local Folder"
+msgstr "打开本地文件夹"
+
+#: src/application.rs
+msgid "No playable audio file found in the selection."
+msgstr "选中的位置没有可播放的音频文件。"
+
+#: src/application.rs
+msgid "Failed to read the selected audio files."
+msgstr "读取选中的音频文件失败。"
+
+#: src/application.rs
+msgid "Loaded {count} local songs"
+msgstr "已载入 {count} 首本地歌曲"
+
+#: src/gui/player_controls.rs
+msgid ""
+"Local file: {path}\n"
+"Format: {quality}\n"
+"Duration: {duration}"
+msgstr ""
+"本地文件：{path}\n"
+"格式：{quality}\n"
+"时长：{duration}"
+
+#: src/application.rs
+msgid "Local songs can't be collected to your account."
+msgstr "本地歌曲不能收藏到账号。"
+
+#: data/gtk/window.ui
+msgid "Rescan Local Music"
+msgstr "重新扫描本地音乐"
+
+#: data/gtk/window.ui
+msgid "Clear Local Music"
+msgstr "清空本地音乐"
+
+#: src/application.rs
+msgid "These songs are already in the playlist."
+msgstr "这些歌曲已经在播放列表里了。"
+
+#: src/application.rs
+msgid "No local music folder remembered yet."
+msgstr "还没有记住本地音乐目录，先用「打开本地文件夹」添加一个。"
+
+#: src/application.rs
+msgid "Local library: {added} added, {removed} removed, {total} in playlist"
+msgstr "本地音乐：新增 {added} 首，移除 {removed} 首，播放列表共 {total} 首"
+
+#: src/application.rs
+msgid "Removed {count} local songs"
+msgstr "已移除 {count} 首本地歌曲"
+
+#: src/application.rs
+msgid "Local file not found: {name}"
+msgstr "本地文件不存在：{name}"
+
+#: data/gtk/playlist-lyrics-page.ui
+msgid "Search in playlist"
+msgstr "在播放列表中搜索"
+
+#: data/gtk/window.ui
+msgid "Local Music"
+msgstr "本地音乐"
+
+#: data/gtk/local-music-page.ui
+msgid "Search local music"
+msgstr "搜索本地音乐"
+
+#: data/gtk/local-music-page.ui
+msgid "Play All"
+msgstr "全部播放"
+
+#: data/gtk/local-music-page.ui
+msgid "Play all local songs in the list"
+msgstr "播放列表中的全部本地歌曲"
+
+#: data/gtk/local-music-page.ui
+msgid "Rescan"
+msgstr "重新扫描"
+
+#: data/gtk/local-music-page.ui
+msgid "Rescan remembered local music folders"
+msgstr "重新扫描已记住的本地音乐目录"
+
+#: src/gui/local_music_page.rs
+msgid "All"
+msgstr "全部"
+
+#: src/gui/local_music_page.rs
+msgid "Favorites"
+msgstr "收藏"
+
+#: src/gui/local_music_page.rs
+msgid "For You"
+msgstr "喜爱推荐"
+
+#: src/gui/local_music_page.rs
+msgid "Recent"
+msgstr "最近播放"
+
+#: src/gui/local_music_page.rs
+msgid "Picked from your local favorites and listening time"
+msgstr "根据你的本地收藏和收听时长挑选"
+
+#: src/gui/local_music_page.rs
+msgid "No favorites yet — tap the star on a local song."
+msgstr "还没有收藏——点本地歌曲行上的星标即可收藏。"
+
+#: src/gui/local_music_page.rs
+msgid "Nothing to recommend yet. Play some local songs or star your favorites; use the trash button to drop a bad suggestion."
+msgstr "暂时没有推荐内容：播放一些本地歌曲，或给喜欢的歌点星标；不想要的推荐可以点垃圾桶移除。"
+
+#: src/gui/local_music_page.rs
+msgid "No local song has been played yet."
+msgstr "还没有播放过本地歌曲。"
+
+#: src/gui/local_music_page.rs
+msgid "Added to local favorites: {name}"
+msgstr "已加入本地收藏：{name}"
+
+#: src/gui/local_music_page.rs
+msgid "Removed from local favorites: {name}"
+msgstr "已取消收藏：{name}"
+
+#: src/gui/local_music_page.rs
+msgid "Won't recommend again: {name}"
+msgstr "不再推荐：{name}"
+
+#: data/gtk/playlist-lyrics-page.ui data/gtk/local-music-page.ui
+msgid "Locate the playing song"
+msgstr "定位当前播放"
+
+
 #~ msgid "{} songs, {} favs"
 #~ msgstr "{} 首歌曲，{} 收藏"
+
+msgid "Fetch Lyrics"
+msgstr "补全歌词封面"
+
+msgid "Fetch lyrics and covers for local songs from the cloud"
+msgstr "为本地歌曲批量从云端补全歌词与封面"
+
+msgid "Exclusive Audio Output"
+msgstr "音频独占输出"
+
+msgid "Exclusive audio output"
+msgstr "音频独占输出"
+
+msgid "Bypass the system mixer and drive the ALSA device directly (no resampling); other applications will stop playing sound"
+msgstr "绕过系统混音器直接驱动 ALSA 硬件设备（不做重采样）；开启后其他应用将无法出声"
+
+msgid "Exclusive output device"
+msgstr "独占输出设备"
+
+msgid "ALSA hardware device such as hw:0,0, leave empty to use hw:0,0"
+msgstr "ALSA 硬件设备，例如 hw:0,0；留空则使用 hw:0,0"
+
+msgid "Exclusive output: {device} (bypassing the system mixer)"
+msgstr "独占输出：{device}（绕过系统混音）"
+
+msgid "Waiting for the sound card {device} to be released by PipeWire ..."
+msgstr "正在等待声卡 {device} 被 PipeWire 释放……"
+
+msgid "Exclusive output failed: {device} is still busy, fell back to the default output"
+msgstr "独占输出失败：{device} 仍被占用，已回退系统默认输出"
+
+msgid "Exclusive output failed: {err}, switched back to the default output"
+msgstr "独占输出失败：{err}，已切回系统默认输出"
+
+msgid "Exclusive output unavailable: gstreamer1.0-alsa plugin is missing"
+msgstr "独占输出不可用：缺少 gstreamer1.0-alsa 插件"
+
+msgid "Switched back to the default audio output"
+msgstr "已切回系统默认输出"

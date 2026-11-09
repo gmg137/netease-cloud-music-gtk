@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
     <requires lib="gtk" version="4.0" />
-    <template class="SonglistRow" parent="GtkListBoxRow">
+    <template class="SonglistRow" parent="GtkBox">
         <property name="focusable">False</property>
-        <property name="selectable">False</property>
         <property name="height-request">59</property>
         <style>
             <class name="song_row" />

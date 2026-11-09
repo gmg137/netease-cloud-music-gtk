@@ -60,7 +60,7 @@
                 <property name="valign">center</property>
                 <property name="icon-name">image-missing-symbolic</property>
                 <property name="pixel-size">50</property>
-                <property name="tooltip-text" translatable="yes">View Album</property>
+                <property name="tooltip-text" translatable="yes">Lyrics</property>
                 <child>
                     <object class="GtkGestureClick">
                         <signal name="pressed" handler="cover_clicked_cb" swapped="true" />
@@ -90,12 +90,37 @@
                     </object>
                 </child>
                 <child>
-                    <object class="GtkLabel" id="artist_label">
-                        <property name="halign">start</property>
-                        <property name="valign">fill</property>
-                        <property name="label">歌手名</property>
-                        <property name="max-width-chars">12</property>
-                        <property name="ellipsize">middle</property>
+                    <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">6</property>
+                        <child>
+                            <object class="GtkLabel" id="artist_label">
+                                <property name="halign">start</property>
+                                <property name="valign">fill</property>
+                                <property name="label">歌手名</property>
+                                <property name="max-width-chars">12</property>
+                                <property name="ellipsize">middle</property>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkMenuButton" id="quality_button">
+                                <property name="halign">start</property>
+                                <property name="valign">center</property>
+                                <property name="visible">false</property>
+                                <property name="always-show-arrow">false</property>
+                                <style>
+                                    <class name="flat" />
+                                </style>
+                                <child>
+                                    <object class="GtkLabel" id="quality_label">
+                                        <property name="valign">center</property>
+                                        <style>
+                                            <class name="quality-badge" />
+                                        </style>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
                     </object>
                 </child>
             </object>
@@ -150,6 +175,18 @@
                         <property name="tooltip-text" translatable="yes">Intelligent Mode</property>
                         <property name="icon-name">emote-love-symbolic</property>
                         <signal name="clicked" handler="moved_button_cb" swapped="true" />
+                        <style>
+                            <class name="flat" />
+                        </style>
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkButton" id="personal_radio_button">
+                        <property name="halign">fill</property>
+                        <property name="valign">center</property>
+                        <property name="tooltip-text" translatable="yes">Play From My Taste</property>
+                        <property name="icon-name">emblem-music-symbolic</property>
+                        <signal name="clicked" handler="personal_radio_cb" swapped="true" />
                         <style>
                             <class name="flat" />
                         </style>

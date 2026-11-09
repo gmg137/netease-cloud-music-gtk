@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <requires lib="gtk" version="4.0" />
+    <requires lib="libadwaita" version="1.0" />
+    <template class="LyricsPage" parent="AdwBin">
+        <property name="child">
+            <object class="GtkOverlay">
+                <property name="child">
+                    <object class="GtkBox">
+                        <style>
+                            <class name="lyrics-backdrop" />
+                        </style>
+                    </object>
+                </property>
+                <child type="overlay">
+                    <object class="GtkPicture" id="bg_picture">
+                        <property name="content-fit">cover</property>
+                        <property name="can-shrink">true</property>
+                        <property name="opacity">0.38</property>
+                    </object>
+                </child>
+                <child type="overlay">
+                    <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">60</property>
+                        <property name="margin-top">36</property>
+                        <property name="margin-bottom">24</property>
+                        <property name="margin-start">56</property>
+                        <property name="margin-end">56</property>
+                        <child>
+                            <object class="GtkBox">
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">12</property>
+                                <property name="valign">center</property>
+                                <property name="halign">center</property>
+                                <child>
+                                    <object class="GtkPicture" id="cover_picture">
+                                        <property name="content-fit">contain</property>
+                                        <property name="width-request">280</property>
+                                        <property name="height-request">280</property>
+                                        <property name="halign">center</property>
+                                        <property name="tooltip-text" translatable="yes">View Album</property>
+                                        <style>
+                                            <class name="lyrics-cover" />
+                                        </style>
+                                        <child>
+                                            <object class="GtkGestureClick">
+                                                <signal name="pressed" handler="cover_clicked_cb" swapped="true" />
+                                            </object>
+                                        </child>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="GtkLabel" id="title_label">
+                                        <property name="halign">center</property>
+                                        <property name="justify">center</property>
+                                        <property name="wrap">true</property>
+                                        <property name="max-width-chars">24</property>
+                                        <property name="label">歌曲名</property>
+                                        <style>
+                                            <class name="lyrics-title" />
+                                        </style>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="GtkLabel" id="artist_label">
+                                        <property name="halign">center</property>
+                                        <property name="justify">center</property>
+                                        <property name="wrap">true</property>
+                                        <property name="max-width-chars">24</property>
+                                        <property name="label">歌手名</property>
+                                        <style>
+                                            <class name="lyrics-artist" />
+                                        </style>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="GtkLabel" id="album_label">
+                                        <property name="halign">center</property>
+                                        <property name="justify">center</property>
+                                        <property name="wrap">true</property>
+                                        <property name="max-width-chars">24</property>
+                                        <property name="label">专辑名</property>
+                                        <style>
+                                            <class name="lyrics-album" />
+                                        </style>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="GtkScrolledWindow" id="scroll_lyrics_win">
+                                <property name="vexpand">true</property>
+                                <property name="hexpand">true</property>
+                                <property name="hscrollbar-policy">never</property>
+                                <property name="overlay-scrolling">true</property>
+                                <child>
+                                    <object class="GtkTextView" id="lyrics_text_view">
+                                        <property name="wrap-mode">word-char</property>
+                                        <property name="vscroll-policy">natural</property>
+                                        <property name="pixels-below-lines">6</property>
+                                        <property name="editable">False</property>
+                                        <property name="justification">center</property>
+                                        <property name="left-margin">12</property>
+                                        <property name="right-margin">12</property>
+                                        <property name="top-margin">40</property>
+                                        <property name="bottom-margin">120</property>
+                                        <property name="cursor-visible">False</property>
+                                        <property name="accepts-tab">False</property>
+                                        <style>
+                                            <class name="lyrics-view" />
+                                        </style>
+                                        <child>
+                                            <object class="GtkGestureClick">
+                                                <signal name="pressed" handler="lyrics_clicked_cb" swapped="true" />
+                                            </object>
+                                        </child>
+                                        <property name="buffer">
+                                            <object class="GtkTextBuffer" id="buffer">
+                                                <property name="tag_table">
+                                                    <object class="GtkTextTagTable">
+                                                        <child type="tag">
+                                                            <object class="GtkTextTag" id="uttered_text_tag">
+                                                                <property name="foreground">#ffffffa6</property>
+                                                            </object>
+                                                        </child>
+                                                        <child type="tag">
+                                                            <object class="GtkTextTag" id="highlight_text_tag">
+                                                                <property name="foreground">#ffffff</property>
+                                                                <property name="weight">700</property>
+                                                                <property name="size">17408</property>
+                                                            </object>
+                                                        </child>
+                                                    </object>
+                                                </property>
+                                            </object>
+                                        </property>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+            </object>
+        </property>
+    </template>
+</interface>

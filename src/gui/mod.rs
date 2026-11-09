@@ -5,6 +5,8 @@
 //
 
 mod discover;
+mod local_music_page;
+mod lyrics_page;
 mod my_page;
 mod player_controls;
 mod playlist_lyrics;
@@ -22,6 +24,8 @@ mod toplist;
 mod user_menus;
 
 pub use discover::*;
+pub use local_music_page::*;
+pub use lyrics_page::*;
 pub use my_page::*;
 pub use player_controls::*;
 pub use playlist_lyrics::*;

@@ -260,6 +260,34 @@
                 <attribute name="action">app.preferences</attribute>
             </item>
             <item>
+                <attribute name="label" translatable="yes">Play From My Taste</attribute>
+                <attribute name="action">win.play-from-taste</attribute>
+            </item>
+            <item>
+                <attribute name="label" translatable="yes">Exclusive Audio Output</attribute>
+                <attribute name="action">win.audio-exclusive</attribute>
+            </item>
+            <item>
+                <attribute name="label" translatable="yes">Local Music</attribute>
+                <attribute name="action">win.open-local-music</attribute>
+            </item>
+            <item>
+                <attribute name="label" translatable="yes">Open Local Files…</attribute>
+                <attribute name="action">win.open-local-files</attribute>
+            </item>
+            <item>
+                <attribute name="label" translatable="yes">Open Local Folder…</attribute>
+                <attribute name="action">win.open-local-folder</attribute>
+            </item>
+            <item>
+                <attribute name="label" translatable="yes">Rescan Local Music</attribute>
+                <attribute name="action">win.rescan-local</attribute>
+            </item>
+            <item>
+                <attribute name="label" translatable="yes">Clear Local Music</attribute>
+                <attribute name="action">win.clear-local</attribute>
+            </item>
+            <item>
                 <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
                 <attribute name="action">win.show-help-overlay</attribute>
             </item>

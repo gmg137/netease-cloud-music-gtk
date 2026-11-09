@@ -2,6 +2,8 @@ mod application;
 mod audio;
 mod config;
 mod gui;
+mod local_music;
+mod local_stats;
 mod model;
 mod ncmapi;
 mod path;
@@ -60,5 +62,8 @@ fn main() {
     // exits. Upon return, we have our exit code to return to the shell. (This
     // is the code you see when you do `echo $?` after running a command in a
     // terminal.
-    std::process::exit(app.run().into());
+    // 退出前把收听统计落盘
+    let code = app.run();
+    local_stats::flush();
+    std::process::exit(code.into());
 }

@@ -1,0 +1,44 @@
+/* 播放栏音质徽标 */
+.quality-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0 5px;
+  min-height: 14px;
+  border-radius: 5px;
+  background-color: alpha(currentColor, 0.12);
+  color: alpha(currentColor, 0.75);
+}
+
+/* 无损及以上音质用强调色 */
+.quality-badge.quality-hires {
+  background-color: alpha(@accent_bg_color, 0.25);
+  color: @accent_color;
+}
+
+/* 还不知道实际音质时（按设置请求）用虚边弱化 */
+.quality-badge.quality-unknown {
+  background-color: transparent;
+  border: 1px solid alpha(currentColor, 0.35);
+  color: alpha(currentColor, 0.6);
+}
+
+/* 本地文件：显示文件自身格式，非会员音质 */
+.quality-badge.quality-local {
+  background-color: alpha(currentColor, 0.16);
+  color: alpha(currentColor, 0.9);
+}
+
+/* 音质切换菜单 */
+.quality-menu {
+  min-width: 148px;
+}
+
+.quality-item {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.92rem;
+}
+
+menuButton.flat:focus:focus-visible > .quality-badge {
+  outline: none;
+}

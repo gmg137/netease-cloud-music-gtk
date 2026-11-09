@@ -10,27 +10,32 @@ use glib::{
     ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum, ParamSpecUInt, ParamSpecUInt64,
     Value, clone, source::Priority,
 };
-use gst::{ClockTime, prelude::ObjectExt};
+use gst::{
+    ClockTime,
+    prelude::{ElementExtManual, GstBinExt, ObjectExt, PadExt},
+};
 use gstreamer_play::{prelude::ElementExt, *};
 use gtk::{CompositeTemplate, GestureClick, glib, prelude::*, subclass::prelude::*, *};
 use log::*;
 use mpris_server::PlaybackStatus;
-use ncm_api::{SongInfo, SongList};
+use ncm_api::{SongInfo, SongQuality};
 use once_cell::sync::*;
 
 use crate::{
-    application::{Action, HEARTBEAT_ACTIVE, HeartbeatExtendMode},
+    application::{Action, HEARTBEAT_ACTIVE, HeartbeatExtendMode, PERSONAL_RADIO_ACTIVE},
     audio::*,
     model::ImageDownloadImpl,
+    ncmapi::NcmClient,
     path::CACHE,
     utils::*,
 };
 use std::{
-    cell::Cell,
+    cell::{Cell, RefCell},
     fs, path,
     rc::Rc,
     sync::{Arc, Mutex},
     thread,
+    time::Duration,
 };
 
 glib::wrapper! {
@@ -68,6 +73,18 @@ impl PlayerControls {
             .settings
             .set(settings)
             .expect("Could not set `Settings`.");
+
+        // 独占输出：设置变化立即生效（偏好设置与菜单都直接写 GSettings）
+        let settings = self.imp().settings.get().unwrap().clone();
+        let this = self.clone();
+        settings.connect_changed(Some("audio-exclusive"), move |_, _| {
+            this.apply_exclusive_audio();
+        });
+        let this = self.clone();
+        settings.connect_changed(Some("exclusive-device"), move |_, _| {
+            this.apply_exclusive_audio();
+        });
+        self.apply_exclusive_audio();
     }
 
     fn settings(&self) -> &Settings {
@@ -166,6 +183,262 @@ impl PlayerControls {
         imp.player_signal.set(player_signal).unwrap();
     }
 
+    /// 独占输出的 ALSA 设备名（设置留空时默认 hw:0,0）
+    fn exclusive_device(&self) -> String {
+        let raw = self.settings().string("exclusive-device");
+        let raw = raw.trim().to_string();
+        if raw.is_empty() {
+            "hw:0,0".to_string()
+        } else if raw.starts_with("hw:") {
+            raw
+        } else {
+            format!("hw:{raw}")
+        }
+    }
+
+    fn toast(&self, msg: String) {
+        if let Some(sender) = self.imp().sender.get() {
+            let _ = sender.send_blocking(Action::AddToast(msg));
+        } else {
+            info!("{msg}");
+        }
+    }
+
+    /// 独占输出：绕过 PipeWire/系统混音，直接驱动 ALSA 设备。
+    /// 声卡被 PipeWire 占用时先停流，再轮询等它 idle 释放设备。
+    pub fn apply_exclusive_audio(&self) {
+        let imp = self.imp();
+        let Some(player) = imp.player.get().cloned() else {
+            return;
+        };
+        if let Some(id) = imp.exclusive_retry.borrow_mut().take() {
+            id.remove();
+        }
+
+        let enabled = self.settings().boolean("audio-exclusive");
+        debug!("apply_exclusive_audio: enabled={enabled}");
+        if !enabled {
+            if imp.exclusive_active.replace(false) {
+                info!("独占输出已关闭，切回系统默认输出");
+                // 播放中直接换 audio-sink 不生效（playbin3 继续用旧 alsasink，ALSA 设备不释放；
+                // 设成 NULL 也一样），必须 stop → 换 sink → 重新播放并补进度。
+                let was_playing = player.pipeline().current_state() == gst::State::Playing;
+                let position = player
+                    .pipeline()
+                    .query_position::<ClockTime>()
+                    .map(|pos| pos.useconds())
+                    .unwrap_or(0);
+                let song = self.get_current_song();
+                if was_playing && position > 0 {
+                    self.set_pending_seek(position);
+                }
+                player.stop();
+                match gst::ElementFactory::make("autoaudiosink").build() {
+                    Ok(sink) => player.pipeline().set_property("audio-sink", sink),
+                    Err(err) => {
+                        warn!("创建 autoaudiosink 失败: {err:?}");
+                        player
+                            .pipeline()
+                            .set_property("audio-sink", None::<gst::Element>);
+                    }
+                }
+                self.toast(gettext("Switched back to the default audio output"));
+                if was_playing {
+                    if let Some(song) = song {
+                        self.play(song);
+                    }
+                }
+            }
+            return;
+        }
+
+        let device = self.exclusive_device();
+        if alsa_device_free(&device) {
+            self.attach_exclusive_sink(&device);
+            return;
+        }
+
+        let was_playing = player.pipeline().current_state() == gst::State::Playing;
+        // scale-value 只在用户拖动进度条时更新，取管道真实位置才不会把进度丢掉
+        let position = player
+            .pipeline()
+            .query_position::<ClockTime>()
+            .map(|pos| pos.useconds())
+            .unwrap_or(0);
+        if was_playing && position > 0 {
+            self.set_pending_seek(position);
+        }
+        let song = self.get_current_song();
+        if was_playing {
+            player.stop();
+        }
+        self.toast(gettext_f(
+            "Waiting for the sound card {device} to be released by PipeWire ...",
+            &[("device", &device)],
+        ));
+
+        let this = self.clone();
+        let device_c = device.clone();
+        let waited_ms = Cell::new(0u32);
+        let id = glib::timeout_add_local(Duration::from_millis(400), move || {
+            let waited = waited_ms.get() + 400;
+            waited_ms.set(waited);
+            if alsa_device_free(&device_c) {
+                *this.imp().exclusive_retry.borrow_mut() = None;
+                if waited > 400 {
+                    info!("声卡 {device_c} 在 {waited}ms 后被 PipeWire 释放");
+                }
+                this.attach_exclusive_sink(&device_c);
+                if was_playing {
+                    if let Some(song) = song.clone() {
+                        this.play(song);
+                    }
+                }
+                return glib::ControlFlow::Break;
+            }
+            if waited >= 20_000 {
+                *this.imp().exclusive_retry.borrow_mut() = None;
+                warn!("独占输出失败：{device_c} 20 秒内仍被占用，回退默认输出");
+                this.toast(gettext_f(
+                    "Exclusive output failed: {device} is still busy, fell back to the default output",
+                    &[("device", &device_c)],
+                ));
+                // 关掉开关（changed 回调会把音频重定向回系统默认 sink）
+                this.settings().set_boolean("audio-exclusive", false).ok();
+                if was_playing {
+                    if let Some(song) = song.clone() {
+                        this.play(song);
+                    }
+                }
+                return glib::ControlFlow::Break;
+            }
+            glib::ControlFlow::Continue
+        });
+        *self.imp().exclusive_retry.borrow_mut() = Some(id);
+    }
+
+    /// 把 ALSA 独占 sink 挂到 playbin 上（播放中热切换）
+    fn attach_exclusive_sink(&self, device: &str) {
+        let imp = self.imp();
+        let Some(player) = imp.player.get().cloned() else {
+            return;
+        };
+        let sink = match gst::ElementFactory::make("alsasink")
+            .name("exclusive-alsa-sink")
+            .property("device", device)
+            .property("buffer-time", 250_000i64)
+            .property("latency-time", 50_000i64)
+            .build()
+        {
+            Ok(sink) => sink,
+            Err(err) => {
+                warn!("创建 alsasink 失败（缺 gstreamer1.0-alsa？）: {err:?}");
+                self.toast(gettext(
+                    "Exclusive output unavailable: gstreamer1.0-alsa plugin is missing",
+                ));
+                return;
+            }
+        };
+        player.pipeline().set_property("audio-sink", sink);
+        imp.exclusive_active.set(true);
+        info!("独占输出已启用: {device}（ALSA 直通，绕过 PipeWire/系统混音）");
+        self.toast(gettext_f(
+            "Exclusive output: {device} (bypassing the system mixer)",
+            &[("device", device)],
+        ));
+
+        // 播放稳定后记录真实协商格式，作为「有没有被重采样」的证据
+        let this = self.clone();
+        glib::timeout_add_local_once(Duration::from_millis(2500), move || {
+            this.log_exclusive_caps();
+        });
+    }
+
+    /// 独占输出相关的播放错误（声卡打不开）：回退系统默认输出并重播当前歌。
+    /// 返回 true 表示错误已被处理，调用方不要再按普通播放错误跳歌。
+    pub fn handle_exclusive_error(&self, err: &str, details: &str, busy: bool) -> bool {
+        let imp = self.imp();
+        if !imp.exclusive_active.get() {
+            return false;
+        }
+        let exclusive_related = busy
+            || details.contains("exclusive-alsa-sink")
+            || details.contains("Could not open audio device")
+            || details.contains("Device or resource busy");
+        if !exclusive_related {
+            return false;
+        }
+
+        warn!("独占输出失败，回退默认输出: {err} ({details})");
+        self.settings().set_boolean("audio-exclusive", false).ok();
+        let position = self
+            .imp()
+            .player
+            .get()
+            .and_then(|player| player.pipeline().query_position::<ClockTime>())
+            .map(|pos| pos.useconds())
+            .unwrap_or(0);
+        if position > 0 {
+            self.set_pending_seek(position);
+        }
+        let song = self.get_current_song();
+        self.toast(gettext_f(
+            "Exclusive output failed: {err}, switched back to the default output",
+            &[("err", err)],
+        ));
+        if let Some(song) = song {
+            self.play(song);
+        }
+        true
+    }
+
+    /// 等管道能接受 seek 后再定位，最多重试 3 秒（切音质/切独占后恢复进度用）
+    fn seek_when_ready(&self, target: u64) {
+        let this = self.clone();
+        let attempts = Cell::new(0u32);
+        glib::timeout_add_local(Duration::from_millis(200), move || {
+            attempts.set(attempts.get() + 1);
+            let Some(player) = this.imp().player.get() else {
+                return glib::ControlFlow::Break;
+            };
+            if let Some(pos) = player.pipeline().query_position::<ClockTime>() {
+                if pos.useconds() + 1_000_000 >= target {
+                    debug!("进度恢复完成: {}us", pos.useconds());
+                    return glib::ControlFlow::Break;
+                }
+            }
+            player.seek(ClockTime::from_useconds(target));
+            if attempts.get() >= 15 {
+                warn!("进度恢复超时，目标 {target}us");
+                glib::ControlFlow::Break
+            } else {
+                glib::ControlFlow::Continue
+            }
+        });
+    }
+
+    fn log_exclusive_caps(&self) {
+        let imp = self.imp();
+        let Some(player) = imp.player.get() else {
+            return;
+        };
+        if !imp.exclusive_active.get() {
+            return;
+        }
+        let Ok(bin) = player.pipeline().downcast::<gst::Bin>() else {
+            return;
+        };
+        if let Some(sink) = bin.by_name("exclusive-alsa-sink") {
+            match sink
+                .static_pad("sink")
+                .and_then(|pad: gst::Pad| pad.current_caps())
+            {
+                Some(caps) => info!("独占输出协商格式: {caps}"),
+                None => warn!("独占输出尚未协商出格式"),
+            }
+        }
+    }
+
     pub fn play(&self, song_info: SongInfo) {
         let imp = self.imp();
 
@@ -183,11 +456,13 @@ impl PlayerControls {
         player.set_volume(self.property("volume"));
         player.play();
 
-        // 如果存在待执行的 seek 位置，在开始播放后立即定位
+        // 如果存在待执行的 seek 位置，在开始播放后定位。
+        // stop→play 后管道还在 READY/PAUSED 时 seek 会被丢掉（实测切独占后回到 0 秒），
+        // 所以用短轮询重试到位置真的跳过去为止。
         let pending = imp.pending_seek_position.get();
         if pending > 0 {
             imp.pending_seek_position.set(0);
-            player.seek(ClockTime::from_useconds(pending));
+            self.seek_when_ready(pending);
         }
 
         self.init_play_info(song_info);
@@ -208,12 +483,173 @@ impl PlayerControls {
         play_button.emit_clicked();
     }
 
+    /// 更新播放栏的音质徽标与详情 tooltip
+    fn update_quality_info(&self, song_info: &SongInfo) {
+        let imp = self.imp();
+        let label = imp.quality_label.get();
+        let button = imp.quality_button.get();
+        let state = &song_info.quality;
+
+        if song_info.id == 0 {
+            button.set_visible(false);
+            button.set_tooltip_text(None);
+            return;
+        }
+
+        // 本地歌曲：直接显示文件本身的格式/规格，不弹音质菜单
+        if let Some(text) = crate::local_music::local_quality_text_for(song_info) {
+            label.set_label(&text);
+            label.remove_css_class("quality-hires");
+            label.remove_css_class("quality-unknown");
+            label.add_css_class("quality-local");
+            button.set_popover(gtk::Popover::NONE);
+            let path = crate::local_music::local_file_of(&song_info.song_url)
+                .map(|path| path.to_string_lossy().to_string())
+                .unwrap_or_default();
+            let sec = song_info.duration / 1000;
+            let duration = format!("{:02}:{:02}", sec / 60, sec % 60);
+            let tooltip = gettext_f(
+                "Local file: {path}\nFormat: {quality}\nDuration: {duration}",
+                &[
+                    ("path", &path),
+                    ("quality", &text),
+                    ("duration", &duration),
+                ],
+            );
+            button.set_tooltip_text(Some(&tooltip));
+            button.set_visible(true);
+            return;
+        }
+        label.remove_css_class("quality-local");
+
+        // 优先实际音质，其次已选音质，最后回退到设置里请求的码率
+        let (quality, from_setting) = match current_quality(state) {
+            Some(quality) => (quality, false),
+            None => (
+                NcmClient::get_quality(self.settings().uint("music-rate")),
+                true,
+            ),
+        };
+
+        label.set_label(&quality_name(quality));
+        label.remove_css_class("quality-hires");
+        label.remove_css_class("quality-unknown");
+        if from_setting {
+            label.add_css_class("quality-unknown");
+        } else if matches!(
+            quality,
+            SongQuality::Lossless
+                | SongQuality::HiRes
+                | SongQuality::Surround
+                | SongQuality::AudioVivid
+                | SongQuality::Master
+        ) {
+            label.add_css_class("quality-hires");
+        }
+
+        let sec = song_info.duration / 1000;
+        let duration = format!("{:02}:{:02}", sec / 60, sec % 60);
+        let quality_text = if from_setting {
+            gettext_f("{quality} (按设置)", &[("quality", &quality_name(quality))])
+        } else {
+            quality_name(quality)
+        };
+        let tooltip = gettext_f(
+            "专辑: {album}\n时长: {duration}\n音质: {quality}\n可用音质: {available}",
+            &[
+                ("album", &song_info.album),
+                ("duration", &duration),
+                ("quality", &quality_text),
+                ("available", &quality_list_text(state)),
+            ],
+        );
+        button.set_tooltip_text(Some(&tooltip));
+        button.set_visible(true);
+
+        self.setup_quality_menu(song_info, quality);
+    }
+
+    /// 构建点击音质徽标后弹出的音质切换菜单
+    fn setup_quality_menu(&self, song_info: &SongInfo, current: SongQuality) {
+        let popover = gtk::Popover::builder().autohide(true).build();
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 2);
+        vbox.add_css_class("quality-menu");
+        vbox.set_margin_top(6);
+        vbox.set_margin_bottom(6);
+        vbox.set_margin_start(6);
+        vbox.set_margin_end(6);
+
+        // 固定列出全部音质档位：接口给的 available 常常只有一项（不一定准），
+        // 所以不在可用列表里的只做弱化显示，仍可点击尝试
+        let available = &song_info.quality.available;
+        let current_index = NcmClient::get_quality_index(current);
+        for index in 0..=7u32 {
+            let quality = NcmClient::get_quality(index);
+            let row = gtk::Button::builder()
+                .has_frame(false)
+                .css_classes(["quality-item"])
+                .build();
+            let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+            let check = gtk::Image::from_icon_name("object-select-symbolic");
+            check.set_width_request(16);
+            check.set_opacity(if index == current_index { 1.0 } else { 0.0 });
+            let name = gtk::Label::new(Some(&quality_name(quality)));
+            name.set_xalign(0.0);
+            name.set_hexpand(true);
+            if !available.is_empty() && !available.contains(&quality) {
+                name.set_opacity(0.5);
+            }
+            hbox.append(&check);
+            hbox.append(&name);
+            row.set_child(Some(&hbox));
+
+            let this = self.clone();
+            let popover = popover.clone();
+            row.connect_clicked(move |_| {
+                popover.popdown();
+                this.change_quality(index);
+            });
+            vbox.append(&row);
+        }
+
+        popover.set_child(Some(&vbox));
+        self.imp().quality_button.get().set_popover(Some(&popover));
+    }
+
+    /// 切换音质：更新设置，并按新音质重新拉流（保持当前进度）
+    fn change_quality(&self, index: u32) {
+        let sender = self.imp().sender.get().unwrap();
+        let _ = sender.send_blocking(Action::ChangeQuality(index));
+    }
+
+    /// 记录待执行的 seek 位置（微秒），播放时应用
+    pub fn set_pending_seek(&self, usec: u64) {
+        self.imp().pending_seek_position.set(usec);
+    }
+
     pub fn init_play_info(&self, song_info: SongInfo) {
         let imp = self.imp();
+        // 本地歌曲：计入播放次数与最近播放
+        if crate::local_music::is_local(&song_info.song_url) {
+            let path = crate::local_music::local_file_of(&song_info.song_url)
+                .map(|path| path.to_string_lossy().to_string())
+                .unwrap_or_default();
+            crate::local_stats::record_play(song_info.id, &path);
+            imp.play_stat_id.set(song_info.id);
+        } else {
+            imp.play_stat_id.set(0);
+        }
+        imp.play_stat_msec.set(0);
+        imp.play_stat_pending.set(0);
+
         let cover_image = imp.cover_image.get();
         let mut path_cover = CACHE.clone();
         path_cover.push(format!("{}-songlist.jpg", song_info.album_id));
-        if path_cover.exists() {
+        // 本地歌曲优先用从文件内嵌图提取的封面
+        let local_cover = crate::local_music::local_cover_path(song_info.id);
+        if crate::local_music::is_local(&song_info.song_url) && local_cover.exists() {
+            cover_image.set_from_file(Some(&local_cover));
+        } else if path_cover.exists() {
             cover_image.set_from_file(Some(&path_cover));
         } else {
             cover_image.set_icon_name(Some("image-missing-symbolic"));
@@ -232,6 +668,8 @@ impl PlayerControls {
 
         let artist_label = imp.artist_label.get();
         artist_label.set_label(&song_info.singer);
+
+        self.update_quality_info(&song_info);
 
         let volume = self.property("volume");
         if let Some(mpris) = imp.mpris.get() {
@@ -313,14 +751,13 @@ impl PlayerControls {
         });
 
         let sender = sender_.clone();
-        player_sig.connect_error(move |_, e, _| {
-            sender
-                .send_blocking(Action::AddToast(gettext_f(
-                    "Playback error:{err}",
-                    &[("err", &e.to_string())],
-                )))
-                .unwrap();
-            sender.send_blocking(Action::PlayNextSong).unwrap();
+        player_sig.connect_error(move |_, e, details| {
+            // PlaySignalAdapter 的回调要跨线程，只能把纯数据投回主循环
+            let busy = e.matches(gst::ResourceError::Busy)
+                || e.matches(gst::ResourceError::OpenWrite)
+                || e.matches(gst::ResourceError::OpenReadWrite);
+            let dbg = details.map(|s| s.to_string()).unwrap_or_default();
+            let _ = sender.send_blocking(Action::GstPlaybackError(e.to_string(), dbg, busy));
         });
 
         let sender = sender_.clone();
@@ -344,6 +781,23 @@ impl PlayerControls {
     // msec -> microseconds
     pub fn scale_seek_update(&self, msec: u64) {
         let imp = self.imp();
+
+        // 累计本地歌曲收听时长（拖动进度条时的大幅跳变不计入）
+        let stat_id = imp.play_stat_id.get();
+        if stat_id != 0 {
+            let last = imp.play_stat_msec.get();
+            if msec > last && msec - last <= 5_000_000 {
+                imp.play_stat_pending
+                    .set(imp.play_stat_pending.get() + (msec - last));
+                if imp.play_stat_pending.get() >= 15_000_000 {
+                    let secs = imp.play_stat_pending.get() / 1_000_000;
+                    imp.play_stat_pending
+                        .set(imp.play_stat_pending.get() % 1_000_000);
+                    crate::local_stats::record_listen(stat_id, secs);
+                }
+            }
+            imp.play_stat_msec.set(msec);
+        }
 
         let seek_scale = imp.seek_scale.get();
         seek_scale.set_value(msec as f64);
@@ -383,7 +837,8 @@ impl PlayerControls {
         // 当剩余5秒时提前获取下首歌曲的播放链接。
         let duration: u64 = self.property("duration");
         let secp = (msec / 10u64.pow(5)) % 10;
-        if duration - sec == 5 && secp >= 5 {
+        // duration 可能小于 sec（拖动到末尾/时长未知），直接相减会 u64 下溢
+        if duration > sec && duration - sec == 5 && secp >= 5 {
             if let Some(si) = self.get_next_song() {
                 sender.send_blocking(Action::GetSongUrl(si)).unwrap();
             }
@@ -414,6 +869,16 @@ impl PlayerControls {
         let imp = self.imp();
         let player = imp.player.get().unwrap();
         player.seek(ClockTime::from_useconds(msec));
+    }
+
+    // 跳转到指定位置（微秒），供歌词行点击使用
+    pub fn seek_to(&self, usec: u64) {
+        let imp = self.imp();
+        if imp.player.get().is_none() {
+            return;
+        }
+        imp.seek_scale.get().set_value(usec as f64);
+        self.gst_position_update(usec);
     }
 
     pub fn gst_duration_changed(&self, msec: u64) {
@@ -552,6 +1017,23 @@ impl PlayerControls {
         }
     }
 
+    // 打开「播放列表/歌词」页面（播放栏按钮与 win.open-playlist 共用）
+    pub fn open_playlist_page(&self) {
+        if let Ok(playlist) = self.imp().playlist.lock() {
+            let current_song = playlist
+                .current_song()
+                .unwrap_or(&crate::utils::empty_song_info())
+                .to_owned();
+            let sender = self.imp().sender.get().unwrap().clone();
+            sender
+                .send_blocking(Action::ToPlayListLyricsPage(
+                    playlist.get_list(),
+                    current_song,
+                ))
+                .unwrap();
+        }
+    }
+
     pub fn get_list(&self) -> Vec<SongInfo> {
         if let Ok(playlist) = self.imp().playlist.lock() {
             playlist.get_list()
@@ -585,6 +1067,29 @@ impl PlayerControls {
         }
     }
 
+    // 批量移除歌曲（本地音乐重扫/清空用），只保存一次播放列表
+    pub fn remove_songs(&self, ids: &[u64]) -> usize {
+        if ids.is_empty() {
+            return 0;
+        }
+        if let Some(current) = self.get_current_song() {
+            if ids.contains(&current.id) {
+                if self.playlist_length() > ids.len() {
+                    self.next_song();
+                } else {
+                    self.switch_stop();
+                }
+            }
+        }
+        let removed = if let Ok(mut playlist) = self.imp().playlist.lock() {
+            playlist.remove_songs(ids)
+        } else {
+            0
+        };
+        self.save_playlist();
+        removed
+    }
+
     pub fn add_list(&self, list: Vec<SongInfo>) {
         let settings = self.settings();
         let not_ignore_grey = settings.get("not-ignore-grey");
@@ -616,6 +1121,16 @@ impl PlayerControls {
         }
     }
 
+    // 私人漫游开启/关闭时更新按钮状态（开启高亮）
+    pub fn set_personal_radio_active(&self, active: bool) {
+        let button = self.imp().personal_radio_button.get();
+        if active {
+            button.add_css_class("heartbeat-active");
+        } else {
+            button.remove_css_class("heartbeat-active");
+        }
+    }
+
     // 追加歌曲到播放列表末尾（过滤灰歌，去重），返回实际追加的歌曲
     pub fn append_list(&self, list: &mut Vec<SongInfo>) -> Vec<SongInfo> {
         let not_ignore_grey: bool = self.settings().get("not-ignore-grey");
@@ -630,6 +1145,23 @@ impl PlayerControls {
         };
         self.save_playlist();
         appended
+    }
+
+    /// 本地歌曲匹配到网易云曲目后：更新队列条目；若正在播放这首，返回补全后的 SongInfo 供界面刷新
+    pub fn apply_local_meta(&self, id: u64, album_id: u64, pic_url: &str) -> Option<SongInfo> {
+        let Ok(mut playlist) = self.imp().playlist.lock() else {
+            return None;
+        };
+        let is_current = playlist.current_song().map(|song| song.id) == Some(id);
+        if !playlist.update_song_meta(id, album_id, pic_url) {
+            return None;
+        }
+        playlist.save_to_file();
+        if is_current {
+            playlist.get_list().into_iter().find(|song| song.id == id)
+        } else {
+            None
+        }
     }
 
     // 根据 song_id 定位播放位置（心动模式追加续播前使用）
@@ -975,21 +1507,14 @@ impl PlayerControls {
     #[template_callback]
     fn cover_clicked_cb(&self) {
         let sender = self.imp().sender.get().unwrap().clone();
-        if let Some(songinfo) = self.get_current_song() {
-            if songinfo.album_id != 0 {
-                let songlist = SongList {
-                    id: songinfo.album_id,
-                    name: songinfo.album,
-                    cover_img_url: songinfo.pic_url,
-                    author: String::new(),
-                    special_type: 0,
-                };
-                sender.send_blocking(Action::ToAlbumPage(songlist)).unwrap();
-            } else {
-                sender
-                    .send_blocking(Action::AddToast(gettext("Album not found!")))
-                    .unwrap();
-            }
+        match self.get_current_song() {
+            // 点击封面进入官方风格的大封面歌词页，再次点击返回
+            Some(songinfo) => sender
+                .send_blocking(Action::ToLyricsPage(songinfo))
+                .unwrap(),
+            None => sender
+                .send_blocking(Action::AddToast(gettext("No song playing")))
+                .unwrap(),
         }
     }
 
@@ -1012,6 +1537,36 @@ impl PlayerControls {
                     "Copied song information to the clipboard!",
                 )))
                 .unwrap();
+        }
+    }
+}
+
+/// "hw:0,0" -> /dev/snd/pcmC0D0p
+fn alsa_pcm_node(device: &str) -> Option<path::PathBuf> {
+    let rest = device.strip_prefix("hw:")?;
+    let (card, dev) = rest.split_once(',')?;
+    let card: u32 = card.trim().parse().ok()?;
+    let dev: u32 = dev.trim().parse().ok()?;
+    Some(path::PathBuf::from(format!("/dev/snd/pcmC{card}D{dev}p")))
+}
+
+/// 直接 open ALSA pcm 节点判断声卡是否空闲：
+/// hw 设备同一时刻只允许一个打开者，open 成功即表示当前没有 PipeWire/其他进程占用。
+fn alsa_device_free(device: &str) -> bool {
+    use std::os::unix::fs::OpenOptionsExt;
+    let Some(node) = alsa_pcm_node(device) else {
+        warn!("无法从设备名解析 ALSA 节点: {device}");
+        return false;
+    };
+    // 必须带 O_NONBLOCK(0o4000)：声卡被 PipeWire 占用时，阻塞 open 会一直等下去
+    // 把 GTK 主线程卡死（实测整个界面冻结、D-Bus 无响应）。
+    let mut opts = fs::OpenOptions::new();
+    opts.write(true).custom_flags(0o4000);
+    match opts.open(&node) {
+        Ok(_) => true,
+        Err(err) => {
+            debug!("声卡 {device} 仍被占用 ({err})");
+            false
         }
     }
 }
@@ -1040,6 +1595,10 @@ mod imp {
         #[template_child]
         pub artist_label: TemplateChild<Label>,
         #[template_child]
+        pub quality_label: TemplateChild<Label>,
+        #[template_child]
+        pub quality_button: TemplateChild<MenuButton>,
+        #[template_child]
         pub seek_scale: TemplateChild<Scale>,
         #[template_child]
         pub progress_time_label: TemplateChild<Label>,
@@ -1062,6 +1621,8 @@ mod imp {
         pub shuffle_button: TemplateChild<CheckButton>,
         #[template_child(id = "moved_button")]
         pub moved_button: TemplateChild<Button>,
+        #[template_child(id = "personal_radio_button")]
+        pub personal_radio_button: TemplateChild<Button>,
         #[template_child(id = "like_button")]
         pub like_button: TemplateChild<Button>,
 
@@ -1082,12 +1643,23 @@ mod imp {
 
         // 播放条拖动结束时的值
         scale_value: Cell<f64>,
+        // 拖动进度条的防抖定时器：合并 change-value 的连续回调，停止拖动后只 seek 一次
+        pub seek_debounce: Rc<RefCell<Option<glib::SourceId>>>,
 
         // 是否从文件恢复播放列表（URL可能已过期），恢复后首次播放需重新获取URL
         pub restored: Cell<bool>,
 
         // 恢复时保存的播放位置（微秒），等播放开始后再执行 seek
         pub pending_seek_position: Cell<u64>,
+        // 本地歌曲收听统计：当前歌曲 id、上次进度(µs)、未落盘累计(µs)
+        pub play_stat_id: Cell<u64>,
+        pub play_stat_msec: Cell<u64>,
+        pub play_stat_pending: Cell<u64>,
+
+        // 独占输出：等待声卡释放的轮询定时器
+        pub exclusive_retry: Rc<RefCell<Option<glib::SourceId>>>,
+        // 当前是否已挂上 ALSA 独占 sink
+        pub exclusive_active: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -1186,22 +1758,29 @@ mod imp {
             } else {
                 (LoopsState::None, 0, 0)
             };
-            // 心动模式 + 列表循环播到最后一首：不回绕，追加新的心动歌曲后继续播放
-            if *HEARTBEAT_ACTIVE.lock().unwrap()
-                && loops == LoopsState::Playlist
-                && len > 0
-                && pos_before + 1 == len
-            {
-                let si = {
-                    if let Ok(playlist) = self.playlist.lock() {
-                        playlist.current_song().map(|s| s.to_owned())
-                    } else {
-                        None
+            // 心动模式 / 私人漫游 + 列表循环播到最后一首：不回绕，追加新歌曲后继续播放
+            let at_list_end = len > 0 && pos_before + 1 == len;
+            if loops == LoopsState::Playlist && at_list_end {
+                if *HEARTBEAT_ACTIVE.lock().unwrap() {
+                    let si = {
+                        if let Ok(playlist) = self.playlist.lock() {
+                            playlist.current_song().map(|s| s.to_owned())
+                        } else {
+                            None
+                        }
+                    };
+                    if let Some(si) = si {
+                        sender
+                            .send_blocking(Action::HeartbeatExtend(
+                                si,
+                                HeartbeatExtendMode::ListLoop,
+                            ))
+                            .unwrap();
+                        return;
                     }
-                };
-                if let Some(si) = si {
+                } else if *PERSONAL_RADIO_ACTIVE.lock().unwrap() {
                     sender
-                        .send_blocking(Action::HeartbeatExtend(si, HeartbeatExtendMode::ListLoop))
+                        .send_blocking(Action::PersonalRadioExtend)
                         .unwrap();
                     return;
                 }
@@ -1215,8 +1794,28 @@ mod imp {
                     return;
                 }
                 if loops == LoopsState::None {
+                    // 本地歌曲没有「心动模式」可续，手动点下一首时回到队列开头，
+                    // 否则播到最后一首后这个按钮点了完全没反应
+                    let current_is_local = playlist
+                        .current_song()
+                        .map(|song| crate::local_music::is_local(&song.song_url))
+                        .unwrap_or(false);
+                    if current_is_local {
+                        playlist.set_position(0);
+                        if let Some(song) = playlist.current_song().map(|song| song.to_owned()) {
+                            sender.send_blocking(Action::Play(song)).unwrap();
+                            return;
+                        }
+                    }
+                    // 不循环模式播完：私人漫游优先续播，其次心动模式
+                    if *PERSONAL_RADIO_ACTIVE.lock().unwrap() {
+                        sender
+                            .send_blocking(Action::PersonalRadioExtend)
+                            .unwrap();
+                        return;
+                    }
                     if let Some(si) = playlist.current_song().map(|s| s.to_owned()) {
-                        // 不循环模式播完：追加心动歌曲并自动续播
+                        // 追加心动歌曲并自动续播
                         sender
                             .send_blocking(Action::HeartbeatExtend(si, HeartbeatExtendMode::ListEnd))
                             .unwrap();
@@ -1237,6 +1836,24 @@ mod imp {
 
             self.scale_value.set(value);
 
+            // 真正的跳转要等用户停止拖动：change-value 在拖动过程中会连续触发，
+            // 用 250ms 防抖合并成一次 seek。
+            // 原先只在 GestureClick::released 里 seek，但拖动由 GtkScale 内部的
+            // GestureDrag 接管，released 根本不触发 —— 结果只改了时间标签，
+            // 歌曲没跳转，歌词随之停在原处不跟。
+            if let Some(id) = self.seek_debounce.borrow_mut().take() {
+                id.remove();
+            }
+            let sender = self.sender.get().unwrap().clone();
+            // 回调里先把槽清空：timeout_add_local_once 触发的 SourceId 已经失效，
+            // 事后再对它调 remove() 会 panic（glib SourceId::remove 的断言）。
+            let slot = self.seek_debounce.clone();
+            let id = glib::timeout_add_local_once(Duration::from_millis(250), move || {
+                slot.borrow_mut().take();
+                let _ = sender.send_blocking(Action::ScaleValueUpdate);
+            });
+            *self.seek_debounce.borrow_mut() = Some(id);
+
             Propagation::Proceed
         }
 
@@ -1254,6 +1871,12 @@ mod imp {
             sender
                 .send_blocking(Action::AddToast(gettext("Intelligent mode failure！")))
                 .unwrap();
+        }
+
+        #[template_callback]
+        fn personal_radio_cb(&self) {
+            let sender = self.sender.get().unwrap().clone();
+            sender.send_blocking(Action::PersonalRadio).unwrap();
         }
 
         #[template_callback]
@@ -1306,19 +1929,7 @@ mod imp {
 
         #[template_callback]
         fn playlist_lyrics_cb(&self) {
-            if let Ok(playlist) = self.playlist.lock() {
-                let current_song = playlist
-                    .current_song()
-                    .unwrap_or(&crate::utils::empty_song_info())
-                    .to_owned();
-                let sender = self.sender.get().unwrap().clone();
-                sender
-                    .send_blocking(Action::ToPlayListLyricsPage(
-                        playlist.get_list(),
-                        current_song,
-                    ))
-                    .unwrap();
-            }
+            self.obj().open_playlist_page();
         }
     }
 
@@ -1432,6 +2043,15 @@ fn load_css() {
     provider.load_from_resource("/com/gitee/gmg137/NeteaseCloudMusicGtk4/themes/heartbeat.css");
 
     // Add the provider to the default screen
+    style_context_add_provider_for_display(
+        &gdk::Display::default().expect("Could not connect to a display."),
+        &provider,
+        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
+
+    // 播放栏（音质徽标等）
+    let provider = CssProvider::new();
+    provider.load_from_resource("/com/gitee/gmg137/NeteaseCloudMusicGtk4/themes/player-controls.css");
     style_context_add_provider_for_display(
         &gdk::Display::default().expect("Could not connect to a display."),
         &provider,

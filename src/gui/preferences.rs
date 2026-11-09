@@ -74,6 +74,24 @@ impl NeteaseCloudMusicGtk4Preferences {
             .bind("desktop-lyrics", &desktop_lyrics, "active")
             .flags(SettingsBindFlags::DEFAULT)
             .build();
+
+        let exclusive_switch = self.imp().exclusive_switch.get();
+        self.settings()
+            .bind("audio-exclusive", &exclusive_switch, "active")
+            .flags(SettingsBindFlags::DEFAULT)
+            .build();
+
+        let exclusive_device = self.imp().exclusive_device.get();
+        self.settings()
+            .bind("exclusive-device", &exclusive_device, "text")
+            .flags(SettingsBindFlags::DEFAULT)
+            .build();
+
+        // 独占输出关闭时设备输入框仍可编辑，但弱化显示
+        self.settings()
+            .bind("audio-exclusive", &exclusive_device, "sensitive")
+            .flags(SettingsBindFlags::GET)
+            .build();
     }
 
     pub fn set_cache_size_label(&self, size: f64, unit: String) {
@@ -114,6 +132,10 @@ mod imp {
         pub cache_clear: TemplateChild<adw::ComboRow>,
         #[template_child]
         pub desktop_lyrics: TemplateChild<Switch>,
+        #[template_child]
+        pub exclusive_switch: TemplateChild<Switch>,
+        #[template_child]
+        pub exclusive_device: TemplateChild<Entry>,
     }
 
     #[glib::object_subclass]
