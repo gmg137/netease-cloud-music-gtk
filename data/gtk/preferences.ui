@@ -117,6 +117,35 @@
                                 </child>
                             </object>
                         </child>
+                        <child>
+                            <object class="AdwActionRow">
+                                <property name="title" translatable="yes">Exclusive audio output</property>
+                                <property name="subtitle" translatable="yes">Bypass the system mixer and drive the ALSA device directly (no resampling); other applications will stop playing sound</property>
+                                <property name="use_underline">True</property>
+                                <property name="activatable-widget">exclusive_switch</property>
+                                <child>
+                                    <object class="GtkSwitch" id="exclusive_switch">
+                                        <property name="valign">center</property>
+                                        <property name="active">False</property>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="AdwActionRow">
+                                <property name="title" translatable="yes">Exclusive output device</property>
+                                <property name="subtitle" translatable="yes">ALSA hardware device such as hw:0,0, leave empty to use hw:0,0</property>
+                                <property name="use_underline">True</property>
+                                <child>
+                                    <object class="GtkEntry" id="exclusive_device">
+                                        <property name="valign">center</property>
+                                        <property name="halign">fill</property>
+                                        <property name="hexpand">true</property>
+                                        <property name="placeholder-text">hw:0,0</property>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
                     </object>
                 </child>
             </object>

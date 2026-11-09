@@ -264,6 +264,10 @@
                 <attribute name="action">win.play-from-taste</attribute>
             </item>
             <item>
+                <attribute name="label" translatable="yes">Exclusive Audio Output</attribute>
+                <attribute name="action">win.audio-exclusive</attribute>
+            </item>
+            <item>
                 <attribute name="label" translatable="yes">Local Music</attribute>
                 <attribute name="action">win.open-local-music</attribute>
             </item>

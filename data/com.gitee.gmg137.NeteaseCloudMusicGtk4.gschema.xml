@@ -56,5 +56,13 @@
             <default>false</default>
             <summary>Desktop Lyrics</summary>
         </key>
+        <key name="audio-exclusive" type="b">
+            <default>false</default>
+            <summary>Exclusive audio output (direct ALSA, bypass system mixer)</summary>
+        </key>
+        <key name="exclusive-device" type="s">
+            <default>''</default>
+            <summary>ALSA device for exclusive output, e.g. hw:0,0 (empty = hw:0,0)</summary>
+        </key>
     </schema>
 </schemalist>

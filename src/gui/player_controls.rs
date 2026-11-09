@@ -10,7 +10,10 @@ use glib::{
     ParamSpec, ParamSpecBoolean, ParamSpecDouble, ParamSpecEnum, ParamSpecUInt, ParamSpecUInt64,
     Value, clone, source::Priority,
 };
-use gst::{ClockTime, prelude::ObjectExt};
+use gst::{
+    ClockTime,
+    prelude::{ElementExtManual, GstBinExt, ObjectExt, PadExt},
+};
 use gstreamer_play::{prelude::ElementExt, *};
 use gtk::{CompositeTemplate, GestureClick, glib, prelude::*, subclass::prelude::*, *};
 use log::*;
@@ -70,6 +73,18 @@ impl PlayerControls {
             .settings
             .set(settings)
             .expect("Could not set `Settings`.");
+
+        // 独占输出：设置变化立即生效（偏好设置与菜单都直接写 GSettings）
+        let settings = self.imp().settings.get().unwrap().clone();
+        let this = self.clone();
+        settings.connect_changed(Some("audio-exclusive"), move |_, _| {
+            this.apply_exclusive_audio();
+        });
+        let this = self.clone();
+        settings.connect_changed(Some("exclusive-device"), move |_, _| {
+            this.apply_exclusive_audio();
+        });
+        self.apply_exclusive_audio();
     }
 
     fn settings(&self) -> &Settings {
@@ -168,6 +183,262 @@ impl PlayerControls {
         imp.player_signal.set(player_signal).unwrap();
     }
 
+    /// 独占输出的 ALSA 设备名（设置留空时默认 hw:0,0）
+    fn exclusive_device(&self) -> String {
+        let raw = self.settings().string("exclusive-device");
+        let raw = raw.trim().to_string();
+        if raw.is_empty() {
+            "hw:0,0".to_string()
+        } else if raw.starts_with("hw:") {
+            raw
+        } else {
+            format!("hw:{raw}")
+        }
+    }
+
+    fn toast(&self, msg: String) {
+        if let Some(sender) = self.imp().sender.get() {
+            let _ = sender.send_blocking(Action::AddToast(msg));
+        } else {
+            info!("{msg}");
+        }
+    }
+
+    /// 独占输出：绕过 PipeWire/系统混音，直接驱动 ALSA 设备。
+    /// 声卡被 PipeWire 占用时先停流，再轮询等它 idle 释放设备。
+    pub fn apply_exclusive_audio(&self) {
+        let imp = self.imp();
+        let Some(player) = imp.player.get().cloned() else {
+            return;
+        };
+        if let Some(id) = imp.exclusive_retry.borrow_mut().take() {
+            id.remove();
+        }
+
+        let enabled = self.settings().boolean("audio-exclusive");
+        debug!("apply_exclusive_audio: enabled={enabled}");
+        if !enabled {
+            if imp.exclusive_active.replace(false) {
+                info!("独占输出已关闭，切回系统默认输出");
+                // 播放中直接换 audio-sink 不生效（playbin3 继续用旧 alsasink，ALSA 设备不释放；
+                // 设成 NULL 也一样），必须 stop → 换 sink → 重新播放并补进度。
+                let was_playing = player.pipeline().current_state() == gst::State::Playing;
+                let position = player
+                    .pipeline()
+                    .query_position::<ClockTime>()
+                    .map(|pos| pos.useconds())
+                    .unwrap_or(0);
+                let song = self.get_current_song();
+                if was_playing && position > 0 {
+                    self.set_pending_seek(position);
+                }
+                player.stop();
+                match gst::ElementFactory::make("autoaudiosink").build() {
+                    Ok(sink) => player.pipeline().set_property("audio-sink", sink),
+                    Err(err) => {
+                        warn!("创建 autoaudiosink 失败: {err:?}");
+                        player
+                            .pipeline()
+                            .set_property("audio-sink", None::<gst::Element>);
+                    }
+                }
+                self.toast(gettext("Switched back to the default audio output"));
+                if was_playing {
+                    if let Some(song) = song {
+                        self.play(song);
+                    }
+                }
+            }
+            return;
+        }
+
+        let device = self.exclusive_device();
+        if alsa_device_free(&device) {
+            self.attach_exclusive_sink(&device);
+            return;
+        }
+
+        let was_playing = player.pipeline().current_state() == gst::State::Playing;
+        // scale-value 只在用户拖动进度条时更新，取管道真实位置才不会把进度丢掉
+        let position = player
+            .pipeline()
+            .query_position::<ClockTime>()
+            .map(|pos| pos.useconds())
+            .unwrap_or(0);
+        if was_playing && position > 0 {
+            self.set_pending_seek(position);
+        }
+        let song = self.get_current_song();
+        if was_playing {
+            player.stop();
+        }
+        self.toast(gettext_f(
+            "Waiting for the sound card {device} to be released by PipeWire ...",
+            &[("device", &device)],
+        ));
+
+        let this = self.clone();
+        let device_c = device.clone();
+        let waited_ms = Cell::new(0u32);
+        let id = glib::timeout_add_local(Duration::from_millis(400), move || {
+            let waited = waited_ms.get() + 400;
+            waited_ms.set(waited);
+            if alsa_device_free(&device_c) {
+                *this.imp().exclusive_retry.borrow_mut() = None;
+                if waited > 400 {
+                    info!("声卡 {device_c} 在 {waited}ms 后被 PipeWire 释放");
+                }
+                this.attach_exclusive_sink(&device_c);
+                if was_playing {
+                    if let Some(song) = song.clone() {
+                        this.play(song);
+                    }
+                }
+                return glib::ControlFlow::Break;
+            }
+            if waited >= 20_000 {
+                *this.imp().exclusive_retry.borrow_mut() = None;
+                warn!("独占输出失败：{device_c} 20 秒内仍被占用，回退默认输出");
+                this.toast(gettext_f(
+                    "Exclusive output failed: {device} is still busy, fell back to the default output",
+                    &[("device", &device_c)],
+                ));
+                // 关掉开关（changed 回调会把音频重定向回系统默认 sink）
+                this.settings().set_boolean("audio-exclusive", false).ok();
+                if was_playing {
+                    if let Some(song) = song.clone() {
+                        this.play(song);
+                    }
+                }
+                return glib::ControlFlow::Break;
+            }
+            glib::ControlFlow::Continue
+        });
+        *self.imp().exclusive_retry.borrow_mut() = Some(id);
+    }
+
+    /// 把 ALSA 独占 sink 挂到 playbin 上（播放中热切换）
+    fn attach_exclusive_sink(&self, device: &str) {
+        let imp = self.imp();
+        let Some(player) = imp.player.get().cloned() else {
+            return;
+        };
+        let sink = match gst::ElementFactory::make("alsasink")
+            .name("exclusive-alsa-sink")
+            .property("device", device)
+            .property("buffer-time", 250_000i64)
+            .property("latency-time", 50_000i64)
+            .build()
+        {
+            Ok(sink) => sink,
+            Err(err) => {
+                warn!("创建 alsasink 失败（缺 gstreamer1.0-alsa？）: {err:?}");
+                self.toast(gettext(
+                    "Exclusive output unavailable: gstreamer1.0-alsa plugin is missing",
+                ));
+                return;
+            }
+        };
+        player.pipeline().set_property("audio-sink", sink);
+        imp.exclusive_active.set(true);
+        info!("独占输出已启用: {device}（ALSA 直通，绕过 PipeWire/系统混音）");
+        self.toast(gettext_f(
+            "Exclusive output: {device} (bypassing the system mixer)",
+            &[("device", device)],
+        ));
+
+        // 播放稳定后记录真实协商格式，作为「有没有被重采样」的证据
+        let this = self.clone();
+        glib::timeout_add_local_once(Duration::from_millis(2500), move || {
+            this.log_exclusive_caps();
+        });
+    }
+
+    /// 独占输出相关的播放错误（声卡打不开）：回退系统默认输出并重播当前歌。
+    /// 返回 true 表示错误已被处理，调用方不要再按普通播放错误跳歌。
+    pub fn handle_exclusive_error(&self, err: &str, details: &str, busy: bool) -> bool {
+        let imp = self.imp();
+        if !imp.exclusive_active.get() {
+            return false;
+        }
+        let exclusive_related = busy
+            || details.contains("exclusive-alsa-sink")
+            || details.contains("Could not open audio device")
+            || details.contains("Device or resource busy");
+        if !exclusive_related {
+            return false;
+        }
+
+        warn!("独占输出失败，回退默认输出: {err} ({details})");
+        self.settings().set_boolean("audio-exclusive", false).ok();
+        let position = self
+            .imp()
+            .player
+            .get()
+            .and_then(|player| player.pipeline().query_position::<ClockTime>())
+            .map(|pos| pos.useconds())
+            .unwrap_or(0);
+        if position > 0 {
+            self.set_pending_seek(position);
+        }
+        let song = self.get_current_song();
+        self.toast(gettext_f(
+            "Exclusive output failed: {err}, switched back to the default output",
+            &[("err", err)],
+        ));
+        if let Some(song) = song {
+            self.play(song);
+        }
+        true
+    }
+
+    /// 等管道能接受 seek 后再定位，最多重试 3 秒（切音质/切独占后恢复进度用）
+    fn seek_when_ready(&self, target: u64) {
+        let this = self.clone();
+        let attempts = Cell::new(0u32);
+        glib::timeout_add_local(Duration::from_millis(200), move || {
+            attempts.set(attempts.get() + 1);
+            let Some(player) = this.imp().player.get() else {
+                return glib::ControlFlow::Break;
+            };
+            if let Some(pos) = player.pipeline().query_position::<ClockTime>() {
+                if pos.useconds() + 1_000_000 >= target {
+                    debug!("进度恢复完成: {}us", pos.useconds());
+                    return glib::ControlFlow::Break;
+                }
+            }
+            player.seek(ClockTime::from_useconds(target));
+            if attempts.get() >= 15 {
+                warn!("进度恢复超时，目标 {target}us");
+                glib::ControlFlow::Break
+            } else {
+                glib::ControlFlow::Continue
+            }
+        });
+    }
+
+    fn log_exclusive_caps(&self) {
+        let imp = self.imp();
+        let Some(player) = imp.player.get() else {
+            return;
+        };
+        if !imp.exclusive_active.get() {
+            return;
+        }
+        let Ok(bin) = player.pipeline().downcast::<gst::Bin>() else {
+            return;
+        };
+        if let Some(sink) = bin.by_name("exclusive-alsa-sink") {
+            match sink
+                .static_pad("sink")
+                .and_then(|pad: gst::Pad| pad.current_caps())
+            {
+                Some(caps) => info!("独占输出协商格式: {caps}"),
+                None => warn!("独占输出尚未协商出格式"),
+            }
+        }
+    }
+
     pub fn play(&self, song_info: SongInfo) {
         let imp = self.imp();
 
@@ -185,11 +456,13 @@ impl PlayerControls {
         player.set_volume(self.property("volume"));
         player.play();
 
-        // 如果存在待执行的 seek 位置，在开始播放后立即定位
+        // 如果存在待执行的 seek 位置，在开始播放后定位。
+        // stop→play 后管道还在 READY/PAUSED 时 seek 会被丢掉（实测切独占后回到 0 秒），
+        // 所以用短轮询重试到位置真的跳过去为止。
         let pending = imp.pending_seek_position.get();
         if pending > 0 {
             imp.pending_seek_position.set(0);
-            player.seek(ClockTime::from_useconds(pending));
+            self.seek_when_ready(pending);
         }
 
         self.init_play_info(song_info);
@@ -478,14 +751,13 @@ impl PlayerControls {
         });
 
         let sender = sender_.clone();
-        player_sig.connect_error(move |_, e, _| {
-            sender
-                .send_blocking(Action::AddToast(gettext_f(
-                    "Playback error:{err}",
-                    &[("err", &e.to_string())],
-                )))
-                .unwrap();
-            sender.send_blocking(Action::PlayNextSong).unwrap();
+        player_sig.connect_error(move |_, e, details| {
+            // PlaySignalAdapter 的回调要跨线程，只能把纯数据投回主循环
+            let busy = e.matches(gst::ResourceError::Busy)
+                || e.matches(gst::ResourceError::OpenWrite)
+                || e.matches(gst::ResourceError::OpenReadWrite);
+            let dbg = details.map(|s| s.to_string()).unwrap_or_default();
+            let _ = sender.send_blocking(Action::GstPlaybackError(e.to_string(), dbg, busy));
         });
 
         let sender = sender_.clone();
@@ -1269,6 +1541,36 @@ impl PlayerControls {
     }
 }
 
+/// "hw:0,0" -> /dev/snd/pcmC0D0p
+fn alsa_pcm_node(device: &str) -> Option<path::PathBuf> {
+    let rest = device.strip_prefix("hw:")?;
+    let (card, dev) = rest.split_once(',')?;
+    let card: u32 = card.trim().parse().ok()?;
+    let dev: u32 = dev.trim().parse().ok()?;
+    Some(path::PathBuf::from(format!("/dev/snd/pcmC{card}D{dev}p")))
+}
+
+/// 直接 open ALSA pcm 节点判断声卡是否空闲：
+/// hw 设备同一时刻只允许一个打开者，open 成功即表示当前没有 PipeWire/其他进程占用。
+fn alsa_device_free(device: &str) -> bool {
+    use std::os::unix::fs::OpenOptionsExt;
+    let Some(node) = alsa_pcm_node(device) else {
+        warn!("无法从设备名解析 ALSA 节点: {device}");
+        return false;
+    };
+    // 必须带 O_NONBLOCK(0o4000)：声卡被 PipeWire 占用时，阻塞 open 会一直等下去
+    // 把 GTK 主线程卡死（实测整个界面冻结、D-Bus 无响应）。
+    let mut opts = fs::OpenOptions::new();
+    opts.write(true).custom_flags(0o4000);
+    match opts.open(&node) {
+        Ok(_) => true,
+        Err(err) => {
+            debug!("声卡 {device} 仍被占用 ({err})");
+            false
+        }
+    }
+}
+
 mod imp {
 
     use gst::glib::Propagation;
@@ -1353,6 +1655,11 @@ mod imp {
         pub play_stat_id: Cell<u64>,
         pub play_stat_msec: Cell<u64>,
         pub play_stat_pending: Cell<u64>,
+
+        // 独占输出：等待声卡释放的轮询定时器
+        pub exclusive_retry: Rc<RefCell<Option<glib::SourceId>>>,
+        // 当前是否已挂上 ALSA 独占 sink
+        pub exclusive_active: Cell<bool>,
     }
 
     #[glib::object_subclass]

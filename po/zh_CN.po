@@ -831,3 +831,36 @@ msgstr "补全歌词封面"
 
 msgid "Fetch lyrics and covers for local songs from the cloud"
 msgstr "为本地歌曲批量从云端补全歌词与封面"
+
+msgid "Exclusive Audio Output"
+msgstr "音频独占输出"
+
+msgid "Exclusive audio output"
+msgstr "音频独占输出"
+
+msgid "Bypass the system mixer and drive the ALSA device directly (no resampling); other applications will stop playing sound"
+msgstr "绕过系统混音器直接驱动 ALSA 硬件设备（不做重采样）；开启后其他应用将无法出声"
+
+msgid "Exclusive output device"
+msgstr "独占输出设备"
+
+msgid "ALSA hardware device such as hw:0,0, leave empty to use hw:0,0"
+msgstr "ALSA 硬件设备，例如 hw:0,0；留空则使用 hw:0,0"
+
+msgid "Exclusive output: {device} (bypassing the system mixer)"
+msgstr "独占输出：{device}（绕过系统混音）"
+
+msgid "Waiting for the sound card {device} to be released by PipeWire ..."
+msgstr "正在等待声卡 {device} 被 PipeWire 释放……"
+
+msgid "Exclusive output failed: {device} is still busy, fell back to the default output"
+msgstr "独占输出失败：{device} 仍被占用，已回退系统默认输出"
+
+msgid "Exclusive output failed: {err}, switched back to the default output"
+msgstr "独占输出失败：{err}，已切回系统默认输出"
+
+msgid "Exclusive output unavailable: gstreamer1.0-alsa plugin is missing"
+msgstr "独占输出不可用：缺少 gstreamer1.0-alsa 插件"
+
+msgid "Switched back to the default audio output"
+msgstr "已切回系统默认输出"

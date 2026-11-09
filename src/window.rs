@@ -290,6 +290,10 @@ impl NeteaseCloudMusicGtk4Window {
         let action_style = self.settings().create_action("style-variant");
         self.add_action(&action_style);
 
+        // 独占音频输出开关（⋯ 菜单与偏好设置共用同一个 GSettings 键）
+        let action_exclusive = self.settings().create_action("audio-exclusive");
+        self.add_action(&action_exclusive);
+
         // 绑定搜索按钮和搜索栏
         let search_button = imp.search_button.get();
         // let search_bar = imp.search_bar.get();

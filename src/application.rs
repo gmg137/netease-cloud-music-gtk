@@ -452,6 +452,8 @@ pub enum Action {
     GstDurationChanged(u64),
     GstStateChanged(gstreamer_play::PlayState),
     GstVolumeChanged(f64),
+    // 播放错误（错误信息, 详细结构, 是否资源忙）：独占输出打不开声卡时由播放条自行回退
+    GstPlaybackError(String, String, bool),
     GstCacheDownloadComplete(String),
     ScaleSeekUpdate(u64),
     ScaleValueUpdate,
@@ -2072,6 +2074,17 @@ impl NeteaseCloudMusicGtk4Application {
             }
             Action::GstStateChanged(state) => {
                 window.gst_state_changed(state);
+            }
+            Action::GstPlaybackError(err, details, busy) => {
+                if !window
+                    .imp()
+                    .player_controls
+                    .get()
+                    .handle_exclusive_error(&err, &details, busy)
+                {
+                    window.add_toast(gettext_f("Playback error:{err}", &[("err", &err)]));
+                    window.play_next();
+                }
             }
             Action::GstVolumeChanged(volume) => {
                 window.gst_volume_changed(volume);
